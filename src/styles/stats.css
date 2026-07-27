@@ -1087,10 +1087,6 @@
   transition: width 180ms ease;
 }
 
-.cfop-composition-untracked {
-  background: rgba(214, 223, 239, 0.72) !important;
-}
-
 .cfop-composition-values {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

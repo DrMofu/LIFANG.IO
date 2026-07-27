@@ -477,6 +477,9 @@
   left: 50%;
   z-index: 125;
   width: min(520px, calc(100vw - 32px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid rgba(214, 226, 244, 0.96);
   border-radius: 24px;
   background:
@@ -490,10 +493,41 @@
   transform: translate(-50%, -50%);
 }
 
+.top-connect-prompt-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(237, 244, 255, 0.86);
+  color: var(--tech-muted);
+  font-family: var(--sans);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.top-connect-prompt-close:hover:not(:disabled),
+.top-connect-prompt-close:focus-visible {
+  background: rgba(222, 234, 252, 0.96);
+  color: var(--tech-ink);
+  outline: none;
+}
+
+.top-connect-prompt-close:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .top-connect-prompt-head {
   display: flex;
   align-items: center;
   gap: 16px;
+  padding-right: 40px;
 }
 
 .top-connect-prompt-visual {
@@ -567,6 +601,18 @@
   font-size: 12px;
   font-weight: 900;
   transform: translateY(-50%);
+}
+
+.top-connect-platform-note {
+  margin-top: 12px;
+  border-radius: 11px;
+  background: rgba(47, 111, 242, 0.08);
+  padding: 9px 12px;
+  color: var(--tech-ink-2);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+  white-space: pre-line;
 }
 
 .top-connect-prompt-note {
@@ -946,6 +992,11 @@
   .top-connect-prompt {
     width: min(520px, calc(100vw - 24px));
     padding: 20px;
+  }
+
+  .top-connect-prompt-close {
+    top: 10px;
+    right: 10px;
   }
 
   .top-connect-prompt-title {

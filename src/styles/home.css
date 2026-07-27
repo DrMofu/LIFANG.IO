@@ -83,6 +83,29 @@
   margin-top: 18px;
 }
 
+.home-actions .top-connect-action::after {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.home-actions .top-connect-tooltip {
+  right: auto;
+  left: 50%;
+  transform: translate(-50%, -6px) scale(0.98);
+  transform-origin: top center;
+}
+
+.home-actions .top-connect-tooltip::before {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.home-actions .top-connect-action.tooltip-open .top-connect-tooltip {
+  transform: translate(-50%, 0) scale(1);
+}
+
 .home-cube-stage {
   position: relative;
   min-height: min(78vh, 780px);

@@ -865,7 +865,7 @@ export function StatsApp() {
   const dominantCfopPhase = activeCfopPhases.reduce((dominant, phase) => (
     (phase.value ?? 0) > (dominant.value ?? 0) ? phase : dominant
   ), activeCfopPhases[0]);
-  const cfopBarTotal = Math.max(activeCfopBreakdown.avg, activeCfopBreakdown.phaseTotal, 1);
+  const cfopBarTotal = Math.max(activeCfopBreakdown.phaseTotal, 1);
   const cfopRangePosition = activeCfopBreakdown.best != null
     && activeCfopBreakdown.worst != null
     && activeCfopBreakdown.worst > activeCfopBreakdown.best
@@ -1893,7 +1893,7 @@ export function StatsApp() {
                 <div className="cfop-composition">
                   <div className="cfop-section-line cfop-composition-head">
                     <strong>{t("CFOP 阶段构成")}</strong>
-                    <span>{dominantCfopPhase.name} {t("占比最高")} · {activeCfopBreakdown.avg && dominantCfopPhase.value ? Math.round((dominantCfopPhase.value / activeCfopBreakdown.avg) * 100) : 0}%</span>
+                    <span>{dominantCfopPhase.name} {t("占比最高")} · {activeCfopBreakdown.phaseTotal && dominantCfopPhase.value ? Math.round((dominantCfopPhase.value / activeCfopBreakdown.phaseTotal) * 100) : 0}%</span>
                   </div>
                   <div className="cfop-composition-bar" aria-label={t("CFOP 阶段耗时占比")}>
                     {activeCfopPhases.map((phase) => (
@@ -1903,14 +1903,13 @@ export function StatsApp() {
                         aria-label={`${phase.name} ${fmtShort(phase.value)}`}
                       ></span>
                     ))}
-                    <span className="cfop-composition-untracked" style={{ width: `${Math.max(0, ((cfopBarTotal - activeCfopBreakdown.phaseTotal) / cfopBarTotal) * 100)}%` }}></span>
                   </div>
                   <div className="cfop-composition-values">
                     {activeCfopPhases.map((phase) => (
                       <div key={phase.key} style={{ "--cfop-phase-color": phase.color } as CSSProperties}>
                         <span><i aria-hidden="true"></i>{phase.name}</span>
                         <b>{fmtShort(phase.value)}</b>
-                        <em>{activeCfopBreakdown.avg && phase.value ? Math.round((phase.value / activeCfopBreakdown.avg) * 100) : 0}%</em>
+                        <em>{activeCfopBreakdown.phaseTotal && phase.value ? Math.round((phase.value / activeCfopBreakdown.phaseTotal) * 100) : 0}%</em>
                       </div>
                     ))}
                   </div>

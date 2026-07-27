@@ -147,6 +147,9 @@ const OLL_SHAPE_LABELS: Record<OllShape, string> = {
   w: "formula.shape.w",
 };
 const OLL_SHAPE_OPTIONS: readonly OllShapeFilter[] = ["all", ...OLL_SHAPES];
+const OLL_SHAPE_PREVIEW_CASES = Object.fromEntries(
+  OLL_SHAPES.map((shape) => [shape, FORMULAS.oll.items.find((item) => item.shape === shape)]),
+) as Record<OllShape, FormulaItem | undefined>;
 const FORMULA_ROTATION_SUFFIX: Record<Exclude<FormulaRotationOffset, 0>, string> = {
   1: "@view-y",
   2: "@view-y2",
@@ -163,10 +166,12 @@ type FormulaStats = {
 function OllShapeSelectField({
   id,
   selected,
+  faceColors,
   onSelect,
 }: {
   id: string;
   selected: OllShapeFilter;
+  faceColors: Record<CubeFace, string>;
   onSelect(shape: OllShapeFilter): void;
 }) {
   const { t } = useLanguage();
@@ -176,6 +181,29 @@ function OllShapeSelectField({
   function handleSelect(shape: OllShapeFilter) {
     onSelect(shape);
     setIsOpen(false);
+  }
+
+  function renderPreview(shape: OllShapeFilter, className: string) {
+    if (shape === "all") {
+      return (
+        <span className={`${className} fm-shape-all-preview`} aria-hidden="true">
+          <i></i><i></i><i></i><i></i>
+        </span>
+      );
+    }
+
+    const previewCase = OLL_SHAPE_PREVIEW_CASES[shape];
+    const facelets = previewCase?.facelets ?? previewCase?.algos?.find((variant) => variant.facelets)?.facelets;
+    if (!previewCase || !facelets) return <span className={`${className} fm-shape-preview-empty`} aria-hidden="true"></span>;
+
+    return (
+      <FormulaTopViewImage
+        facelets={facelets}
+        faceColors={faceColors}
+        arrows={previewCase.arrows}
+        className={className}
+      />
+    );
   }
 
   return (
@@ -197,6 +225,7 @@ function OllShapeSelectField({
           if (event.key === "Escape") setIsOpen(false);
         }}
       >
+        {renderPreview(selected, "fm-shape-select-trigger-preview")}
         <span className="fm-shape-select-label">{t(selectedLabel)}</span>
       </button>
       {isOpen && (
@@ -213,7 +242,8 @@ function OllShapeSelectField({
                 aria-selected={isSelected}
                 onClick={() => handleSelect(shape)}
               >
-                {t(label)}
+                {renderPreview(shape, "fm-shape-select-option-preview")}
+                <span>{t(label)}</span>
               </button>
             );
           })}
@@ -1983,6 +2013,7 @@ export function FormulasApp() {
               <OllShapeSelectField
                 id="oll-shape-filter"
                 selected={ollShapeFilter}
+                faceColors={formulaTopViewFaceColors}
                 onSelect={setOllShapeFilter}
               />
             </div>

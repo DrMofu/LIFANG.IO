@@ -43,20 +43,20 @@ export type FormulaItem = {
 };
 
 export const OLL_SHAPES = [
+  "ocll",
+  "t",
+  "w",
   "all-corners-oriented",
-  "awkward",
+  "square",
   "c",
+  "p",
   "dot",
   "fish",
   "knight-move",
   "l",
   "lightning",
   "line",
-  "ocll",
-  "p",
-  "square",
-  "t",
-  "w",
+  "awkward",
 ] as const;
 
 export type OllShape = (typeof OLL_SHAPES)[number];

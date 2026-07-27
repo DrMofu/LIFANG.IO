@@ -359,6 +359,15 @@ export function CompactConnectButton() {
             aria-modal="true"
             aria-labelledby="top-connect-prompt-title"
           >
+            <button
+              type="button"
+              className="top-connect-prompt-close"
+              onClick={closeConnectionPrompt}
+              disabled={connecting}
+              aria-label={t("connection.cancelPairing")}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
             <div className="top-connect-prompt-head">
               <div className="top-connect-prompt-visual" aria-hidden="true">
                 <img src="/li-fang-logo.png" alt="" />
@@ -377,6 +386,9 @@ export function CompactConnectButton() {
               <li>{t("connection.pairingStepSelect")}</li>
               <li>{t("connection.pairingStepWait")}</li>
             </ol>
+            <div className="top-connect-platform-note">
+              {t("connection.platformSupport")}
+            </div>
             <div className="top-connect-brand-field">
               <label htmlFor="top-connect-brand">{t("connection.cubeBrand")}</label>
               <div className="top-connect-brand-select-wrap">
