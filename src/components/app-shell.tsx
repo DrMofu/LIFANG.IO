@@ -252,7 +252,6 @@ export function CompactConnectButton() {
     telemetry,
     facelets,
     setSelectedCubeBrand,
-    openConnectionPrompt,
     closeConnectionPrompt,
     connectRealCube,
     disconnectCube,
@@ -338,7 +337,7 @@ export function CompactConnectButton() {
         <button
           className="ghost-link"
           type="button"
-          onClick={openConnectionPrompt}
+          onClick={() => void connectRealCube(selectedCubeBrand)}
           disabled={connecting}
           aria-haspopup="dialog"
           aria-expanded={connectionPromptVisible}

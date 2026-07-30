@@ -42,7 +42,7 @@ import {
   applyMovesToFacelets,
   applyMovesToFormulaFacelets,
 } from "@/lib/facelets-pattern";
-import { fmtShort, fmtTime } from "@/lib/format";
+import { fmtShort } from "@/lib/format";
 import { generateScramble, isSameSolveMoveCountGroup, solveMoveCountGroup } from "@/lib/scramble";
 import { getArchiveScopedStorageKey } from "@/lib/solve-history";
 import {
@@ -68,10 +68,13 @@ const DISPLAY_STATE_EPSILON = 0.001;
 const HISTORY_ROW_SIZE = 32;
 const HISTORY_ROW_GAP = 7;
 const HISTORY_FALLBACK_ROWS = 1;
-const TRAINER_SESSION_ROUNDS = 10;
+const DEFAULT_TRAINER_SESSION_ROUNDS = 10;
+const MIN_TRAINER_SESSION_ROUNDS = 1;
+const MAX_TRAINER_SESSION_ROUNDS = 100;
 const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
 const F2L_FOCUS_MODE_KEY = "cfop-trainer-f2l-focus-mode";
 const TRAINER_SELECTED_PHASE_KEY = "cfop-trainer-selected-phase";
+const TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds";
 const TRAINER_ROTATION_VARIANTS_KEY = "cfop-trainer-rotation-variants";
 const TRAINER_FORMULA_HINT_KEY = "cfop-trainer-formula-hint";
 const TRAINER_ROTATION_ARROW_KEY = "cfop-trainer-rotation-arrow";
@@ -170,6 +173,35 @@ function saveStoredTrainerBoolean(key: string, enabled: boolean) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(getArchiveScopedStorageKey(key), JSON.stringify(enabled));
+  } catch {
+    // localStorage can be unavailable in restricted browsing modes.
+  }
+}
+
+function normalizeTrainerSessionRounds(value: number) {
+  return Math.min(MAX_TRAINER_SESSION_ROUNDS, Math.max(MIN_TRAINER_SESSION_ROUNDS, Math.round(value)));
+}
+
+function readStoredTrainerSessionRounds() {
+  if (typeof window === "undefined") return DEFAULT_TRAINER_SESSION_ROUNDS;
+  try {
+    const stored = Number.parseInt(
+      window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY)) ?? "",
+      10,
+    );
+    return Number.isFinite(stored) ? normalizeTrainerSessionRounds(stored) : DEFAULT_TRAINER_SESSION_ROUNDS;
+  } catch {
+    return DEFAULT_TRAINER_SESSION_ROUNDS;
+  }
+}
+
+function saveStoredTrainerSessionRounds(rounds: number) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY),
+      String(normalizeTrainerSessionRounds(rounds)),
+    );
   } catch {
     // localStorage can be unavailable in restricted browsing modes.
   }
@@ -305,6 +337,12 @@ function averageTime(values: number[]) {
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
+function formatTrainerTime(ms: number) {
+  const seconds = Math.floor(ms / 1000);
+  const centiseconds = Math.floor((ms % 1000) / 10);
+  return `${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
+}
+
 function formatMoveAverage(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—步";
   const rounded = Math.round(value * 10) / 10;
@@ -386,6 +424,7 @@ export function CfopTrainerApp() {
   const [formulaHintUndoDisplay, setFormulaHintUndoDisplay] = useState<string[]>([]);
   const [f2lFocusMode, setF2lFocusMode] = useState(readF2lFocusModeEnabled);
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
+  const [sessionRoundLimit, setSessionRoundLimit] = useState(DEFAULT_TRAINER_SESSION_ROUNDS);
   const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
   const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
   const [autoNextPending, setAutoNextPending] = useState(false);
@@ -471,6 +510,7 @@ export function CfopTrainerApp() {
     const focusModeEnabled = readF2lFocusModeEnabled();
     f2lFocusModeRef.current = focusModeEnabled;
     setF2lFocusMode(focusModeEnabled);
+    setSessionRoundLimit(readStoredTrainerSessionRounds());
   }, []);
 
   useEffect(() => {
@@ -815,7 +855,7 @@ export function CfopTrainerApp() {
       setSolveMs(Math.max(0, now - solveStartRef.current));
     }
     updateTrainerState("cancelled");
-    setNotice(t("本组十局已取消，当前魔方状态已保留。"));
+    setNotice(t("本组训练已取消，当前魔方状态已保留。"));
   }, [clearAutoNextTimer, flushVisualPendingMove, resetSessionResults, updateTrainerState, t]);
 
   const finishRun = useCallback((facelets: string) => {
@@ -832,7 +872,7 @@ export function CfopTrainerApp() {
     setSolveMs(elapsed);
     setObserveMs(observe);
     updateTrainerState("done");
-    if (nextResults.length >= TRAINER_SESSION_ROUNDS) {
+    if (nextResults.length >= sessionRoundLimit) {
       const averageObserve = averageTime(nextResults.map((entry) => entry.observeMs)) ?? observe;
       const averageSolve = averageTime(nextResults.map((entry) => entry.solveMs)) ?? elapsed;
       const averageMoves = phase === "cross" ? averageTime(nextResults.map((entry) => entry.moves)) : null;
@@ -841,16 +881,16 @@ export function CfopTrainerApp() {
         observeMs: averageObserve,
         solveMs: averageSolve,
         ...(averageMoves == null ? {} : { moves: averageMoves }),
-        rounds: TRAINER_SESSION_ROUNDS,
+        rounds: sessionRoundLimit,
         ts: Date.now(),
         options: getCurrentHistoryOptions(phase),
       };
       setHistory((prev) => prependCfopTrainerHistoryEntry(prev, entry));
-      setNotice(t(`${trainerPhaseShort(phase)} 阶段十局完成，已记录平均成绩。`));
+      setNotice(t(`${trainerPhaseShort(phase)} 阶段训练完成，已记录平均成绩。`));
       return;
     }
-    setNotice(t(`${trainerPhaseShort(phase)} 阶段第 ${nextResults.length}/${TRAINER_SESSION_ROUNDS} 局完成，准备自动下一局。`));
-  }, [getCurrentHistoryOptions, t]);
+    setNotice(t(`${trainerPhaseShort(phase)} 阶段第 ${nextResults.length}/${sessionRoundLimit} 局完成，准备自动下一局。`));
+  }, [getCurrentHistoryOptions, sessionRoundLimit, t]);
 
   const recordSolveMove = useCallback((move: string) => {
     const nextGroup = solveMoveCountGroup(move);
@@ -982,7 +1022,7 @@ export function CfopTrainerApp() {
       await connectRealCube();
       return;
     }
-    resetRun(t("准备开始十局专项训练。"));
+    resetRun(t("准备开始专项训练。"));
     await beginTrainerRound(runIdRef.current);
   }, [beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, trainingActive, t]);
 
@@ -991,7 +1031,7 @@ export function CfopTrainerApp() {
       state !== "done" ||
       !connected ||
       sessionRoundCount <= 0 ||
-      sessionRoundCount >= TRAINER_SESSION_ROUNDS
+      sessionRoundCount >= sessionRoundLimit
     ) {
       return;
     }
@@ -1006,7 +1046,7 @@ export function CfopTrainerApp() {
       void beginTrainerRound(runIdRef.current);
     }, 1000);
     return clearAutoNextTimer;
-  }, [beginTrainerRound, clearAutoNextTimer, connected, sessionRoundCount, state]);
+  }, [beginTrainerRound, clearAutoNextTimer, connected, sessionRoundCount, sessionRoundLimit, state]);
 
   const clearGyroCostNoticeTimers = useCallback(() => {
     if (gyroCostNoticeFadeTimerRef.current !== null) {
@@ -1139,6 +1179,15 @@ export function CfopTrainerApp() {
     resetRun(t(`${trainerPhaseShort(phase)} 阶段已选择。`));
   };
 
+  const updateSessionRoundLimit = (value: string) => {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return;
+    const next = normalizeTrainerSessionRounds(parsed);
+    setSessionRoundLimit(next);
+    saveStoredTrainerSessionRounds(next);
+    resetRun(t("每组测试轮数已更新。"));
+  };
+
   return (
     <div className="app lf-practice-app lf-trainer-app">
       <AppTopbar />
@@ -1166,6 +1215,24 @@ export function CfopTrainerApp() {
             </div>
             <div className="dt-meta">{t("目标：")} {t(activePhaseMeta.goal)}.
             </div>
+            <label className="trainer-round-setting">
+              <span>
+                <b>{t("每组测试轮数")}</b>
+                <small>{t("每组可进行 1–100 轮，默认为 10。")}</small>
+              </span>
+              <input
+                data-testid="trainer-round-limit"
+                type="number"
+                min={MIN_TRAINER_SESSION_ROUNDS}
+                max={MAX_TRAINER_SESSION_ROUNDS}
+                step={1}
+                inputMode="numeric"
+                value={sessionRoundLimit}
+                disabled={trainingActive || autoNextPending}
+                aria-label={t("每组测试轮数")}
+                onChange={(event) => updateSessionRoundLimit(event.target.value)}
+              />
+            </label>
             {selectedPhase !== "cross" && (
               <>
                 <label className="trainer-variant-toggle">
@@ -1370,19 +1437,19 @@ export function CfopTrainerApp() {
 
         <section className="practice-right trainer-right">
           <div className={`timer timer-${state}`}>
-            <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
+            <div className="t-display t-active">{formatTrainerTime(timerDisplayMs)}</div>
             <div className="t-phase">
               {autoNextPending
-                ? t(`第 ${sessionRoundCount + 1}/${TRAINER_SESSION_ROUNDS} 局即将开始`)
+                ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
                 : state === "cancelled"
                 ? t("本组已取消")
                 : timerKind === "observe"
                   ? t("观察 / 反应计时")
                   : state === "solving"
                     ? t("阶段复原计时")
-                    : sessionRoundCount >= TRAINER_SESSION_ROUNDS
-                      ? t("十局专项完成")
-                      : t("十局专项计时器")}
+                    : sessionRoundCount >= sessionRoundLimit
+                      ? t(`${sessionRoundLimit} 局专项完成`)
+                      : t(`${sessionRoundLimit} 局专项计时器`)}
             </div>
           </div>
 
@@ -1416,7 +1483,7 @@ export function CfopTrainerApp() {
               </div>
               <div className="solve-phase-card">
                 <span>{t("本组进度")}</span>
-                <b>{sessionRoundCount}/{TRAINER_SESSION_ROUNDS}</b>
+                <b>{sessionRoundCount}/{sessionRoundLimit}</b>
               </div>
               <div className="solve-phase-card">
                 <span>{t("历史组数")}</span>

@@ -1,10 +1,11 @@
 {
   "name": "cube-practice-website",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "postinstall": "patch-package",
     "start": "next start"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.0",
     "@types/web-bluetooth": "^0.0.21",
+    "patch-package": "^8.0.1",
     "typescript": "^6.0.3"
   }
 }

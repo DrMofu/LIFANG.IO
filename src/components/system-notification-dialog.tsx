@@ -16,6 +16,7 @@ import { useLanguage } from "@/components/language-provider";
 import settings from "@/settings.json";
 
 const SYSTEM_NOTICE_DISMISSED_VERSION_KEY = "lifang-system-notice-dismissed-version";
+const DEFAULT_CHANGELOG_ENTRY_COUNT = 2;
 
 type SystemNotificationContextValue = {
   openSystemNotification(): void;
@@ -24,6 +25,15 @@ type SystemNotificationContextValue = {
 const SystemNotificationContext = createContext<SystemNotificationContextValue | null>(null);
 
 const CHANGELOG_ENTRIES = [
+  {
+    version: "v0.1.2",
+    changes: [
+      "调整移动端布局",
+      "调整公式-触发的内容",
+      "公式界面公式面板新增交换子公式表达",
+      "修复中心面旋转M, S, E识别延迟的问题",
+    ],
+  },
   {
     version: "v0.1.1",
     changes: [
@@ -100,6 +110,14 @@ type SystemNotificationDialogProps = {
 export function SystemNotificationDialog({ open, onClose }: SystemNotificationDialogProps) {
   const { t } = useLanguage();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [showAllChangelogEntries, setShowAllChangelogEntries] = useState(false);
+  const visibleChangelogEntries = showAllChangelogEntries
+    ? CHANGELOG_ENTRIES
+    : CHANGELOG_ENTRIES.slice(0, DEFAULT_CHANGELOG_ENTRY_COUNT);
+  const handleClose = useCallback(() => {
+    setShowAllChangelogEntries(false);
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -109,7 +127,7 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
     closeButtonRef.current?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") handleClose();
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -118,12 +136,12 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
       window.removeEventListener("keydown", handleKeyDown);
       previousActiveElement?.focus();
     };
-  }, [onClose, open]);
+  }, [handleClose, open]);
 
   if (!open) return null;
 
   return createPortal(
-    <div className="system-notice-backdrop" onMouseDown={onClose}>
+    <div className="system-notice-backdrop" onMouseDown={handleClose}>
       <section
         className="system-notice-dialog"
         role="dialog"
@@ -141,7 +159,7 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
             type="button"
             className="system-notice-close"
             aria-label={t("关闭系统通知")}
-            onClick={onClose}
+            onClick={handleClose}
           >
             ×
           </button>
@@ -157,8 +175,8 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
               <b>{settings.version}</b>
             </div>
 
-            <div className="system-notice-timeline">
-              {CHANGELOG_ENTRIES.map((entry) => (
+            <div className="system-notice-timeline" id="system-notice-changelog-entries">
+              {visibleChangelogEntries.map((entry) => (
                 <article key={entry.version} className="system-notice-release">
                   <div className="system-notice-release-meta">
                     <strong>{t(entry.version)}</strong>
@@ -169,6 +187,21 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
                 </article>
               ))}
             </div>
+
+            {CHANGELOG_ENTRIES.length > DEFAULT_CHANGELOG_ENTRY_COUNT && (
+              <button
+                type="button"
+                className="system-notice-more"
+                aria-controls="system-notice-changelog-entries"
+                aria-expanded={showAllChangelogEntries}
+                onClick={() => setShowAllChangelogEntries((current) => !current)}
+              >
+                {t(showAllChangelogEntries ? "收起" : "查看更多")}
+                <svg aria-hidden="true" viewBox="0 0 16 16">
+                  <path d="m4 6 4 4 4-4" />
+                </svg>
+              </button>
+            )}
           </section>
 
           <aside className="system-notice-development-note">

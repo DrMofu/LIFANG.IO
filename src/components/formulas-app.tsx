@@ -100,11 +100,11 @@ const FORMULA_STATS_ROW_GAP = 10;
 const FORMULA_STATS_FALLBACK_ROWS = 1;
 const TRIGGER_NAME_BY_ALGORITHM = new Map(
   FORMULAS.triggers.items.flatMap((item) => {
-    const algorithms = [
-      ...(item.algo ? [item.algo] : []),
-      ...(item.algos?.map((variant) => variant.algo) ?? []),
+    const triggers: Array<readonly [string, string]> = [
+      ...(item.algo ? [[item.algo, item.name] as const] : []),
+      ...(item.algos?.map((variant) => [variant.algo, variant.name] as const) ?? []),
     ];
-    return algorithms.map((algorithm) => [parseAlgorithm(algorithm).join("\u0000"), item.name] as const);
+    return triggers.map(([algorithm, name]) => [parseAlgorithm(algorithm).join("\u0000"), name] as const);
   }),
 );
 const FORMULA_TOP_VIEW_COLOR_HEX: Record<CubeColor, string> = {
@@ -635,18 +635,64 @@ function FormulaDescription({ description }: { description?: string }) {
   return <span className="formula-description">{t(description)}</span>;
 }
 
+function sequenceIsInverseOf(sequence: string[], source: string[]) {
+  return sequence.length === source.length && sequence.every(
+    (move, index) => move === invertMoveNotation(source[source.length - index - 1]),
+  );
+}
+
+function getTriggerName(moves: string[]) {
+  return TRIGGER_NAME_BY_ALGORITHM.get(
+    moves
+      .map((move) => parseMoveNotation(move)?.notation ?? move)
+      .join("\u0000"),
+  );
+}
+
+function formatAlgorithmPart(moves: string[]) {
+  return getTriggerName(moves) ?? moves.join(" ");
+}
+
+function getCommutatorOrConjugateNotation(moves: string[]) {
+  const normalizedMoves = moves.map((move) => parseMoveNotation(move)?.notation ?? move);
+  const halfLength = normalizedMoves.length / 2;
+
+  if (Number.isInteger(halfLength)) {
+    for (let aLength = 1; aLength < halfLength; aLength += 1) {
+      const bLength = halfLength - aLength;
+      const a = normalizedMoves.slice(0, aLength);
+      const b = normalizedMoves.slice(aLength, halfLength);
+      const aInverse = normalizedMoves.slice(halfLength, halfLength + aLength);
+      const bInverse = normalizedMoves.slice(halfLength + aLength);
+
+      if (sequenceIsInverseOf(aInverse, a) && sequenceIsInverseOf(bInverse, b)) {
+        return `[${formatAlgorithmPart(moves.slice(0, aLength))}, ${formatAlgorithmPart(moves.slice(aLength, aLength + bLength))}]`;
+      }
+    }
+  }
+
+  for (let aLength = 1; aLength * 2 < normalizedMoves.length; aLength += 1) {
+    const a = normalizedMoves.slice(0, aLength);
+    const aInverse = normalizedMoves.slice(-aLength);
+
+    if (sequenceIsInverseOf(aInverse, a)) {
+      return `[${formatAlgorithmPart(moves.slice(0, aLength))}: ${formatAlgorithmPart(moves.slice(aLength, -aLength))}]`;
+    }
+  }
+
+  return undefined;
+}
+
 function groupAlgorithmRows(algo: string) {
   const rows: Array<{
     moves: Array<{ move: string; index: number }>;
-    isParenthesized: boolean;
   }> = [];
   let current: Array<{ move: string; index: number }> = [];
   let moveIndex = 0;
-  let inGroup = false;
 
   function pushCurrent() {
     if (current.length === 0) return;
-    rows.push({ moves: current, isParenthesized: inGroup });
+    rows.push({ moves: current });
     current = [];
   }
 
@@ -661,7 +707,6 @@ function groupAlgorithmRows(algo: string) {
 
       if (opens) {
         pushCurrent();
-        inGroup = true;
       }
 
       if (parsed) {
@@ -671,21 +716,20 @@ function groupAlgorithmRows(algo: string) {
 
       if (closes) {
         pushCurrent();
-        inGroup = false;
       }
     });
 
   pushCurrent();
-  return rows.map((row) => ({
-    ...row,
-    triggerName: row.isParenthesized
-      ? TRIGGER_NAME_BY_ALGORITHM.get(
-          row.moves
-            .map(({ move }) => parseMoveNotation(move)?.notation ?? move)
-            .join("\u0000"),
-        )
-      : undefined,
-  }));
+  return rows.map((row) => {
+    const moves = row.moves.map(({ move }) => move);
+    const triggerName = getTriggerName(moves);
+
+    return {
+      ...row,
+      triggerName,
+      structureNotation: triggerName ? undefined : getCommutatorOrConjugateNotation(moves),
+    };
+  });
 }
 
 function FormulaStage({
@@ -716,6 +760,7 @@ function FormulaStage({
   const practiceStatusRef = useRef<PracticeStatus[]>([]);
   const pendingPracticeMovesRef = useRef<string[]>([]);
   const pendingPracticeAnimatedCountRef = useRef(0);
+  const pendingPracticeAnimatedSliceRef = useRef<string | null>(null);
   const researchMovesRef = useRef<string[]>([]);
   const moveCoordinateRef = useRef<MoveCoordinateState>(createMoveCoordinateState());
   const wrongWaitRef = useRef(false);
@@ -945,6 +990,7 @@ function FormulaStage({
     wrongWaitRef.current = false;
     pendingPracticeMovesRef.current = [];
     pendingPracticeAnimatedCountRef.current = 0;
+    pendingPracticeAnimatedSliceRef.current = null;
     moveCoordinateRef.current = createMoveCoordinateState();
     practiceIndexRef.current = 0;
     inRoundRef.current = false;
@@ -1231,18 +1277,27 @@ function FormulaStage({
       const shouldAnimateExpectedMove =
         shouldAnimateExpectedSliceMoveAfterMatch(pendingPracticeMovesRef.current, expected) ||
         shouldAnimateExpectedWideMoveAfterMatch(pendingPracticeMovesRef.current, expected);
-      animateUnplayedPracticeMoves(
-        shouldAnimateExpectedMove
-          ? [expected]
-          : pendingPracticeMovesRef.current,
-        expected,
-      );
+      const animatedPartialSlice = pendingPracticeAnimatedSliceRef.current;
+      if (shouldAnimateExpectedMove && animatedPartialSlice) {
+        // A face-pair emulating the first quarter of M2/E2/S2 was already rendered as a slice.
+        // Render only the second quarter instead of replaying the whole double turn.
+        animatePracticeMoves([animatedPartialSlice]);
+        pendingPracticeAnimatedCountRef.current = 0;
+      } else {
+        animateUnplayedPracticeMoves(
+          shouldAnimateExpectedMove
+            ? [expected]
+            : pendingPracticeMovesRef.current,
+          expected,
+        );
+      }
       moveCoordinateRef.current = updateMoveCoordinateStateAfterMatch(
         moveCoordinateRef.current,
         pendingPracticeMovesRef.current,
         expected,
       );
       pendingPracticeMovesRef.current = [];
+      pendingPracticeAnimatedSliceRef.current = null;
       const markedStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
       markedStatus[currentIndex] = "correct";
       const advanced = advancePastVirtualRotations(currentIndex + 1, markedStatus, 180);
@@ -1267,15 +1322,36 @@ function FormulaStage({
         }, 900);
       }
     } else if (moveCanStillMatchExpected(pendingPracticeMovesRef.current, expected)) {
+      const shouldDeferSliceAnimation = shouldDeferExpectedSliceMoveAnimation(
+        pendingPracticeMovesRef.current,
+        expected,
+      );
+      const partialSliceAnimationMove =
+        shouldDeferSliceAnimation &&
+        movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
+          ? compressMoveSequence(pendingPracticeMovesRef.current)[0]
+          : undefined;
       const shouldDeferAnimation =
-        shouldDeferExpectedSliceMoveAnimation(pendingPracticeMovesRef.current, expected) ||
+        shouldDeferSliceAnimation ||
         shouldDeferExpectedWideMoveAnimation(pendingPracticeMovesRef.current, expected);
-      if (!shouldDeferAnimation) {
+      if (partialSliceAnimationMove && !pendingPracticeAnimatedSliceRef.current) {
+        // Both outer-face events are now present, so one real middle-slice quarter turn is known.
+        // Show it immediately while keeping the formula step partial until the second turn arrives.
+        animatePracticeMoves([partialSliceAnimationMove]);
+        pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
+        pendingPracticeAnimatedSliceRef.current = partialSliceAnimationMove;
+      } else if (!shouldDeferAnimation) {
         animatePracticeMoves([normalizedMove]);
         pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
       }
       const partialStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
-      partialStatus[currentIndex] = movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
+      const hasCompletedFirstHalf = movePartiallyMatchesExpectedDoubleTurn(
+        pendingPracticeMovesRef.current,
+        expected,
+      );
+      // While a double turn can still match, never regress its token from half-complete to pending.
+      // The first face event of the second emulated slice turn may precede its recovered pair.
+      partialStatus[currentIndex] = hasCompletedFirstHalf || partialStatus[currentIndex] === "partial"
         ? "partial"
         : "pending";
       setPracticeStatuses(partialStatus);
@@ -1285,6 +1361,7 @@ function FormulaStage({
       animateUnplayedPracticeMoves(pendingPracticeMovesRef.current);
       pendingPracticeMovesRef.current = [];
       pendingPracticeAnimatedCountRef.current = 0;
+      pendingPracticeAnimatedSliceRef.current = null;
       moveCoordinateRef.current = createMoveCoordinateState();
       const wrongStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
       wrongStatus[currentIndex] = "wrong";
@@ -1562,8 +1639,8 @@ function FormulaStage({
                       active={!playbackActive && practiceActive && index === practiceIndex}
                     />
                   ))}
-                  {active.sourceCat !== "triggers" && row.triggerName && (
-                    <span className="algo-trigger-name">{t(row.triggerName)}</span>
+                  {active.sourceCat !== "triggers" && (row.triggerName || row.structureNotation) && (
+                    <span className="algo-trigger-name">{row.triggerName ? t(row.triggerName) : row.structureNotation}</span>
                   )}
                 </div>
               ))}

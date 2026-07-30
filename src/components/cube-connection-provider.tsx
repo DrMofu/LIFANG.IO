@@ -158,8 +158,6 @@ const CubeConnectionContext = createContext<CubeConnectionContextValue | null>(n
 const BATTERY_AUTO_MIN_INTERVAL_MS = 60_000;
 const BATTERY_POLL_INTERVAL_MS = 5 * 60_000;
 const BATTERY_RETRY_DELAY_MS = 1200;
-const MOVE_IDLE_FACELETS_REQUEST_MS = 650;
-const MOVE_IDLE_FACELETS_MIN_INTERVAL_MS = 350;
 const GYRO_TELEMETRY_MIN_INTERVAL_MS = 250;
 const PRACTICE_IDLE_STOP_MS = 60_000;
 const CUBE_VISUAL_STATE_KEY = "cube-visual-state";
@@ -272,8 +270,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   const batteryPollTimerRef = useRef<number | null>(null);
   const connectionPromptTimerRef = useRef<number | null>(null);
   const lastBatteryRequestAtRef = useRef(0);
-  const moveIdleFaceletsTimerRef = useRef<number | null>(null);
-  const lastMoveIdleFaceletsRequestAtRef = useRef(0);
   const lastGyroTelemetryAtRef = useRef(0);
   const latestGyroRef = useRef<CubeQuaternion | null>(null);
   const lastMovesRef = useRef<SmartCubeMove[]>([]);
@@ -601,12 +597,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     batteryPollTimerRef.current = null;
   }, []);
 
-  const clearMoveIdleFaceletsTimer = useCallback(() => {
-    if (moveIdleFaceletsTimerRef.current === null) return;
-    window.clearTimeout(moveIdleFaceletsTimerRef.current);
-    moveIdleFaceletsTimerRef.current = null;
-  }, []);
-
   const clearConnectionPromptTimer = useCallback(() => {
     if (connectionPromptTimerRef.current === null) return;
     window.clearTimeout(connectionPromptTimerRef.current);
@@ -646,9 +636,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     flushStoredVisualState();
     clearBatteryRetryTimer();
     clearBatteryPollTimer();
-    clearMoveIdleFaceletsTimer();
     lastBatteryRequestAtRef.current = 0;
-    lastMoveIdleFaceletsRequestAtRef.current = 0;
     lastMovesRef.current = [];
     localFaceletsRef.current = null;
     localFaceletsRevisionRef.current += 1;
@@ -658,7 +646,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     setFacelets(null);
     setConnectionInfo(EMPTY_INFO);
     setTelemetry(EMPTY_TELEMETRY);
-  }, [clearBatteryPollTimer, clearBatteryRetryTimer, clearMoveIdleFaceletsTimer, flushStoredVisualState]);
+  }, [clearBatteryPollTimer, clearBatteryRetryTimer, flushStoredVisualState]);
 
   const logSentCommand = useCallback((command: SmartCubeCommand) => {
     const settings = consoleLoggingRef.current;
@@ -685,20 +673,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     },
     [logSentCommand],
   );
-
-  const scheduleMoveIdleFaceletsCheck = useCallback(() => {
-    clearMoveIdleFaceletsTimer();
-    moveIdleFaceletsTimerRef.current = window.setTimeout(() => {
-      moveIdleFaceletsTimerRef.current = null;
-      const conn = connRef.current;
-      if (!conn) return;
-
-      const now = Date.now();
-      if (now - lastMoveIdleFaceletsRequestAtRef.current < MOVE_IDLE_FACELETS_MIN_INTERVAL_MS) return;
-      lastMoveIdleFaceletsRequestAtRef.current = now;
-      void sendCubeCommand(conn, { type: "REQUEST_FACELETS" });
-    }, MOVE_IDLE_FACELETS_REQUEST_MS);
-  }, [clearMoveIdleFaceletsTimer, sendCubeCommand]);
 
   const requestBattery = useCallback(
     async (options: RequestBatteryOptions = {}) => {
@@ -816,7 +790,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
             scheduleStoredVisualStateSave(visualBaseFaceletsRef.current, nextVisualMoves);
             enqueueLocalFaceletsMove(event);
           }
-          scheduleMoveIdleFaceletsCheck();
         } else if (event.type === "GYRO") {
           // 处理陀螺仪
           const { x, y, z, w } = event.quaternion;
@@ -879,7 +852,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
         ...EMPTY_INFO,
         error: `${errorMessage(error)}。请确认魔方已开机、靠近电脑，并重新连接。`,
       });
-      hideConnectionPrompt(3500);
+      showConnectionPrompt();
       return false;
     }
   }, [
@@ -895,7 +868,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     publishMove,
     requestBattery,
     saveStoredVisualStateNow,
-    scheduleMoveIdleFaceletsCheck,
     scheduleStoredVisualStateSave,
     selectedCubeBrand,
     sendCubeCommand,
