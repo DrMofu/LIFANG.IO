@@ -174,6 +174,7 @@ export function SettingsApp() {
   const [authCode, setAuthCode] = useState("");
   const [authCodeSent, setAuthCodeSent] = useState(false);
   const [authActionPending, setAuthActionPending] = useState(false);
+  const [authStatusMessage, setAuthStatusMessage] = useState<StatusMessage | null>(null);
   const [cloudSnapshotMetadata, setCloudSnapshotMetadata] = useState<CloudSnapshotMetadata | null>(null);
   const [cloudLoading, setCloudLoading] = useState(false);
   const [cloudActionPending, setCloudActionPending] = useState(false);
@@ -233,6 +234,18 @@ export function SettingsApp() {
       if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const authResult = url.searchParams.get("auth");
+    if (authResult !== "success" && authResult !== "error") return;
+
+    setAuthStatusMessage(authResult === "success"
+      ? { kind: "success", text: t("已登录，可以同步云端数据。") }
+      : { kind: "error", text: t("登录链接无效或已过期，请重新发送验证码。") });
+    url.searchParams.delete("auth");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -344,6 +357,7 @@ export function SettingsApp() {
     const email = authEmail.trim();
     if (!supabase || !email || authActionPending) return;
     setAuthActionPending(true);
+    setAuthStatusMessage(null);
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
@@ -354,9 +368,11 @@ export function SettingsApp() {
       });
       if (error) throw error;
       setAuthCodeSent(true);
+      setAuthStatusMessage({ kind: "success", text: t("验证码已发送，请查看邮箱。") });
       flashStatus("success", t("验证码已发送，请查看邮箱。"));
     } catch (error) {
       const message = error instanceof Error ? error.message : t("请稍后重试。");
+      setAuthStatusMessage({ kind: "error", text: t(`发送验证码失败：${message}`) });
       flashStatus("error", t(`发送验证码失败：${message}`));
     } finally {
       setAuthActionPending(false);
@@ -377,8 +393,10 @@ export function SettingsApp() {
       if (error) throw error;
       setAuthCode("");
       setAuthCodeSent(false);
+      setAuthStatusMessage({ kind: "success", text: t("已登录，可以同步云端数据。") });
       flashStatus("success", t("已登录，可以同步云端数据。"));
     } catch {
+      setAuthStatusMessage({ kind: "error", text: t("验证码无效或已过期。") });
       flashStatus("error", t("验证码无效或已过期。"));
     } finally {
       setAuthActionPending(false);
@@ -391,6 +409,7 @@ export function SettingsApp() {
     try {
       await supabase.auth.signOut();
       setCloudSnapshotMetadata(null);
+      setAuthStatusMessage(null);
       flashStatus("success", t("已退出登录，本地数据仍保留。"));
     } catch {
       flashStatus("error", t("退出失败，请稍后重试。"));
@@ -967,6 +986,11 @@ export function SettingsApp() {
                   </button>
                   <button type="button" className="settings-action" onClick={verifyAuthCode} disabled={!authCodeSent || !authCode.trim() || authActionPending}>{t("登录")}</button>
                 </div>
+                {authStatusMessage && (
+                  <div className={`settings-status settings-status-${authStatusMessage.kind}`} role="status">
+                    {authStatusMessage.text}
+                  </div>
+                )}
                 <div className="settings-data-note">{t("未登录时继续使用本地数据；登录后可手动上传或恢复云端快照。")}</div>
               </>
             )}

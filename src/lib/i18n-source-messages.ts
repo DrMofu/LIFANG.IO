@@ -303,6 +303,7 @@ export const englishSourceMessages: Record<string, string> = {
   "请稍后重试。": "Try again later.",
   "已登录，可以同步云端数据。": "Signed in. Cloud sync is available.",
   "验证码无效或已过期。": "The verification code is invalid or expired.",
+  "登录链接无效或已过期，请重新发送验证码。": "The sign-in link is invalid or expired. Send a new verification code.",
   "已退出登录，本地数据仍保留。": "Signed out. Local data was preserved.",
   "退出失败，请稍后重试。": "Sign-out failed. Try again later.",
   "已刷新云端状态。": "Cloud status refreshed.",
