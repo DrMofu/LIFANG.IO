@@ -443,6 +443,11 @@
         {
           "id": "oll-32-1",
           "name": "公式一",
+          "algo": "(L U F') (U' L' U L) (F L')"
+        },
+        {
+          "id": "oll-32-2",
+          "name": "公式二",
           "algo": "(F U R U' F' r U R' U' r')"
         }
       ],
@@ -470,6 +475,11 @@
           "id": "oll-34-1",
           "name": "公式一",
           "algo": "(R U R' U') x (D' R' U R U' D) x'"
+        },
+        {
+          "id": "oll-34-2",
+          "name": "公式二",
+          "algo": "(R U R2 U') (R' F) (R U R U') F'"
         }
       ],
       "facelets": "XXXUUUUXUXXURRRRRRXUXFFFFFFDDDDDDDDDUXXLLLLLLXUXBBBBBB"

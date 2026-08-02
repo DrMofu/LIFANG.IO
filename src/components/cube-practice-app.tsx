@@ -12,8 +12,9 @@ import {
   type CubeVisualState,
 } from "@/components/cube-connection-provider";
 import { CubeColorLegend } from "@/components/cube-color-legend";
+import { FormulaTopViewImage } from "@/components/formula-cube-image";
 import { MoveToken } from "@/components/move-token";
-import { mapMoveToOrientation } from "@/lib/cube-appearance";
+import { getFaceHexColors, mapMoveToOrientation } from "@/lib/cube-appearance";
 import {
   appendFixedViewMoveLogMove,
   appendNormalizedMoveLogMove,
@@ -38,6 +39,12 @@ import {
 } from "@/lib/average-time";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
+import {
+  FORMULA_LEARNING_STATUSES,
+  getFormulaLearningStatus,
+  readFormulaLearningStatuses,
+  type FormulaLearningStatus,
+} from "@/lib/formula-learning-status";
 import {
   type CubeDisplayState,
   type CubeFace,
@@ -71,6 +78,7 @@ import {
   type PracticeInspectionSettings,
 } from "@/lib/practice-inspection";
 import { touchLocalUserDataPackageUpdatedAt } from "@/lib/user-data-package";
+import type { FormulaRecognitionResult } from "@/lib/formula-recognition";
 
 const SCRAMBLE_MOVES: CubeFace[] = ["U", "D", "L", "R", "F"];
 const SCRAMBLE_AXES: Record<CubeFace, "ud" | "lr" | "fb"> = {
@@ -107,6 +115,7 @@ const INSPECTION_AUDIO_CUE_SECONDS = [5, 4, 3, 2, 1] as const;
 const INSPECTION_END_CUE_PRESERVE_MS = 320;
 const SMART_SOLVE_FACELETS_TIMEOUT_MS = 1300;
 const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
+const PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY = "cube-practice-formula-recognition-enabled";
 const PRACTICE_DISPLAY_STATE_KEY = "cube-practice-display-state";
 const PRACTICE_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.practice;
 
@@ -123,6 +132,29 @@ function savePracticeGyroDisabled(disabled: boolean) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY), JSON.stringify(disabled));
+  } catch {
+    // localStorage can be unavailable in restricted browsing modes.
+  }
+}
+
+function loadPracticeFormulaRecognitionEnabled() {
+  if (typeof window === "undefined") return false;
+  try {
+    return JSON.parse(
+      window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY)) || "false",
+    ) === true;
+  } catch {
+    return false;
+  }
+}
+
+function savePracticeFormulaRecognitionEnabled(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      getArchiveScopedStorageKey(PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY),
+      JSON.stringify(enabled),
+    );
   } catch {
     // localStorage can be unavailable in restricted browsing modes.
   }
@@ -211,6 +243,7 @@ type PendingHistoryDelete = {
   top: number;
   arrowLeft: number;
 };
+type FormulaRecognitionModule = typeof import("@/lib/formula-recognition");
 
 function isTextEntryTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -556,6 +589,9 @@ export function CubePracticeApp() {
   const moveLogColumnsRef = useRef(DEFAULT_MOVE_LOG_CAPACITY);
   const gyroCostNoticeFadeTimerRef = useRef<number | null>(null);
   const gyroCostNoticeTimerRef = useRef<number | null>(null);
+  const formulaRecognitionEnabledRef = useRef(false);
+  const formulaRecognitionModuleRef = useRef<FormulaRecognitionModule | null>(null);
+  const formulaRecognitionLoadRef = useRef<Promise<FormulaRecognitionModule> | null>(null);
 
   const [moveLog, setMoveLog] = useState<MoveLogEntry[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -567,6 +603,9 @@ export function CubePracticeApp() {
   const [gyroDisabled, setGyroDisabled] = useState(false);
   const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
   const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
+  const [formulaRecognitionEnabled, setFormulaRecognitionEnabled] = useState(false);
+  const [recognizedFormula, setRecognizedFormula] = useState<FormulaRecognitionResult | null>(null);
+  const [formulaLearningStatuses, setFormulaLearningStatuses] = useState<Record<string, FormulaLearningStatus>>({});
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
   const [inspectionSettings, setInspectionSettings] = useState<PracticeInspectionSettings>(
     DEFAULT_PRACTICE_INSPECTION_SETTINGS,
@@ -619,6 +658,7 @@ export function CubePracticeApp() {
     visualState,
   } = useCubeConnection();
   const { orientation, faceColors, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance } = useCubeAppearance();
+  const formulaTopViewFaceColors = useMemo(() => getFaceHexColors(orientation, "cubing-js"), [orientation]);
   isConnectedRef.current = connectionState === "connected";
   visualStateRef.current = visualState;
   const inspectionDurationMs = useMemo(
@@ -670,10 +710,15 @@ export function CubePracticeApp() {
   useEffect(() => {
     function refreshArchiveData() {
       const disabled = loadPracticeGyroDisabled();
+      const recognitionEnabled = loadPracticeFormulaRecognitionEnabled();
       const nextHistory = loadSolveHistory();
       gyroDisabledRef.current = disabled;
+      formulaRecognitionEnabledRef.current = recognitionEnabled;
       historyRef.current = nextHistory;
       setGyroDisabled(disabled);
+      setFormulaRecognitionEnabled(recognitionEnabled);
+      setFormulaLearningStatuses(readFormulaLearningStatuses());
+      if (!recognitionEnabled) setRecognizedFormula(null);
       setHistory(nextHistory);
       setDailyLevels(loadDailyLevels());
       setAverageSettings(loadAverageTimeSettings());
@@ -754,7 +799,7 @@ export function CubePracticeApp() {
     if (track.parentElement) observer.observe(track.parentElement);
     if (track.parentElement?.parentElement) observer.observe(track.parentElement.parentElement);
     return () => observer.disconnect();
-  }, []);
+  }, [formulaRecognitionEnabled]);
 
   useLayoutEffect(() => {
     const list = historyListRef.current;
@@ -814,6 +859,43 @@ export function CubePracticeApp() {
     lastFaceletsRequestRef.current = now;
     void requestFacelets();
   }, [requestFacelets]);
+
+  const loadFormulaRecognitionModule = useCallback(() => {
+    if (formulaRecognitionModuleRef.current) return Promise.resolve(formulaRecognitionModuleRef.current);
+    if (!formulaRecognitionLoadRef.current) {
+      formulaRecognitionLoadRef.current = import("@/lib/formula-recognition").then((module) => {
+        formulaRecognitionModuleRef.current = module;
+        return module;
+      });
+    }
+    return formulaRecognitionLoadRef.current;
+  }, []);
+
+  const detectFormulaRecognition = useCallback(
+    (nextFacelets: string) => {
+      if (!formulaRecognitionEnabledRef.current) return;
+      const module = formulaRecognitionModuleRef.current;
+      if (!module) return;
+      const match = module.recognizeLastLayerFormula(nextFacelets, orientation);
+      if (!match) return;
+      setRecognizedFormula((current) => (
+        current?.phase === match.phase && current.id === match.id ? current : match
+      ));
+    },
+    [orientation],
+  );
+
+  useEffect(() => {
+    if (!formulaRecognitionEnabled) return;
+    let cancelled = false;
+    void loadFormulaRecognitionModule().then(() => {
+      if (cancelled || !formulaRecognitionEnabledRef.current || !faceletsRef.current) return;
+      detectFormulaRecognition(faceletsRef.current);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [detectFormulaRecognition, formulaRecognitionEnabled, loadFormulaRecognitionModule]);
 
   const armPostSolveMoveGate = useCallback((faceletsSerial: number) => {
     postSolveMoveGateRef.current = { faceletsSerial: normalizeCubeSerial(faceletsSerial) };
@@ -1862,6 +1944,7 @@ export function CubePracticeApp() {
   const handleFacelets = useCallback(
     (nextFacelets: string, signal?: CubeFaceletsSignal) => {
       faceletsRef.current = nextFacelets;
+      detectFormulaRecognition(nextFacelets);
       if (signal?.source !== "local") {
         clearSmartSolveFaceletsWait(nextFacelets);
       }
@@ -1931,6 +2014,7 @@ export function CubePracticeApp() {
       armPostSolveMoveGate,
       clearSmartSolveFaceletsWait,
       confirmFreeScrambleIdle,
+      detectFormulaRecognition,
       finishSolve,
       markCfopTimes,
       setFreePracticeState,
@@ -2080,7 +2164,7 @@ export function CubePracticeApp() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (key !== " " && key !== "q" && key !== "r" && key !== "l") return;
+      if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
       if (isTextEntryTarget(event.target)) return;
 
@@ -2091,6 +2175,10 @@ export function CubePracticeApp() {
       }
       if (key === "l") {
         toggleGyroDisabled();
+        return;
+      }
+      if (key === "f") {
+        toggleFormulaRecognition();
         return;
       }
       if (key === "q") {
@@ -2263,6 +2351,16 @@ export function CubePracticeApp() {
     }
     if (!next) showGyroCostNotice();
     savePracticeGyroDisabled(next);
+  }
+
+  function toggleFormulaRecognition() {
+    const next = !formulaRecognitionEnabledRef.current;
+    formulaRecognitionEnabledRef.current = next;
+    setFormulaRecognitionEnabled(next);
+    savePracticeFormulaRecognitionEnabled(next);
+    if (!next) {
+      setRecognizedFormula(null);
+    }
   }
 
   function cancelSmartSolve() {
@@ -2682,29 +2780,86 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="movelog">
-            <div className="practice-card-head ml-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("移动记录")}</div>
-                <div className="practice-kicker">MOVES</div>
+          {formulaRecognitionEnabled ? (
+            <div className="movelog formula-recognition-panel" aria-live="polite">
+              <div className="practice-card-head ml-head">
+                <div className="practice-title-line">
+                  <div className="practice-card-title">{t("公式识别")}</div>
+                  <div className="practice-kicker">OLL · PLL</div>
+                </div>
               </div>
-              <div className="ml-actions">
-                <button className="ml-action" onClick={clearMoveLog} disabled={moveLog.length === 0}>{t("清空")}</button>
-                <button className="ml-action" onClick={copyMoveLog} disabled={moveLog.length === 0}>{t("复制")}</button>
-              </div>
-            </div>
-            <div
-              className="ml-track"
-              ref={moveLogRef}
-              style={{ "--move-log-columns": moveLogColumns, "--move-log-rows": moveLogRows } as CSSProperties}
-            >
-              {moveLog.length > 0 && (
-                moveLog.map((move, index) => (
-                  <span key={`${move.t}-${index}`} className="ml-pill"><MoveToken move={move.m} /></span>
-                ))
+              {recognizedFormula ? (
+                <div className="formula-recognition-result">
+                  <div className="formula-recognition-summary">
+                    <FormulaTopViewImage
+                      facelets={recognizedFormula.facelets}
+                      faceColors={formulaTopViewFaceColors}
+                      arrows={recognizedFormula.arrows}
+                      className="formula-recognition-image"
+                      title={t(recognizedFormula.name)}
+                    />
+                    <div className="formula-recognition-info">
+                      <div className="formula-recognition-name">
+                        <strong>{t(recognizedFormula.name)}</strong>
+                      </div>
+                      <div className="formula-recognition-meta">
+                        <span>{recognizedFormula.phase.toUpperCase()}</span>
+                        <div className="formula-recognition-count">
+                          {recognizedFormula.formulas.length} {t("个公式")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="formula-recognition-list">
+                    {recognizedFormula.formulas.map((formula) => {
+                      const status = getFormulaLearningStatus(
+                        formulaLearningStatuses,
+                        `${recognizedFormula.id}:${formula.id}`,
+                      );
+                      const statusLabel = FORMULA_LEARNING_STATUSES.find((item) => item.key === status)?.shortLabel ?? "未学习";
+                      return (
+                        <div className="formula-recognition-formula-row" key={formula.id}>
+                          <div className="formula-recognition-formula-name">
+                            <span>{t(formula.name)}</span>
+                            <span className={`formula-status-badge status-${status}`}>{t(statusLabel)}</span>
+                          </div>
+                          <div className="formula-recognition-algorithm">{formula.algorithm}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="formula-recognition-empty">
+                  {connectionState === "connected" ? t("等待 OLL 或 PLL 状态") : t("连接智能魔方后开始识别")}
+                </div>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="movelog">
+              <div className="practice-card-head ml-head">
+                <div className="practice-title-line">
+                  <div className="practice-card-title">{t("移动记录")}</div>
+                  <div className="practice-kicker">MOVES</div>
+                </div>
+                <div className="ml-actions">
+                  <button className="ml-action" onClick={clearMoveLog} disabled={moveLog.length === 0}>{t("清空")}</button>
+                  <button className="ml-action" onClick={copyMoveLog} disabled={moveLog.length === 0}>{t("复制")}</button>
+                </div>
+              </div>
+              <div
+                className="ml-track"
+                ref={moveLogRef}
+                style={{ "--move-log-columns": moveLogColumns, "--move-log-rows": moveLogRows } as CSSProperties}
+              >
+                {moveLog.length > 0 && (
+                  moveLog.map((move, index) => (
+                    <span key={`${move.t}-${index}`} className="ml-pill"><MoveToken move={move.m} /></span>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="practice-card legend">
             <div className="practice-card-head">
@@ -2736,6 +2891,14 @@ export function CubePracticeApp() {
               </button>
               <button className="tag tag-btn stage-reset-btn" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
                 <span className="tag-key" aria-hidden="true">R</span>{t("视角归位")}</button>
+              <button
+                className={`tag tag-btn${formulaRecognitionEnabled ? " active" : ""}`}
+                onClick={toggleFormulaRecognition}
+                aria-keyshortcuts="F"
+                aria-pressed={formulaRecognitionEnabled}
+              >
+                <span className="tag-key" aria-hidden="true">F</span>{t("公式识别")}
+              </button>
             </div>
             {gyroCostNoticeVisible && (
               <div
@@ -2909,7 +3072,16 @@ export function CubePracticeApp() {
             {(phase === "idle" || phase === "scrambling") && <div className="t-display">{fmtTime(0)}</div>}
             {phase === "inspect" && (
               <div className="t-display t-warn">
-                {inspectionDurationMs === null ? "∞" : Math.ceil(inspectMs / 1000)}
+                {inspectionDurationMs === null ? (
+                  <svg
+                    className="practice-infinity-symbol"
+                    viewBox="0 0 72 40"
+                    role="img"
+                    aria-label={t("无限观察")}
+                  >
+                    <path d="M36 20C29 10 24 6 17 6C9 6 4 12 4 20C4 28 9 34 17 34C24 34 29 30 36 20C43 10 48 6 55 6C63 6 68 12 68 20C68 28 63 34 55 34C48 34 43 30 36 20Z" />
+                  </svg>
+                ) : Math.ceil(inspectMs / 1000)}
                 {inspectionDurationMs !== null && <span className="t-unit">s</span>}
               </div>
             )}

@@ -14,7 +14,7 @@
         {
           "id": "pll-h-ru",
           "name": "RU版",
-          "algo": "R2 U2 R U2 R2 U2 R2 U2 R U2 R2"
+          "algo": "(R2 U2 R) (U2 R2 U2 R2 U2) (R U2 R2)"
         }
       ],
       "facelets": "UUUUUUUUURLRRRRRRRFBFFFFFFFDDDDDDDDDLRLLLLLLLBFBBBBBBB",
@@ -36,15 +36,16 @@
         {
           "id": "pll-z-mu",
           "name": "MU版",
-          "algo": "M' U (M2 U M2 U) M' U2 M2 U'"
+          "algo": "M' U (M2 U M2 U) M' U2 M2 U'",
+          "facelets": "UUUUUUUUURBRRRRRRRFLFFFFFFFDDDDDDDDDLFLLLLLLLBRBBBBBBB"
         },
         {
           "id": "pll-z-ru",
           "name": "RU版",
-          "algo": "R' U' R2 U (R U R' U') R U R U' R U' R' U2"
+          "algo": "R' U' R2 U (R U R' U') R U R U' R U' R' U2",
+          "facelets": "UUUUUUUUURFRRRRRRRFRFFFFFFFDDDDDDDDDLBLLLLLLLBLBBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUURBRRRRRRRFLFFFFFFFDDDDDDDDDLFLLLLLLLBRBBBBBBB",
       "arrows": [
         [
           1,
@@ -63,7 +64,7 @@
         {
           "id": "pll-ua-mu",
           "name": "MU版",
-          "algo": "(M'2 U M) U2 (M' U M'2)"
+          "algo": "(M2 U M) U2 (M' U M2)"
         },
         {
           "id": "pll-ua-ru",
@@ -94,7 +95,7 @@
         {
           "id": "pll-ub-mu",
           "name": "MU版",
-          "algo": "(M'2 U' M) U2 (M' U' M'2)"
+          "algo": "(M2 U' M) U2 (M' U' M2)"
         },
         {
           "id": "pll-ub-ru",
@@ -214,7 +215,7 @@
         {
           "id": "pll-t-1",
           "name": "公式一",
-          "algo": "(R U R' U') ( R' F ) ( R2 U' R' U' ) ( R U R' F' )"
+          "algo": "(R U R' U') (R' F) (R2 U' R' U') (R U R' F')"
         }
       ],
       "facelets": "UUUUUUUUUBLFRRRRRRFFRFFFFFFDDDDDDDDDLRLLLLLLLRBBBBBBBB",

@@ -525,6 +525,116 @@
   font-size: 12px;
   font-weight: 900;
 }
+.lf-practice-app .formula-recognition-panel .ml-head {
+  margin-bottom: 12px;
+}
+.lf-practice-app .formula-recognition-result {
+  display: grid;
+  gap: 12px;
+}
+.lf-practice-app .formula-recognition-summary {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+}
+.lf-practice-app .formula-recognition-image {
+  display: block;
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--tech-line);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--tech-shadow-soft);
+  object-fit: cover;
+}
+.lf-practice-app .formula-recognition-info {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+.lf-practice-app .formula-recognition-name {
+  min-width: 0;
+}
+.lf-practice-app .formula-recognition-name strong {
+  display: block;
+  overflow: hidden;
+  color: var(--tech-ink);
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lf-practice-app .formula-recognition-meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+.lf-practice-app .formula-recognition-meta span {
+  flex: 0 0 auto;
+  border-radius: 7px;
+  background: var(--tech-blue-soft);
+  padding: 4px 7px;
+  color: var(--tech-blue);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.lf-practice-app .formula-recognition-count {
+  color: var(--tech-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.lf-practice-app .formula-recognition-list {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--tech-line);
+  padding-top: 12px;
+}
+.lf-practice-app .formula-recognition-formula-row {
+  border: 1px solid rgba(222, 232, 248, 0.92);
+  border-radius: 11px;
+  background: rgba(248, 251, 255, 0.8);
+  padding: 9px 10px;
+}
+.lf-practice-app .formula-recognition-formula-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--tech-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+.lf-practice-app .formula-recognition-formula-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lf-practice-app .formula-recognition-algorithm {
+  margin-top: 3px;
+  color: var(--tech-ink-2);
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.lf-practice-app .formula-recognition-empty {
+  display: grid;
+  min-height: 76px;
+  place-items: center;
+  padding: 12px;
+  color: var(--tech-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
 .lf-practice-app .practice-mode-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -552,6 +662,8 @@
   color: #ffffff;
 }
 .lf-practice-app .timer {
+  box-sizing: border-box;
+  height: 126px;
   padding: 20px 22px;
 }
 .lf-practice-app .timer::before {
@@ -565,10 +677,24 @@
   box-shadow: 0 0 0 5px rgba(47, 111, 242, 0.08);
 }
 .lf-practice-app .t-display {
+  display: flex;
+  height: 58px;
+  align-items: center;
   color: var(--tech-ink);
   font-family: var(--timer-number);
   font-size: 48px;
   font-weight: 850;
+  line-height: 1;
+}
+.lf-practice-app .practice-infinity-symbol {
+  display: block;
+  width: 54px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4.5;
 }
 .lf-practice-app .t-unit {
   border-right: 0;
@@ -601,6 +727,10 @@
   position: relative;
   overflow: visible;
   padding: 14px;
+}
+.lf-practice-app .stats:has(.st-stable-score:hover),
+.lf-practice-app .stats:has(.st-stable-score:focus-visible) {
+  z-index: 2;
 }
 .lf-practice-app .stats .practice-card-head {
   margin-bottom: 10px;

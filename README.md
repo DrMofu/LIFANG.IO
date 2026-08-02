@@ -25,6 +25,17 @@
 
 ![练习界面](./public/practice.jpg)
 
+## 系统支持
+
+| 系统 | 支持状态 | 推荐浏览器 | 说明 |
+| --- | --- | --- | --- |
+| Windows 10 / 11 | ✅ 支持 | Chrome、Edge | - |
+| macOS | ✅ 支持 | Chrome、Edge | - |
+| ChromeOS | ✅ 支持 | Chrome | - |
+| Android 6.0 及以上 | ✅ 支持 | Chrome | - |
+| Linux | ⚠️ 实验性支持 | Chrome、Chromium | 可能需要在浏览器中启用实验性 Web Platform 功能 |
+| iOS / iPadOS | ❌ 不支持 | — | 系统浏览器暂不提供本项目所需的 Web Bluetooth 支持 |
+
 ## 功能
 
 - 通过 Web Bluetooth 连接 GAN 智能魔方

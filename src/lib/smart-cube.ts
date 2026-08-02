@@ -1003,13 +1003,8 @@ export function mountSmartCube(
     };
   }
 
-  function applyMovesImmediately(moves: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>) {
+  function applyQueuedMoveImmediately(queuedMove: QueuedMove) {
     if (current) finishCurrent();
-    const queuedMove = buildQueuedMove(moves, 0);
-    if (!queuedMove) {
-      moves.forEach((move) => applyMovesImmediately([move]));
-      return;
-    }
     const selectedCubies = selectLayers(cubies, queuedMove.layers);
     const pivot = new THREE.Group();
     cubeRoot.add(pivot);
@@ -1017,11 +1012,31 @@ export function mountSmartCube(
 
     current = {
       ...queuedMove,
+      durationMs: 0,
       pivot,
       cubies: selectedCubies,
       startTime: performance.now(),
     };
     finishCurrent();
+  }
+
+  function flushMoveQueueImmediately() {
+    if (current) finishCurrent();
+    let next = queue.shift();
+    while (next) {
+      applyQueuedMoveImmediately(next);
+      next = queue.shift();
+    }
+  }
+
+  function applyMovesImmediately(moves: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>) {
+    if (current) finishCurrent();
+    const queuedMove = buildQueuedMove(moves, 0);
+    if (!queuedMove) {
+      moves.forEach((move) => applyMovesImmediately([move]));
+      return;
+    }
+    applyQueuedMoveImmediately(queuedMove);
   }
 
   function resetGyroDisplayOrientation() {
@@ -1237,6 +1252,15 @@ export function mountSmartCube(
     if (hasActiveRenderWork()) scheduleRender();
   }
 
+  function handleVisibilityChange() {
+    if (disposed || document.visibilityState !== "visible") return;
+    flushMoveQueueImmediately();
+    lastFrameTime = performance.now();
+    updateProjectionBorderVisibility();
+    renderer.render(scene, camera);
+    requestRender();
+  }
+
   const initialFacelets = options.initialFacelets && isValidFacelets(options.initialFacelets)
     ? options.initialFacelets
     : undefined;
@@ -1253,6 +1277,7 @@ export function mountSmartCube(
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointercancel", onPointerUp);
   renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+  document.addEventListener("visibilitychange", handleVisibilityChange);
   requestRender();
 
   return {
@@ -1261,6 +1286,12 @@ export function mountSmartCube(
     },
     applyMoves(moves, durationMs = 180) {
       if (moves.length === 0) return;
+      if (document.visibilityState !== "visible") {
+        flushMoveQueueImmediately();
+        applyMovesImmediately(moves);
+        requestRender();
+        return;
+      }
       if (durationMs <= 0) {
         applyMovesImmediately(moves);
         requestRender();
@@ -1368,6 +1399,7 @@ export function mountSmartCube(
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       renderer.domElement.removeEventListener("pointercancel", onPointerUp);
       renderer.domElement.removeEventListener("wheel", onWheel);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       cubies.forEach((cubie) => disposeCubie(cubie));
       cubies.length = 0;
       projectionSurfaces.length = 0;

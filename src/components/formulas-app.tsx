@@ -9,6 +9,7 @@ import { useCubeConnection } from "@/components/cube-connection-provider";
 import { FormulaCubeImage, FormulaTopViewImage } from "@/components/formula-cube-image";
 import { MoveToken } from "@/components/move-token";
 import {
+  appendNormalizedMoveLogMove,
   compressMoveSequence,
   createMoveCoordinateState,
   expandMoveNotation,
@@ -26,10 +27,11 @@ import {
   shouldDeferExpectedSliceMoveAnimation,
   shouldDeferExpectedWideMoveAnimation,
   updateMoveCoordinateStateAfterMatch,
+  updateMoveCoordinateStateAfterMove,
   updateMoveCoordinateStateAfterRotationMove,
   type MoveCoordinateState,
 } from "@/lib/algorithms";
-import { getFaceColors, type CubeColor, type CubeOrientation } from "@/lib/cube-appearance";
+import { getFaceHexColors } from "@/lib/cube-appearance";
 import { normalizeFormulaRotationOffset, rotateAlgorithmByYOffset, rotateFaceletsByYOffset, type FormulaRotationOffset } from "@/lib/formula-rotation";
 import {
   FORMULAS,
@@ -48,6 +50,14 @@ import {
   type AverageTimeSettings,
 } from "@/lib/average-time";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
+import {
+  FORMULA_LEARNING_STATUSES as LEARNING_STATUSES,
+  getFormulaLearningStatus as getLearningStatus,
+  isFormulaLearningStatus as isLearningStatus,
+  readFormulaLearningStatuses as readLearningStatuses,
+  saveFormulaLearningStatuses as saveLearningStatuses,
+  type FormulaLearningStatus as LearningStatus,
+} from "@/lib/formula-learning-status";
 import { type CubeFace, type SmartCubeApi, mountSmartCube } from "@/lib/smart-cube";
 import { getArchiveScopedStorageKey, subscribeStatisticsArchiveChange } from "@/lib/solve-history";
 
@@ -73,7 +83,6 @@ type FormulaCaseItem = FormulaItem & {
   variants: FormulaVariantItem[];
 };
 type PracticeStatus = "pending" | "partial" | "correct" | "wrong";
-type LearningStatus = "unpracticed" | "learning" | "mastered";
 type LearningStatusFilter = "all" | LearningStatus;
 type OllShapeFilter = "all" | OllShape;
 type FormulaTip = {
@@ -87,7 +96,6 @@ type FormulaTip = {
 const FAV_KEY = "formula-favs";
 const STATE_KEY = "formula-state";
 const STATS_KEY = "formula-practice-stats";
-const LEARNING_STATUS_KEY = "formula-learning-status";
 const FOCUS_MODE_KEY = "formula-focus-mode";
 const FORMULA_STATS_LIMIT = 20;
 const FORMULA_PLAY_START_DELAY_MS = 0;
@@ -107,24 +115,11 @@ const TRIGGER_NAME_BY_ALGORITHM = new Map(
     return triggers.map(([algorithm, name]) => [parseAlgorithm(algorithm).join("\u0000"), name] as const);
   }),
 );
-const FORMULA_TOP_VIEW_COLOR_HEX: Record<CubeColor, string> = {
-  white: "#FFFFFF",
-  yellow: "#F4F400",
-  green: "#44EE00",
-  blue: "#2266FF",
-  red: "#FF0000",
-  orange: "#FF8000",
-};
 const RESEARCH_KEYPAD_GROUPS = [
   { label: "FACE", moves: ["U", "U'", "D", "D'", "L", "L'", "R", "R'", "F", "F'", "B", "B'"] },
   { label: "ROTATE", moves: ["x", "x'", "y", "y'", "z", "z'"] },
   { label: "WIDE", moves: ["u", "u'", "d", "d'", "l", "l'", "r", "r'", "f", "f'", "b", "b'"] },
   { label: "SLICE", moves: ["M", "M'", "E", "E'", "S", "S'"] },
-];
-const LEARNING_STATUSES: Array<{ key: LearningStatus; label: string; shortLabel: string }> = [
-  { key: "unpracticed", label: "未学习", shortLabel: "未学习" },
-  { key: "learning", label: "学习中", shortLabel: "学习中" },
-  { key: "mastered", label: "已掌握", shortLabel: "已掌握" },
 ];
 const STATUS_FILTERS: Array<{ key: LearningStatusFilter; label: string }> = [
   { key: "all", label: "全部" },
@@ -253,8 +248,65 @@ function OllShapeSelectField({
   );
 }
 
-function isLearningStatus(value: unknown): value is LearningStatus {
-  return value === "unpracticed" || value === "learning" || value === "mastered";
+function LearningStatusSelectField({
+  selected,
+  onSelect,
+}: {
+  selected: LearningStatusFilter;
+  onSelect(status: LearningStatusFilter): void;
+}) {
+  const { t } = useLanguage();
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = STATUS_FILTERS.find((status) => status.key === selected) ?? STATUS_FILTERS[0];
+
+  function handleSelect(status: LearningStatusFilter) {
+    onSelect(status);
+    setIsOpen(false);
+  }
+
+  return (
+    <div
+      className={`fm-status-select-wrap${isOpen ? " open" : ""}`}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        className="fm-status-select-trigger"
+        aria-label={t("学习状态筛选")}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls="formula-status-filter-menu"
+        onClick={() => setIsOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") setIsOpen(false);
+          if (event.key === "ArrowDown") setIsOpen(true);
+        }}
+      >
+        <span className="fm-status-select-label">{t(selectedOption.label)}</span>
+        <svg className="fm-status-select-chevron" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="m4 6 4 4 4-4" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div id="formula-status-filter-menu" className="fm-status-select-menu" role="listbox">
+          {STATUS_FILTERS.map((status) => (
+            <button
+              key={status.key}
+              type="button"
+              className={`fm-status-select-option status-${status.key}${selected === status.key ? " selected" : ""}`}
+              role="option"
+              aria-selected={selected === status.key}
+              onClick={() => handleSelect(status.key)}
+            >
+              <span>{t(status.label)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function isLearningStatusFilter(value: unknown): value is LearningStatusFilter {
@@ -355,17 +407,6 @@ function caseUsesVariantList(item: FormulaCaseItem) {
 
 function usesTopViewFormulaImage(sourceCat: FormulaKey) {
   return sourceCat === "oll" || sourceCat === "pll";
-}
-
-function getFormulaTopViewFaceColors(orientation: CubeOrientation): Record<CubeFace, string> {
-  const faceColorNames = getFaceColors(orientation);
-  return (Object.entries(faceColorNames) as Array<[CubeFace, CubeColor]>).reduce(
-    (colors, [face, color]) => {
-      colors[face] = FORMULA_TOP_VIEW_COLOR_HEX[color];
-      return colors;
-    },
-    {} as Record<CubeFace, string>,
-  );
 }
 
 function getFormulaCasePreviewFacelets(item: FormulaCaseItem) {
@@ -480,28 +521,6 @@ function saveFavs(favs: string[]) {
   } catch {}
 }
 
-function readLearningStatuses(): Record<string, LearningStatus> {
-  if (typeof window === "undefined") return {};
-  try {
-    const value = JSON.parse(
-      window.localStorage.getItem(getArchiveScopedStorageKey(LEARNING_STATUS_KEY)) || "{}",
-    ) as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter((entry): entry is [string, LearningStatus] => isLearningStatus(entry[1]))
-        .map(([key, status]) => [key, status]),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function saveLearningStatuses(statuses: Record<string, LearningStatus>) {
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(LEARNING_STATUS_KEY), JSON.stringify(statuses));
-  } catch {}
-}
-
 function readFocusModeEnabled() {
   if (typeof window === "undefined") return false;
   try {
@@ -515,10 +534,6 @@ function saveFocusModeEnabled(enabled: boolean) {
   try {
     window.localStorage.setItem(getArchiveScopedStorageKey(FOCUS_MODE_KEY), enabled ? "1" : "0");
   } catch {}
-}
-
-function getLearningStatus(statuses: Record<string, LearningStatus>, id: string): LearningStatus {
-  return statuses[id] ?? "unpracticed";
 }
 
 function fmtLiveSeconds(ms: number) {
@@ -819,7 +834,7 @@ function FormulaStage({
     subscribeMove,
   } = useCubeConnection();
   const { orientation, faceColors, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance } = useCubeAppearance();
-  const formulaTopViewFaceColors = useMemo(() => getFormulaTopViewFaceColors(orientation), [orientation]);
+  const formulaTopViewFaceColors = useMemo(() => getFaceHexColors(orientation, "cubing-js"), [orientation]);
 
   const connected = connectionState === "connected";
   const learningStatusLabel = t(LEARNING_STATUSES.find((status) => status.key === learningStatus)?.shortLabel ?? "未学习");
@@ -957,25 +972,39 @@ function FormulaStage({
   }
 
   function appendResearchMove(move: string) {
-    setResearchMoveLog(compressMoveSequence([...researchMovesRef.current, move]));
+    const normalizedMove = normalizeMoveCoordinate(move, moveCoordinateRef.current);
+    const next = appendNormalizedMoveLogMove(
+      researchMovesRef.current,
+      move,
+      moveCoordinateRef.current,
+    );
+    moveCoordinateRef.current = next.coordinateState;
+    setResearchMoveLog(next.history);
+    return normalizedMove;
   }
 
   function applyResearchMove(move: string) {
     const parsed = parseMoveNotation(move);
     if (!parsed) return;
-    cubeApiRef.current?.applyMoves(expandMoveNotation(parsed.notation), 180);
-    appendResearchMove(parsed.notation);
+    const normalizedMove = appendResearchMove(parsed.notation);
+    cubeApiRef.current?.applyMoves(expandMoveNotation(normalizedMove), 180);
   }
 
   function deleteResearchMove() {
     const lastMove = researchMovesRef.current.at(-1);
     if (!lastMove) return;
-    setResearchMoveLog(researchMovesRef.current.slice(0, -1));
+    const remainingMoves = researchMovesRef.current.slice(0, -1);
+    moveCoordinateRef.current = remainingMoves.reduce(
+      (state, move) => updateMoveCoordinateStateAfterMove(state, move),
+      createMoveCoordinateState(),
+    );
+    setResearchMoveLog(remainingMoves);
     cubeApiRef.current?.applyMoves(expandMoveNotation(invertMoveNotation(lastMove)), 180);
   }
 
   function clearResearchMoves() {
     if (researchMovesRef.current.length === 0) return;
+    moveCoordinateRef.current = createMoveCoordinateState();
     setResearchMoveLog([]);
     setPreviewStartState();
     cubeApiRef.current?.setHintMove(null);
@@ -1246,8 +1275,8 @@ function FormulaStage({
     if (!parsed) return;
 
     if (researchModeRef.current) {
-      appendResearchMove(parsed.notation);
-      cubeApiRef.current?.applyMoves(expandMoveNotation(parsed.notation), 180);
+      const normalizedMove = appendResearchMove(parsed.notation);
+      cubeApiRef.current?.applyMoves(expandMoveNotation(normalizedMove), 180);
       return;
     }
 
@@ -1777,7 +1806,7 @@ function FormulaStage({
 export function FormulasApp() {
   const { t } = useLanguage();
   const { orientation, faceColors } = useCubeAppearance();
-  const formulaTopViewFaceColors = useMemo(() => getFormulaTopViewFaceColors(orientation), [orientation]);
+  const formulaTopViewFaceColors = useMemo(() => getFaceHexColors(orientation, "cubing-js"), [orientation]);
   const initialFormulaState = useMemo(() => readFormulaState() ?? getDefaultFormulaState(), []);
   const [cat, setCat] = useState<FormulaViewKey>(initialFormulaState.cat);
   const [activeKey, setActiveKey] = useState<string>(initialFormulaState.activeKey);
@@ -2062,6 +2091,7 @@ export function FormulasApp() {
               value={filter}
               onChange={(event) => setFilter(event.target.value)}
             />
+            <LearningStatusSelectField selected={statusFilter} onSelect={setStatusFilter} />
             {!isFavoritesView && (
               <button
                 className={`fm-fav-toggle${showFavOnly ? " active" : ""}`}
@@ -2071,18 +2101,6 @@ export function FormulasApp() {
                 ★
               </button>
             )}
-          </div>
-          <div className="fm-status-filter" aria-label={t("学习状态筛选")}>
-            {STATUS_FILTERS.map((status) => (
-              <button
-                key={status.key}
-                type="button"
-                className={`fm-status-filter-btn${statusFilter === status.key ? " active" : ""}`}
-                onClick={() => setStatusFilter(status.key)}
-              >
-                {t(status.label)}
-              </button>
-            ))}
           </div>
           {cat === "oll" && (
             <div className="fm-shape-filter">

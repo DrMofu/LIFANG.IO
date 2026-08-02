@@ -136,6 +136,11 @@
   gap: 0.01em;
 }
 
+.move-token-prime.move-token-double .move-token-prime-mark {
+  font-size: 1.38em;
+  transform: translateY(-0.27em) scaleX(1.06);
+}
+
 .algo-tok {
   position: relative;
   display: inline-flex;

@@ -25,6 +25,17 @@
 
 ![Practice interface](./public/practice.jpg)
 
+## System support
+
+| System | Support status | Recommended browser | Notes |
+| --- | --- | --- | --- |
+| Windows 10 / 11 | ✅ Supported | Chrome, Edge | - |
+| macOS | ✅ Supported | Chrome, Edge | - |
+| ChromeOS | ✅ Supported | Chrome | - |
+| Android 6.0 and later | ✅ Supported | Chrome | - |
+| Linux | ⚠️ Experimental support | Chrome, Chromium | Experimental Web Platform features may need to be enabled in the browser |
+| iOS / iPadOS | ❌ Not supported | — | System browsers do not currently provide the Web Bluetooth support required by this project |
+
 ## Features
 
 - Connect to GAN smart cubes via Web Bluetooth

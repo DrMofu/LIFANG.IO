@@ -7,6 +7,8 @@ exports.getFaceColors = getFaceColors;
 exports.getFaceHexColors = getFaceHexColors;
 exports.mapFaceToOrientation = mapFaceToOrientation;
 exports.mapMoveToOrientation = mapMoveToOrientation;
+exports.displayFaceletsToHardwareFacelets = displayFaceletsToHardwareFacelets;
+exports.hardwareFaceletsToDisplayFacelets = hardwareFaceletsToDisplayFacelets;
 exports.loadCubeOrientation = loadCubeOrientation;
 exports.saveCubeOrientation = saveCubeOrientation;
 exports.normalizeCubeColorPaletteId = normalizeCubeColorPaletteId;
@@ -74,6 +76,7 @@ exports.COLOR_OPPOSITE = {
     red: "orange",
     orange: "red",
 };
+const FACE_ORDER = ["U", "R", "F", "D", "L", "B"];
 // Canonical 3D direction for each color, anchored to WCA Western
 // (white-up, green-front, red-right). Cross product of any (top, front)
 // canonical vectors yields the right-side color, preserving chirality.
@@ -92,6 +95,78 @@ Object.keys(CANON).forEach((color) => {
 });
 function cross(a, b) {
     return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+function dot(a, b) {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function vectorToFace([x, y, z]) {
+    if (y === 1)
+        return "U";
+    if (y === -1)
+        return "D";
+    if (x === 1)
+        return "R";
+    if (x === -1)
+        return "L";
+    if (z === 1)
+        return "F";
+    return "B";
+}
+function displayPositionToHardware(x, y, z, orientation) {
+    const top = CANON[orientation.top];
+    const front = CANON[orientation.front];
+    const right = cross(top, front);
+    return [
+        right[0] * x + top[0] * y + front[0] * z,
+        right[1] * x + top[1] * y + front[1] * z,
+        right[2] * x + top[2] * y + front[2] * z,
+    ];
+}
+function hardwarePositionToDisplay(x, y, z, orientation) {
+    const top = CANON[orientation.top];
+    const front = CANON[orientation.front];
+    const right = cross(top, front);
+    const position = [x, y, z];
+    return [dot(position, right), dot(position, top), dot(position, front)];
+}
+function displayFaceToHardware(face, orientation) {
+    if (face === "U")
+        return vectorToFace(displayPositionToHardware(0, 1, 0, orientation));
+    if (face === "D")
+        return vectorToFace(displayPositionToHardware(0, -1, 0, orientation));
+    if (face === "R")
+        return vectorToFace(displayPositionToHardware(1, 0, 0, orientation));
+    if (face === "L")
+        return vectorToFace(displayPositionToHardware(-1, 0, 0, orientation));
+    if (face === "F")
+        return vectorToFace(displayPositionToHardware(0, 0, 1, orientation));
+    return vectorToFace(displayPositionToHardware(0, 0, -1, orientation));
+}
+function faceletPosition(face, row, col) {
+    if (face === "U")
+        return { face, x: col - 1, y: 1, z: row - 1 };
+    if (face === "R")
+        return { face, x: 1, y: 1 - row, z: 1 - col };
+    if (face === "F")
+        return { face, x: col - 1, y: 1 - row, z: 1 };
+    if (face === "D")
+        return { face, x: col - 1, y: -1, z: 1 - row };
+    if (face === "L")
+        return { face, x: -1, y: 1 - row, z: col - 1 };
+    return { face, x: 1 - col, y: 1 - row, z: -1 };
+}
+function faceletIndex(face, x, y, z) {
+    if (face === "U")
+        return (z + 1) * 3 + (x + 1);
+    if (face === "R")
+        return 9 + (1 - y) * 3 + (1 - z);
+    if (face === "F")
+        return 18 + (1 - y) * 3 + (x + 1);
+    if (face === "D")
+        return 27 + (1 - z) * 3 + (x + 1);
+    if (face === "L")
+        return 36 + (1 - y) * 3 + (z + 1);
+    return 45 + (1 - y) * 3 + (1 - x);
 }
 function rightColor(top, front) {
     const r = cross(CANON[top], CANON[front]);
@@ -147,6 +222,46 @@ function mapMoveToOrientation(move, orientation) {
     if (!["U", "D", "L", "R", "F", "B"].includes(face))
         return move;
     return `${mapFaceToOrientation(face, orientation)}${move.slice(1)}`;
+}
+function displayFaceletsToHardwareFacelets(facelets, orientation) {
+    const next = Array.from({ length: facelets.length }, () => "U");
+    FACE_ORDER.forEach((displayFace, faceIndex) => {
+        for (let row = 0; row < 3; row += 1) {
+            for (let col = 0; col < 3; col += 1) {
+                const sourceIndex = faceIndex * 9 + row * 3 + col;
+                const sourceFace = facelets[sourceIndex];
+                if (!sourceFace || !FACE_ORDER.includes(sourceFace))
+                    continue;
+                const displayPosition = faceletPosition(displayFace, row, col);
+                const [hardwareX, hardwareY, hardwareZ] = displayPositionToHardware(displayPosition.x, displayPosition.y, displayPosition.z, orientation);
+                const hardwareFace = displayFaceToHardware(displayPosition.face, orientation);
+                const targetIndex = faceletIndex(hardwareFace, hardwareX, hardwareY, hardwareZ);
+                next[targetIndex] = displayFaceToHardware(sourceFace, orientation);
+            }
+        }
+    });
+    return next.join("");
+}
+function hardwareFaceletsToDisplayFacelets(facelets, orientation) {
+    if (facelets.length !== 54)
+        return facelets;
+    const next = Array.from({ length: facelets.length }, () => "U");
+    FACE_ORDER.forEach((hardwareFace, faceIndex) => {
+        for (let row = 0; row < 3; row += 1) {
+            for (let col = 0; col < 3; col += 1) {
+                const sourceIndex = faceIndex * 9 + row * 3 + col;
+                const sourceFace = facelets[sourceIndex];
+                if (!sourceFace || !FACE_ORDER.includes(sourceFace))
+                    continue;
+                const hardwarePosition = faceletPosition(hardwareFace, row, col);
+                const [displayX, displayY, displayZ] = hardwarePositionToDisplay(hardwarePosition.x, hardwarePosition.y, hardwarePosition.z, orientation);
+                const displayFace = mapFaceToOrientation(hardwarePosition.face, orientation);
+                const targetIndex = faceletIndex(displayFace, displayX, displayY, displayZ);
+                next[targetIndex] = mapFaceToOrientation(sourceFace, orientation);
+            }
+        }
+    });
+    return next.join("");
 }
 exports.CUBE_APPEARANCE_KEY = "cube-appearance";
 exports.CUBE_COLOR_PALETTE_KEY = "cube-color-palette";

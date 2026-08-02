@@ -975,7 +975,7 @@ export function SettingsApp() {
                       autoComplete="one-time-code"
                       value={authCode}
                       onChange={(event) => setAuthCode(event.target.value)}
-                      placeholder={t("6 位验证码")}
+                      placeholder={t("8 位验证码")}
                       disabled={authActionPending}
                     />
                   </label>
