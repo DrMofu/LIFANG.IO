@@ -1,12 +1,13 @@
 "use client";
 
-import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AlgorithmStepToken } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 import { FormulaCubeImage, FormulaTopViewImage } from "@/components/formula-cube-image";
+import { FormulaKeypad } from "@/components/formula-keypad";
 import { MoveToken } from "@/components/move-token";
 import {
   appendNormalizedMoveLogMove,
@@ -50,6 +51,7 @@ import {
   type AverageTimeSettings,
 } from "@/lib/average-time";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
+import { useClientReady } from "@/lib/client-ready";
 import {
   FORMULA_LEARNING_STATUSES as LEARNING_STATUSES,
   getFormulaLearningStatus as getLearningStatus,
@@ -115,12 +117,6 @@ const TRIGGER_NAME_BY_ALGORITHM = new Map(
     return triggers.map(([algorithm, name]) => [parseAlgorithm(algorithm).join("\u0000"), name] as const);
   }),
 );
-const RESEARCH_KEYPAD_GROUPS = [
-  { label: "FACE", moves: ["U", "U'", "D", "D'", "L", "L'", "R", "R'", "F", "F'", "B", "B'"] },
-  { label: "ROTATE", moves: ["x", "x'", "y", "y'", "z", "z'"] },
-  { label: "WIDE", moves: ["u", "u'", "d", "d'", "l", "l'", "r", "r'", "f", "f'", "b", "b'"] },
-  { label: "SLICE", moves: ["M", "M'", "E", "E'", "S", "S'"] },
-];
 const STATUS_FILTERS: Array<{ key: LearningStatusFilter; label: string }> = [
   { key: "all", label: "全部" },
   ...LEARNING_STATUSES.map(({ key, label }) => ({ key, label })),
@@ -769,7 +765,8 @@ function FormulaStage({
   const playRunRef = useRef(0);
   const practiceActiveRef = useRef(false);
   const researchModeRef = useRef(false);
-  const lowerLayerHiddenRef = useRef(readFocusModeEnabled());
+  const transparentDisplayRef = useRef(false);
+  const lowerLayerHiddenRef = useRef(false);
   const inRoundRef = useRef(false);
   const practiceIndexRef = useRef(0);
   const practiceStatusRef = useRef<PracticeStatus[]>([]);
@@ -819,7 +816,8 @@ function FormulaStage({
   const [pbToast, setPbToast] = useState<string | null>(null);
   const [pbToastFading, setPbToastFading] = useState(false);
   const [researchMode, setResearchMode] = useState(false);
-  const [lowerLayerHidden, setLowerLayerHidden] = useState(readFocusModeEnabled);
+  const [transparentDisplay, setTransparentDisplay] = useState(false);
+  const [lowerLayerHidden, setLowerLayerHidden] = useState(false);
   const [researchMoves, setResearchMoves] = useState<string[]>([]);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [learningMenuOpen, setLearningMenuOpen] = useState(false);
@@ -829,7 +827,6 @@ function FormulaStage({
 
   const {
     connectionState,
-    connectionInfo,
     connectRealCube,
     subscribeMove,
   } = useCubeConnection();
@@ -839,6 +836,7 @@ function FormulaStage({
   const connected = connectionState === "connected";
   const learningStatusLabel = t(LEARNING_STATUSES.find((status) => status.key === learningStatus)?.shortLabel ?? "未学习");
   const canUseFocusMode = active.sourceCat === "oll" || active.sourceCat === "pll";
+  const canUseTransparentDisplay = active.sourceCat === "cross";
   const showVariantTag = active.name !== "主公式";
   const formulaTitle = showVariantTag ? `${t(active.caseName)} · ${t(active.name)}` : t(active.caseName);
   const formulaAverage = calculateAverageTime(practiceStats.times, averageSettings);
@@ -1092,6 +1090,14 @@ function FormulaStage({
     setLowerLayerHiddenState(!lowerLayerHiddenRef.current);
   }
 
+  function toggleTransparentDisplay() {
+    if (!canUseTransparentDisplay) return;
+    const nextEnabled = !transparentDisplayRef.current;
+    transparentDisplayRef.current = nextEnabled;
+    setTransparentDisplay(nextEnabled);
+    cubeApiRef.current?.setTransparentFormulaFacelets(nextEnabled);
+  }
+
   function enterResearchMode() {
     stopPlayback();
     resetPracticeFlow();
@@ -1127,23 +1133,48 @@ function FormulaStage({
     enterResearchMode();
   }
 
-  function rotateFormulaClockwise() {
+  function changeFormulaRotation(delta: -1 | 1) {
     if (!canRotateF2lVariant || researchModeRef.current) return;
-    setRotationOffset((current) => normalizeFormulaRotationOffset(current - 1));
+    const nextOffset = normalizeFormulaRotationOffset(rotationOffset + delta);
+    stopPlayback();
+    resetPractice();
+    clearPbToastTimer();
+    setPbToast(null);
+    setPbToastFading(false);
+    setPracticeStats(readFormulaStats(formulaPracticeStatsKey(active.key, active.sourceCat, nextOffset)));
+    setLearningMenuOpen(false);
+    setRotationOffset(nextOffset);
+  }
+
+  function rotateFormulaClockwise() {
+    changeFormulaRotation(-1);
   }
 
   function rotateFormulaCounterClockwise() {
-    if (!canRotateF2lVariant || researchModeRef.current) return;
-    setRotationOffset((current) => normalizeFormulaRotationOffset(current + 1));
+    changeFormulaRotation(1);
   }
+
+  const stopPlaybackEffect = useEffectEvent(stopPlayback);
+  const setPreviewStartStateEffect = useEffectEvent(setPreviewStartState);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const enabled = readFocusModeEnabled();
+      lowerLayerHiddenRef.current = enabled;
+      setLowerLayerHidden(enabled);
+      setPracticeStats(readFormulaStats(displayStatsKey));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [displayStatsKey]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const key = event.key.toLowerCase();
-      if (key !== "q" && key !== "p" && key !== "r" && key !== "h" && event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (key !== "q" && key !== "p" && key !== "r" && key !== "h" && key !== "t" && event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
       if (isTextEntryTarget(event.target)) return;
       if (key === "h" && !canUseFocusMode) return;
+      if (key === "t" && !canUseTransparentDisplay) return;
       if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && (!canRotateF2lVariant || researchModeRef.current)) return;
 
       event.preventDefault();
@@ -1157,6 +1188,10 @@ function FormulaStage({
       }
       if (key === "h") {
         toggleLowerLayerHidden();
+        return;
+      }
+      if (key === "t") {
+        toggleTransparentDisplay();
         return;
       }
       if (key === "q") {
@@ -1183,13 +1218,14 @@ function FormulaStage({
       faceColors,
       orientation,
       maxFps: renderMaxFps,
+      transparentFormulaFacelets: transparentDisplayRef.current,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
       defaultDisplayState: FORMULAS_CUBE_CAMERA_PRESET.displayState,
       onDisplayOrientationChange: () => setViewResetEnabled(true),
     });
     cubeApiRef.current = api;
-    if (!researchModeRef.current) setPreviewStartState();
+    if (!researchModeRef.current) setPreviewStartStateEffect();
     api.setLowerLayerDimmed(canUseFocusMode && lowerLayerHiddenRef.current);
     if (practiceActiveRef.current) {
       const inWrongWait = wrongWaitRef.current;
@@ -1199,7 +1235,7 @@ function FormulaStage({
       api.setHintMove(hintMove);
     }
     return () => {
-      stopPlayback();
+      stopPlaybackEffect();
       clearNextRoundTimer();
       clearPracticeTimer();
       clearPracticeToastTimer();
@@ -1208,7 +1244,7 @@ function FormulaStage({
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled, canUseFocusMode]);
+  }, [algoMoves, backFaceProjectionDistance, backFaceProjectionEnabled, canUseFocusMode, displayFacelets, faceColors, orientation, renderMaxFps, setupMoves, shouldSolveToReset]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -1217,26 +1253,6 @@ function FormulaStage({
   useEffect(() => {
     cubeApiRef.current?.setLowerLayerDimmed(canUseFocusMode && lowerLayerHiddenRef.current);
   }, [canUseFocusMode]);
-
-  useEffect(() => {
-    stopPlayback();
-    if (researchModeRef.current) {
-      researchModeRef.current = false;
-      setResearchMode(false);
-      setResearchMoveLog([]);
-    }
-    resetPractice();
-    setPreviewStartState();
-    clearPbToastTimer();
-    setPbToast(null);
-    setPbToastFading(false);
-    setPracticeStats(readFormulaStats(displayStatsKey));
-    setLearningMenuOpen(false);
-  }, [active.key, displayFacelets, displayStatsKey, shouldSolveToReset, setupMoves]);
-
-  useEffect(() => {
-    setRotationOffset(0);
-  }, [active.key]);
 
   useEffect(() => {
     practiceActiveRef.current = practiceActive;
@@ -1405,6 +1421,8 @@ function FormulaStage({
     }
   }
 
+  const handlePracticeMoveEffect = useEffectEvent(handlePracticeMove);
+
   async function copyResearchMoves() {
     if (researchMovesRef.current.length === 0) return;
     try {
@@ -1415,7 +1433,7 @@ function FormulaStage({
     }
   }
 
-  useEffect(() => subscribeMove(handlePracticeMove), [subscribeMove, handlePracticeMove]);
+  useEffect(() => subscribeMove(handlePracticeMoveEffect), [subscribeMove]);
 
   useLayoutEffect(() => {
     const list = formulaStatsListRef.current;
@@ -1531,7 +1549,7 @@ function FormulaStage({
           </div>
         )}
         <div className="cube-mount" ref={cubeMountRef}></div>
-        <div className={`stage-controls${canUseFocusMode ? " with-layer-toggle" : ""}`}>
+        <div className={`stage-controls${canUseFocusMode || canUseTransparentDisplay ? " with-layer-toggle" : ""}`}>
           <button className={`sc-btn${playbackActive ? " active" : ""}`} onClick={play} type="button">
             <span className="sc-key" aria-hidden="true">P</span>{t("播放公式")}</button>
           <button className={`sc-btn${researchMode ? " active" : ""}`} onClick={toggleResearchMode} type="button">
@@ -1540,6 +1558,10 @@ function FormulaStage({
           </button>
           <button className="sc-btn" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
             <span className="sc-key" aria-hidden="true">R</span>{t("视角归位")}</button>
+          {canUseTransparentDisplay && (
+            <button className={`sc-btn${transparentDisplay ? " active" : ""}`} onClick={toggleTransparentDisplay} type="button">
+              <span className="sc-key" aria-hidden="true">T</span>{t("透明显示")}</button>
+          )}
           {canUseFocusMode && (
             <button className={`sc-btn${lowerLayerHidden ? " active" : ""}`} onClick={toggleLowerLayerHidden} type="button">
               <span className="sc-key" aria-hidden="true">H</span>{t("专注模式")}</button>
@@ -1711,42 +1733,15 @@ function FormulaStage({
                   <div className="formula-kicker">KEYPAD</div>
                 </div>
               </div>
-              <div className="formula-keypad" aria-label={t("研究模式公式键盘")}>
-                {RESEARCH_KEYPAD_GROUPS.map((group) => (
-                  <div className="formula-keypad-group" key={group.label}>
-                    <div className="formula-keypad-label">{group.label}</div>
-                    <div className="formula-keypad-grid">
-                      {group.moves.map((move) => (
-                        <button
-                          key={move}
-                          className="formula-keypad-btn"
-                          type="button"
-                          onClick={() => applyResearchMove(move)}
-                        >
-                          <MoveToken move={move} />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <div className="formula-keypad-group">
-                  <div className="formula-keypad-label">EDIT</div>
-                  <div className="formula-keypad-actions">
-                    <button
-                      className="formula-keypad-delete"
-                      type="button"
-                      onClick={deleteResearchMove}
-                      disabled={researchMoves.length === 0}
-                    >{t("删除")}</button>
-                    <button
-                      className="formula-keypad-clear"
-                      type="button"
-                      onClick={clearResearchMoves}
-                      disabled={researchMoves.length === 0}
-                    >{t("清空")}</button>
-                  </div>
-                </div>
-              </div>
+              <FormulaKeypad
+                ariaLabel={t("研究模式公式键盘")}
+                hasMoves={researchMoves.length > 0}
+                onMove={applyResearchMove}
+                onDelete={deleteResearchMove}
+                onClear={clearResearchMoves}
+                deleteLabel={t("删除")}
+                clearLabel={t("清空")}
+              />
             </div>
           ) : (
             <div className="tr-section formula-stats-section">
@@ -1807,7 +1802,7 @@ export function FormulasApp() {
   const { t } = useLanguage();
   const { orientation, faceColors } = useCubeAppearance();
   const formulaTopViewFaceColors = useMemo(() => getFaceHexColors(orientation, "cubing-js"), [orientation]);
-  const initialFormulaState = useMemo(() => readFormulaState() ?? getDefaultFormulaState(), []);
+  const initialFormulaState = useMemo(() => getDefaultFormulaState(), []);
   const [cat, setCat] = useState<FormulaViewKey>(initialFormulaState.cat);
   const [activeKey, setActiveKey] = useState<string>(initialFormulaState.activeKey);
   const [filter, setFilter] = useState("");
@@ -1820,7 +1815,7 @@ export function FormulasApp() {
   const [showFavOnly, setShowFavOnly] = useState(initialFormulaState.showFavOnly);
   const [formulaTip, setFormulaTip] = useState<FormulaTip | null>(null);
   const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(() => new Set());
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useClientReady();
   const [archiveRefreshKey, setArchiveRefreshKey] = useState(0);
   const keyboardSelectionRef = useRef(false);
   const formulaCases = useMemo(
@@ -1856,14 +1851,6 @@ export function FormulasApp() {
       };
 
   useEffect(() => {
-    function loadCurrentArchiveData() {
-      setFavs(readFavs());
-      setFormulaStats(readAllFormulaStats());
-      setLearningStatuses(readLearningStatuses());
-      setAverageSettings(loadAverageTimeSettings());
-      setArchiveRefreshKey((current) => current + 1);
-    }
-
     function refreshArchiveData() {
       const saved = readFormulaState() ?? getDefaultFormulaState();
       setCat(saved.cat);
@@ -1881,8 +1868,7 @@ export function FormulasApp() {
       setArchiveRefreshKey((current) => current + 1);
     }
 
-    loadCurrentArchiveData();
-    setHydrated(true);
+    refreshArchiveData();
     return subscribeStatisticsArchiveChange(refreshArchiveData);
   }, []);
 
@@ -1900,14 +1886,6 @@ export function FormulasApp() {
     if (!hydrated) return;
     saveLearningStatuses(learningStatuses);
   }, [hydrated, learningStatuses]);
-
-  useEffect(() => {
-    if (!isFavoritesView) return;
-    if (favoriteCases.length === 0) return;
-    if (findVariantByKey(favoriteCases, activeKey)) return;
-    const firstFavorite = favoriteCases[0]?.variants[0];
-    if (firstFavorite) setActiveKey(firstFavorite.key);
-  }, [activeKey, favoriteCases, isFavoritesView]);
 
   function changeCat(nextCat: FormulaViewKey) {
     if (nextCat === cat) return;
@@ -1971,6 +1949,7 @@ export function FormulasApp() {
   const active = isFavoritesView
     ? findVariantByKey(favoriteCases, activeKey) || favoriteCases[0]?.variants[0] || null
     : findVariantByKey(categoryCases, activeKey) || categoryCases[0]?.variants[0] || null;
+  const resolvedActiveKey = active?.key ?? activeKey;
   const activeCatKey = active?.sourceCat ?? cat;
   const activeLearningStatus = active ? getLearningStatus(learningStatuses, active.key) : "unpracticed";
   const emptyMessage = filter.trim() ? t("无匹配结果") : statusFilter === "all" ? t("无匹配结果") : t("此状态下暂无公式");
@@ -1985,7 +1964,7 @@ export function FormulasApp() {
 
       event.preventDefault();
       setFormulaTip(null);
-      const currentIndex = visibleFormulaVariants.findIndex((variant) => variant.key === activeKey);
+      const currentIndex = visibleFormulaVariants.findIndex((variant) => variant.key === resolvedActiveKey);
       const startIndex = currentIndex === -1
         ? direction > 0
           ? -1
@@ -1993,7 +1972,7 @@ export function FormulasApp() {
         : currentIndex;
       const nextIndex = Math.min(Math.max(startIndex + direction, 0), visibleFormulaVariants.length - 1);
       const nextVariant = visibleFormulaVariants[nextIndex];
-      if (!nextVariant || nextVariant.key === activeKey) return;
+      if (!nextVariant || nextVariant.key === resolvedActiveKey) return;
 
       keyboardSelectionRef.current = true;
       setActiveKey(nextVariant.key);
@@ -2008,14 +1987,14 @@ export function FormulasApp() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeKey, items, visibleFormulaVariants]);
+  }, [items, resolvedActiveKey, visibleFormulaVariants]);
 
   useEffect(() => {
     if (!keyboardSelectionRef.current) return;
     keyboardSelectionRef.current = false;
-    const activeRow = document.querySelector<HTMLElement>(`[data-formula-key="${CSS.escape(activeKey)}"]`);
+    const activeRow = document.querySelector<HTMLElement>(`[data-formula-key="${CSS.escape(resolvedActiveKey)}"]`);
     activeRow?.scrollIntoView({ block: "nearest" });
-  }, [activeKey, expandedCaseIds]);
+  }, [expandedCaseIds, resolvedActiveKey]);
 
   function toggleFav(id: string) {
     setFavs((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -2039,7 +2018,7 @@ export function FormulasApp() {
   }
 
   function selectCase(item: FormulaCaseItem) {
-    if (!caseHasVariantKey(item, activeKey)) {
+    if (!caseHasVariantKey(item, resolvedActiveKey)) {
       const firstVariant = item.variants[0];
       if (firstVariant) setActiveKey(firstVariant.key);
     }
@@ -2118,7 +2097,7 @@ export function FormulasApp() {
               <div className="fm-empty">{emptyMessage}</div>
             ) : (
               items.map((item) => {
-                const caseActive = item.variants.some((variant) => variant.key === activeKey);
+                const caseActive = item.variants.some((variant) => variant.key === resolvedActiveKey);
                 const totalVariantCount = getTotalVariantCount(item);
                 const usesVariantList = caseUsesVariantList(item);
                 const caseExpanded = usesVariantList && expandedCaseIds.has(item.id);
@@ -2217,7 +2196,7 @@ export function FormulasApp() {
                     {caseExpanded && (
                       <div className="fm-variant-list">
                         {item.variants.map((variant) => {
-                          const variantActive = variant.key === activeKey;
+                          const variantActive = variant.key === resolvedActiveKey;
                           const variantStats = formatListStats(formulaStats[variant.key], averageSettings);
                           const variantStatus = getLearningStatus(learningStatuses, variant.key);
                           const variantStatusLabel = t(LEARNING_STATUSES.find((status) => status.key === variantStatus)?.shortLabel ?? "未学习");

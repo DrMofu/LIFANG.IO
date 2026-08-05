@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type FocusEvent, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FocusEvent, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -8,12 +8,14 @@ import { useCubeConnection } from "@/components/cube-connection-provider";
 import { useLanguage } from "@/components/language-provider";
 import type { MessageKey } from "@/lib/i18n-messages";
 import { isSmartCubeBrandId } from "@/lib/smart-cube-connection";
+import { useClientReady } from "@/lib/client-ready";
 import settings from "@/settings.json";
 
 const NAV: Array<{ href: string; labelKey: MessageKey; icon: string }> = [
   { href: "/practice", labelKey: "nav.practice", icon: "practice" },
   { href: "/trainer", labelKey: "nav.trainer", icon: "trainer" },
   { href: "/formulas", labelKey: "nav.formulas", icon: "cube" },
+  { href: "/articles", labelKey: "nav.tutorials", icon: "tutorials" },
   { href: "/stats", labelKey: "nav.stats", icon: "stats" },
   { href: "/settings", labelKey: "nav.settings", icon: "settings" },
 ];
@@ -43,8 +45,19 @@ function navItemActive(pathname: string, href: string) {
 export function AppTopbar({ showCompactConnection = true }: { showCompactConnection?: boolean }) {
   const { t } = useLanguage();
   const pathname = usePathname();
-  const [practiceMenuOpen, setPracticeMenuOpen] = useState(false);
-  const [rememberedPracticeHref, setRememberedPracticeHref] = useState<(typeof PRACTICE_NAV)[number]["href"]>("/practice");
+  const clientReady = useClientReady();
+  const [practiceMenuState, setPracticeMenuState] = useState({ pathname, open: false });
+  const practiceMenuOpen = practiceMenuState.pathname === pathname && practiceMenuState.open;
+  const setPracticeMenuOpen = useCallback((next: SetStateAction<boolean>) => {
+    setPracticeMenuState((current) => {
+      const currentOpen = current.pathname === pathname && current.open;
+      return {
+        pathname,
+        open: typeof next === "function" ? next(currentOpen) : next,
+      };
+    });
+  }, [pathname]);
+  const rememberedPracticeHref = clientReady ? readPracticeNavMemory() : "/practice";
   const practiceGroupRef = useRef<HTMLDivElement | null>(null);
   const mobilePracticeGroupRef = useRef<HTMLDivElement | null>(null);
   const routePracticeItem = PRACTICE_NAV.find((item) => navItemActive(pathname, item.href)) ?? null;
@@ -52,16 +65,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
   const practiceGroupActive = Boolean(routePracticeItem);
 
   useEffect(() => {
-    setRememberedPracticeHref(readPracticeNavMemory());
-  }, []);
-
-  useEffect(() => {
-    setPracticeMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!routePracticeItem) return;
-    setRememberedPracticeHref(routePracticeItem.href);
     try {
       window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, routePracticeItem.href);
     } catch {
@@ -94,7 +98,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [practiceMenuOpen]);
+  }, [practiceMenuOpen, setPracticeMenuOpen]);
 
   const closePracticeMenuOnBlur = (event: FocusEvent<HTMLDivElement>) => {
     const nextTarget = event.relatedTarget;
@@ -143,7 +147,6 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
                   className={`nav-dropdown-item${active ? " active" : ""}`}
                   role="menuitem"
                   onClick={() => {
-                    setRememberedPracticeHref(item.href);
                     try {
                       window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href);
                     } catch {
@@ -197,7 +200,6 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
                   className={`nav-dropdown-item${active ? " active" : ""}`}
                   role="menuitem"
                   onClick={() => {
-                    setRememberedPracticeHref(item.href);
                     try {
                       window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href);
                     } catch {
@@ -268,16 +270,16 @@ export function CompactConnectButton() {
     ? connectionInfo.deviceName
     : connecting
       ? t("connection.connecting")
-        : connectionState === "error"
-          ? t("connection.failed")
-          : t("connection.disconnected");
+      : t("connection.disconnected");
   const tooltipOpen = connected && (tooltipPinned || tooltipHovered);
 
   useEffect(() => {
-    if (!connected) {
+    if (connected) return;
+    const timer = window.setTimeout(() => {
       setTooltipPinned(false);
       setTooltipHovered(false);
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [connected]);
 
   useEffect(() => {
@@ -514,6 +516,14 @@ export function NavIcon({ name }: { name: string }) {
     return (
       <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5.5 19V9.8M12 19V5M18.5 19v-6.2" />
+      </svg>
+    );
+  }
+  if (name === "tutorials") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 5.2A2.2 2.2 0 0 1 6.7 3h4.1c.7 0 1.2.5 1.2 1.2V20c0-1.1-.9-2-2-2H4.5V5.2Z" />
+        <path d="M19.5 5.2A2.2 2.2 0 0 0 17.3 3h-4.1c-.7 0-1.2.5-1.2 1.2V20c0-1.1.9-2 2-2h5.5V5.2Z" />
       </svg>
     );
   }

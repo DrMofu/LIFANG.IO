@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
+import { useClientReady } from "@/lib/client-ready";
 import settings from "@/settings.json";
 
 const SYSTEM_NOTICE_DISMISSED_VERSION_KEY = "lifang-system-notice-dismissed-version";
@@ -62,24 +63,23 @@ const CHANGELOG_ENTRIES = [
 
 export function SystemNotificationProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (pathname === "/") {
-      setOpen(false);
-      return;
-    }
-
+  const clientReady = useClientReady();
+  const [manualOpen, setManualOpen] = useState(false);
+  const [dismissedLocally, setDismissedLocally] = useState(false);
+  let versionDismissed = false;
+  if (clientReady && !dismissedLocally) {
     try {
-      setOpen(window.localStorage.getItem(SYSTEM_NOTICE_DISMISSED_VERSION_KEY) !== settings.version);
+      versionDismissed = window.localStorage.getItem(SYSTEM_NOTICE_DISMISSED_VERSION_KEY) === settings.version;
     } catch {
-      setOpen(true);
+      versionDismissed = false;
     }
-  }, [pathname]);
+  }
+  const open = pathname !== "/" && (manualOpen || (clientReady && !dismissedLocally && !versionDismissed));
 
-  const openSystemNotification = useCallback(() => setOpen(true), []);
+  const openSystemNotification = useCallback(() => setManualOpen(true), []);
   const closeSystemNotification = useCallback(() => {
-    setOpen(false);
+    setManualOpen(false);
+    setDismissedLocally(true);
     try {
       window.localStorage.setItem(SYSTEM_NOTICE_DISMISSED_VERSION_KEY, settings.version);
     } catch {

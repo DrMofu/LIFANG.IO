@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { FormulaArrow } from "@/lib/formulas-data";
 import type { CubeFace } from "@/lib/smart-cube";
+import { useClientReady } from "@/lib/client-ready";
 
 type FormulaCubeImageProps = {
   facelets: string;
@@ -335,12 +336,8 @@ export function FormulaCubeImage({ facelets: rawFacelets, faceColors, className,
 }
 
 export function FormulaTopViewImage({ facelets: rawFacelets, faceColors, className, title, arrows }: FormulaTopViewImageProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientReady();
   const facelets = rawFacelets.padEnd(54, UNKNOWN_FACELET);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const src = useMemo(
     () => (mounted ? generateTopViewImage(facelets, faceColors, arrows) : ""),

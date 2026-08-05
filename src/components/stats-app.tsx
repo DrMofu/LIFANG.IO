@@ -11,6 +11,7 @@ import {
   type AverageTimeSettings,
 } from "@/lib/average-time";
 import { fmtShort } from "@/lib/format";
+import { useClientReady } from "@/lib/client-ready";
 import {
   getDailyTestDateKey,
   getDailyLevelExcludedSolveIndexes,
@@ -581,6 +582,8 @@ export function StatsApp() {
   const [averageSettings, setAverageSettings] = useState<AverageTimeSettings>(DEFAULT_AVERAGE_TIME_SETTINGS);
   const [trendCfopTip, setTrendCfopTip] = useState<TrendCfopTip | null>(null);
   const [trendGuideIndex, setTrendGuideIndex] = useState<number | null>(null);
+  const trendSvgRef = useRef<SVGSVGElement | null>(null);
+  const [trendViewBoxWidth, setTrendViewBoxWidth] = useState(TREND_CHART_WIDTH);
   const dailyLevelChartRef = useRef<SVGSVGElement | null>(null);
   const [dailyLevelChartWidth, setDailyLevelChartWidth] = useState(960);
   const [openTrendDropdown, setOpenTrendDropdown] = useState<"metric" | "phase" | "range" | null>(null);
@@ -588,7 +591,7 @@ export function StatsApp() {
   const [dailyLevelTip, setDailyLevelTip] = useState<DailyLevelTip | null>(null);
   const [isDailyHistoryOpen, setIsDailyHistoryOpen] = useState(false);
   const dailyHistoryCloseRef = useRef<HTMLButtonElement | null>(null);
-  const [portalReady, setPortalReady] = useState(false);
+  const portalReady = useClientReady();
 
   useEffect(() => {
     function refreshArchiveData() {
@@ -599,7 +602,6 @@ export function StatsApp() {
     }
 
     refreshArchiveData();
-    setPortalReady(true);
     return subscribeStatisticsArchiveChange(refreshArchiveData);
   }, []);
 
@@ -644,16 +646,10 @@ export function StatsApp() {
     ],
     [history.length, t],
   );
-
-  useEffect(() => {
-    if (!trendRangeOptions.some((option) => option.key === trendRange)) {
-      setTrendRange("all");
-      clearTrendHover();
-    }
-  }, [trendRange, trendRangeOptions]);
+  const effectiveTrendRange = trendRangeOptions.some((option) => option.key === trendRange) ? trendRange : "all";
 
   const trend = useMemo(() => {
-    const rangeLimit = trendRange === "all" ? null : Number(trendRange);
+    const rangeLimit = effectiveTrendRange === "all" ? null : Number(effectiveTrendRange);
     const rangeHistory = rangeLimit == null ? history : history.slice(0, rangeLimit);
     const entries = [...rangeHistory].reverse();
     const points = entries.map((entry) => trendPointValue(entry, trendMetric, trendPhaseFilter));
@@ -663,8 +659,21 @@ export function StatsApp() {
     const best = domainPoints.reduce((currentBest, value) => Math.min(currentBest, value), domainPoints[0]);
     const { min, max } = trendDomain(domainPoints, trendMetric);
     return { entries, points, min, max, stableScore, best };
-  }, [averageSettings, history, trendMetric, trendPhaseFilter, trendRange]);
+  }, [averageSettings, effectiveTrendRange, history, trendMetric, trendPhaseFilter]);
   const showTrendPb = trendPhaseFilter === "all";
+
+  useEffect(() => {
+    const svg = trendSvgRef.current;
+    if (!svg) return;
+    const updateChartWidth = () => {
+      const nextWidth = getTrendChartWidthForRect(svg.getBoundingClientRect());
+      setTrendViewBoxWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
+    };
+    updateChartWidth();
+    const observer = new ResizeObserver(updateChartWidth);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, [trend.points.length]);
 
   useEffect(() => {
     if (!trendCfopTip) return;
@@ -1030,10 +1039,8 @@ export function StatsApp() {
     });
   }
 
-  const TrendChart = () => {
-    const svgRef = useRef<SVGSVGElement | null>(null);
-    const [viewBoxWidth, setViewBoxWidth] = useState(TREND_CHART_WIDTH);
-    const width = viewBoxWidth;
+  const renderTrendChart = () => {
+    const width = trendViewBoxWidth;
     const height = TREND_CHART_HEIGHT;
     const padLeft = TREND_CHART_PAD_LEFT;
     const padRight = TREND_CHART_PAD_RIGHT;
@@ -1043,19 +1050,6 @@ export function StatsApp() {
     const axis = trendAxisScale(min, max, trendMetric);
     const axisMin = axis.min;
     const axisMax = axis.max;
-
-    useEffect(() => {
-      const svg = svgRef.current;
-      if (!svg) return;
-      const updateChartWidth = () => {
-        const nextWidth = getTrendChartWidthForRect(svg.getBoundingClientRect());
-        setViewBoxWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
-      };
-      updateChartWidth();
-      const observer = new ResizeObserver(updateChartWidth);
-      observer.observe(svg);
-      return () => observer.disconnect();
-    }, [points.length]);
 
     const hasTrendPoints = points.some((value) => value != null);
     const trendPhaseName = TREND_PHASE_FILTER_NAMES[trendPhaseFilter];
@@ -1093,7 +1087,7 @@ export function StatsApp() {
 
     return (
       <svg
-        ref={svgRef}
+        ref={trendSvgRef}
         viewBox={`0 0 ${width} ${height}`}
         className="trend-svg"
         role="img"
@@ -1377,7 +1371,7 @@ export function StatsApp() {
     );
   };
 
-  function TrendDropdown<T extends string>({
+  function renderTrendDropdown<T extends string>({
     id,
     label,
     value,
@@ -1751,34 +1745,34 @@ export function StatsApp() {
                 </div>
               </div>
               <div className="trend-control-rail">
-                <TrendDropdown
-                  id="range"
-                  label={t("成绩趋势显示范围")}
-                  value={trendRange}
-                  options={trendRangeOptions}
-                  onSelect={setTrendRange}
-                />
-                <TrendDropdown
-                  id="metric"
-                  label={t("成绩趋势数据类型")}
-                  value={trendMetric}
-                  options={TREND_METRIC_FILTERS}
-                  onSelect={setTrendMetric}
-                />
-                <TrendDropdown
-                  id="phase"
-                  label={t("成绩趋势阶段")}
-                  value={trendPhaseFilter}
-                  options={TREND_PHASE_FILTERS.map((phase) => ({
+                {renderTrendDropdown({
+                  id: "range",
+                  label: t("成绩趋势显示范围"),
+                  value: effectiveTrendRange,
+                  options: trendRangeOptions,
+                  onSelect: setTrendRange,
+                })}
+                {renderTrendDropdown({
+                  id: "metric",
+                  label: t("成绩趋势数据类型"),
+                  value: trendMetric,
+                  options: TREND_METRIC_FILTERS,
+                  onSelect: setTrendMetric,
+                })}
+                {renderTrendDropdown({
+                  id: "phase",
+                  label: t("成绩趋势阶段"),
+                  value: trendPhaseFilter,
+                  options: TREND_PHASE_FILTERS.map((phase) => ({
                     key: phase.key,
                     label: TREND_PHASE_DROPDOWN_LABELS[phase.key],
-                  }))}
-                  onSelect={setTrendPhaseFilter}
-                />
+                  })),
+                  onSelect: setTrendPhaseFilter,
+                })}
               </div>
             </div>
             <div className="trend-chart-shell">
-              <div className="st-chart"><TrendChart /></div>
+              <div className="st-chart">{renderTrendChart()}</div>
             </div>
             {portalReady && trendCfopTip && createPortal((
               <div

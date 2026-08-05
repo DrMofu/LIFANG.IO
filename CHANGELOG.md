@@ -2,6 +2,7 @@
 
 FEATURES:
 - 练习界面添加OLL，PLL公式识别
+- 新增教程界面
 
 
 BUG FIXES:

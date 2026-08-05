@@ -49,6 +49,7 @@ export type SmartCubeApi = {
   getDisplayState(): CubeDisplayState;
   setInteractionLocked(locked: boolean): void;
   setLowerLayerDimmed(dimmed: boolean): void;
+  setTransparentFormulaFacelets(enabled: boolean): void;
   setBackFaceProjectionDistance(distance: number): void;
   reset(): void;
   setHintMove(move: string | null): void;
@@ -69,6 +70,9 @@ const FACE_COLORS: Record<CubeFace | "inner", string> = {
 };
 const OLL_DIMMED_STICKER = "#9B9B96";
 const LOWER_LAYER_DIMMED_STICKER = OLL_DIMMED_STICKER;
+const TRANSPARENT_FORMULA_CUBIE = "#DCE3E1";
+const TRANSPARENT_FORMULA_CUBIE_OPACITY = 0.045;
+const TRANSPARENT_FORMULA_FACELET_OPACITY = 0.1;
 
 const LAYER_AXIS: Record<CubeMoveLayer, { axis: "x" | "y" | "z"; sign: 1 | -1; coord: -1 | 0 | 1 }> = {
   R: { axis: "x", sign: 1, coord: 1 },
@@ -258,15 +262,23 @@ function makeCubie(
   colorByCubeColor: Record<CubeColor, string>,
   facelets?: string,
   formulaFacelets?: string | null,
+  transparentFormulaFacelets = false,
   showBackFaceProjection = false,
   backFaceProjectionDistance = DEFAULT_BACK_FACE_PROJECTION_DISTANCE,
   lowerLayerDimmed = false,
   size = 0.96,
 ): Cubie {
+  const transparentFormulaMode = transparentFormulaFacelets && Boolean(formulaFacelets);
   const group = new THREE.Group() as Cubie;
   const geom = new THREE.BoxGeometry(size, size, size);
-  const inner = new THREE.MeshBasicMaterial({ color: colors.inner });
+  const inner = new THREE.MeshBasicMaterial({
+    color: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE : colors.inner,
+    transparent: transparentFormulaMode,
+    opacity: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE_OPACITY : 1,
+    depthWrite: !transparentFormulaMode,
+  });
   const cube = new THREE.Mesh(geom, [inner, inner, inner, inner, inner, inner]);
+  if (transparentFormulaMode) cube.renderOrder = -2;
   group.add(cube);
 
   const stickerSize = 0.86;
@@ -290,6 +302,7 @@ function makeCubie(
   function resolveSticker(sticker: { face: CubeFace }) {
     let stickerColor = colors[sticker.face];
     let stickerBaseFace = sticker.face;
+    let transparentFacelet = false;
 
     if (facelets) {
       const hardwarePos = displayPositionToHardware(x, y, z, orientation);
@@ -304,6 +317,7 @@ function makeCubie(
       const facelet = formulaFacelets[faceletIndex(sticker.face, x, y, z)];
       if (facelet === "X") {
         stickerColor = OLL_DIMMED_STICKER;
+        transparentFacelet = transparentFormulaMode;
       } else {
         const formulaFace = toCubeFace(facelet);
         if (formulaFace) {
@@ -313,7 +327,7 @@ function makeCubie(
       }
     }
 
-    return { stickerColor, stickerBaseFace };
+    return { stickerColor, stickerBaseFace, transparentFacelet };
   }
 
   function createStickerMesh(
@@ -326,13 +340,19 @@ function makeCubie(
     stickerBaseFace: CubeFace,
     stickerLowerLayerDimmed: boolean,
     projected: boolean,
+    transparentFacelet: boolean,
   ) {
+    const transparent = projected || transparentFacelet;
     const mat = new THREE.MeshBasicMaterial({
       color: lowerLayerDimmed && stickerLowerLayerDimmed ? LOWER_LAYER_DIMMED_STICKER : stickerColor,
-      side: projected ? THREE.BackSide : THREE.FrontSide,
-      transparent: projected,
-      opacity: projected ? BACK_FACE_PROJECTION_OPACITY : 1,
-      depthWrite: !projected,
+      side: projected ? THREE.BackSide : transparentFormulaMode ? THREE.DoubleSide : THREE.FrontSide,
+      transparent,
+      opacity: projected
+        ? BACK_FACE_PROJECTION_OPACITY
+        : transparentFacelet
+          ? TRANSPARENT_FORMULA_FACELET_OPACITY
+          : 1,
+      depthWrite: !transparent,
     });
     const mesh = new THREE.Mesh(stickerGeom, mat) as StickerMesh;
     if (projected) {
@@ -344,6 +364,7 @@ function makeCubie(
       mesh.userData.projectionLocalNormal = localNormal.clone();
     } else {
       mesh.position.set(...sticker.pos);
+      if (transparentFacelet) mesh.renderOrder = -1;
     }
     mesh.rotation.set(...sticker.rot);
     mesh.userData.stickerLocalFace = sticker.face;
@@ -382,11 +403,11 @@ function makeCubie(
 
   stickers.forEach((sticker) => {
     if (!sticker.cond) return;
-    const { stickerColor, stickerBaseFace } = resolveSticker(sticker);
+    const { stickerColor, stickerBaseFace, transparentFacelet } = resolveSticker(sticker);
     const stickerLowerLayerDimmed = isInitialLowerLayerSticker(sticker.face, y);
-    group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, false));
-    if (showBackFaceProjection) {
-      group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, true));
+    group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, false, transparentFacelet));
+    if (showBackFaceProjection && !transparentFormulaMode) {
+      group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, true, false));
       group.add(createProjectionBorder(sticker));
     }
   });
@@ -531,15 +552,21 @@ export type SmartCubeOptions = {
   autoRotateDegPerSecond?: number;
   compensateInitialGyroOffset?: boolean;
   interactionLocked?: boolean;
+  wheelZoomEnabled?: boolean;
+  animateHintArrow?: boolean;
+  initialHintMove?: string | null;
   showBackFaceProjection?: boolean;
+  transparentFormulaFacelets?: boolean;
   backFaceProjectionDistance?: number;
   defaultDisplayState?: Partial<CubeDisplayState> | null;
   initialDisplayState?: CubeDisplayState | null;
   initialFacelets?: string | null;
+  initialFormulaFacelets?: string | null;
   initialMoves?: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>;
   initialGyroQuaternion?: CubeQuaternion | null;
   cameraViewportInsets?: CubeCameraViewportInsets;
   sceneOffset?: CubeSceneOffset;
+  onFirstRender?: (canvas: HTMLCanvasElement) => void;
   onDisplayOrientationChange?: () => void;
 };
 
@@ -562,6 +589,7 @@ export function mountSmartCube(
     (Object.entries(displayFaceColors) as Array<[CubeFace, CubeColor]>).map(([face, color]) => [color, colors[face]]),
   ) as Record<CubeColor, string>;
   const showBackFaceProjection = options.showBackFaceProjection ?? false;
+  let transparentFormulaFacelets = options.transparentFormulaFacelets ?? false;
   let backFaceProjectionDistance = Number.isFinite(options.backFaceProjectionDistance)
     ? options.backFaceProjectionDistance ?? DEFAULT_BACK_FACE_PROJECTION_DISTANCE
     : DEFAULT_BACK_FACE_PROJECTION_DISTANCE;
@@ -578,6 +606,8 @@ export function mountSmartCube(
     ? options.autoRotateDegPerSecond ?? 0
     : 0;
   const compensateInitialGyroOffset = options.compensateInitialGyroOffset ?? true;
+  const wheelZoomEnabled = options.wheelZoomEnabled ?? true;
+  const animateHintArrow = options.animateHintArrow ?? true;
 
   const scene = new THREE.Scene();
   scene.background = null;
@@ -705,6 +735,7 @@ export function mountSmartCube(
   let frameTimeoutId = 0;
   let frameScheduled = false;
   let disposed = false;
+  let firstRenderPending = true;
   let dragging = false;
   const pointerPositions = new Map<number, { x: number; y: number }>();
   let pinchDistance = 0;
@@ -778,6 +809,7 @@ export function mountSmartCube(
             colorByCubeColor,
             facelets,
             formulaFacelets,
+            transparentFormulaFacelets,
             showBackFaceProjection,
             backFaceProjectionDistance,
             lowerLayerDimmed,
@@ -924,7 +956,8 @@ export function mountSmartCube(
   }
 
   function hasActiveRenderWork() {
-    return !!current || queue.length > 0 || dragging || gyroActive || hintArrow.group.visible || autoRotateDegPerSecond !== 0;
+    return !!current || queue.length > 0 || dragging || gyroActive ||
+      (animateHintArrow && hintArrow.group.visible) || autoRotateDegPerSecond !== 0;
   }
 
   function updateProjectionBorderVisibility() {
@@ -1240,7 +1273,7 @@ export function mountSmartCube(
       }
       projectionBorderVisibilityDirty = true;
     }
-    if (hintArrow.group.visible) {
+    if (animateHintArrow && hintArrow.group.visible) {
       // Slow rotation about each local move axis makes the arrows orbit the
       // exact layer they describe, including wide and middle-slice moves.
       hintArrow.rings.forEach((ring) => {
@@ -1249,6 +1282,10 @@ export function mountSmartCube(
     }
     updateProjectionBorderVisibility();
     renderer.render(scene, camera);
+    if (firstRenderPending) {
+      firstRenderPending = false;
+      options.onFirstRender?.(renderer.domElement);
+    }
     if (hasActiveRenderWork()) scheduleRender();
   }
 
@@ -1261,7 +1298,12 @@ export function mountSmartCube(
     requestRender();
   }
 
-  const initialFacelets = options.initialFacelets && isValidFacelets(options.initialFacelets)
+  const initialFormulaFacelets = options.initialFormulaFacelets &&
+    isValidFormulaFacelets(options.initialFormulaFacelets)
+    ? options.initialFormulaFacelets
+    : null;
+  if (initialFormulaFacelets) formulaFacelets = initialFormulaFacelets;
+  const initialFacelets = !initialFormulaFacelets && options.initialFacelets && isValidFacelets(options.initialFacelets)
     ? options.initialFacelets
     : undefined;
   rebuildCubies(initialFacelets);
@@ -1271,12 +1313,15 @@ export function mountSmartCube(
   if (options.initialGyroQuaternion) {
     applyGyroQuaternion(options.initialGyroQuaternion, true);
   }
+  applyHintMove(options.initialHintMove ?? null);
   resizeObserver.observe(container);
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
   renderer.domElement.addEventListener("pointerup", onPointerUp);
   renderer.domElement.addEventListener("pointercancel", onPointerUp);
-  renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+  if (wheelZoomEnabled) {
+    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+  }
   document.addEventListener("visibilitychange", handleVisibilityChange);
   requestRender();
 
@@ -1373,6 +1418,15 @@ export function mountSmartCube(
     setLowerLayerDimmed(dimmed) {
       if (lowerLayerDimmed === dimmed) return;
       lowerLayerDimmed = dimmed;
+      refreshStickerDisplayColors();
+      requestRender();
+    },
+    setTransparentFormulaFacelets(enabled) {
+      if (transparentFormulaFacelets === enabled) return;
+      transparentFormulaFacelets = enabled;
+      queue.length = 0;
+      if (current) finishCurrent();
+      rebuildCubies();
       refreshStickerDisplayColors();
       requestRender();
     },

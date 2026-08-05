@@ -593,8 +593,13 @@
       "algos": [
         {
           "id": "f2l-37-01",
-          "name": "基础",
+          "name": "公式一",
           "algo": "(R U2 R' U) (R U2 R' U) (F' U' F)"
+        },
+        {
+          "id": "f2l-37-02",
+          "name": "公式二",
+          "algo": "(R U' R' U) (F' U2 F U2) (F' U F)"
         }
       ],
       "facelets": "XXXXXXXXXXXXFRRRRRXXXFFRFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"

@@ -21,7 +21,7 @@ export function MoveToken({ move, className }: MoveTokenProps) {
       <span className="move-token-face">{face}</span>
       <span className="move-token-suffix">
         {[...suffix].map((character, index) => character === "'"
-          ? <span className="move-token-prime-mark" key={`${character}-${index}`}>'</span>
+          ? <span className="move-token-prime-mark" key={`${character}-${index}`}>{character}</span>
           : <span className="move-token-turn-count" key={`${character}-${index}`}>{character}</span>)}
       </span>
     </span>

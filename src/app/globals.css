@@ -2,10 +2,12 @@
 @import "../styles/base.css";
 @import "../styles/shell.css";
 @import "../styles/shared-ui.css";
+@import "../styles/formula-keypad.css";
 @import "../styles/home.css";
 @import "../styles/practice.css";
 @import "../styles/trainer.css";
 @import "../styles/formulas.css";
+@import "../styles/tutorials.css";
 @import "../styles/stats.css";
 @import "../styles/settings.css";
 

@@ -389,7 +389,8 @@ function normalizeF2lSubphaseMetrics(value: unknown): F2lSubphaseMetrics {
 }
 
 export function normalizeSolveHistoryEntry(entry: SolveHistoryEntry): SolveHistoryEntry {
-  const { scramble: _scramble, ...rest } = entry as SolveHistoryEntry & { scramble?: unknown };
+  const { scramble, ...rest } = entry as SolveHistoryEntry & { scramble?: unknown };
+  void scramble;
   return {
     ...rest,
     cfop: normalizeCfopPhaseMetrics(entry.cfop),

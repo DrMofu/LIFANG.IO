@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 
 type ScreenWakeLockType = "screen";
@@ -20,13 +20,13 @@ export function ScreenWakeLockProvider({ children }: { children: ReactNode }) {
   const { connectionState } = useCubeConnection();
   const sentinelRef = useRef<ScreenWakeLockSentinel | null>(null);
   const requestIdRef = useRef(0);
-  const [active, setActive] = useState(false);
+  const activeRef = useRef(false);
   const shouldKeepAwake = connectionState === "connected";
 
   const releaseLock = useCallback(async () => {
     const sentinel = sentinelRef.current;
     sentinelRef.current = null;
-    setActive(false);
+    activeRef.current = false;
     if (!sentinel || sentinel.released) return;
     try {
       await sentinel.release();
@@ -44,7 +44,7 @@ export function ScreenWakeLockProvider({ children }: { children: ReactNode }) {
 
     const nav = navigator as ScreenWakeLockNavigator;
     if (!nav.wakeLock) {
-      setActive(false);
+      activeRef.current = false;
       return;
     }
 
@@ -63,20 +63,20 @@ export function ScreenWakeLockProvider({ children }: { children: ReactNode }) {
         return;
       }
       sentinelRef.current = sentinel;
-      setActive(true);
+      activeRef.current = true;
       sentinel.addEventListener(
         "release",
         () => {
           if (sentinelRef.current === sentinel) {
             sentinelRef.current = null;
-            setActive(false);
+            activeRef.current = false;
           }
         },
         { once: true },
       );
     } catch {
       sentinelRef.current = null;
-      setActive(false);
+      activeRef.current = false;
     }
   }, [releaseLock, shouldKeepAwake]);
 
@@ -107,7 +107,7 @@ export function ScreenWakeLockProvider({ children }: { children: ReactNode }) {
     };
     const handleUserActivation = () => {
       if (!shouldKeepAwake) return;
-      if (active) return;
+      if (activeRef.current) return;
       void requestLock();
     };
 
@@ -119,7 +119,7 @@ export function ScreenWakeLockProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pointerdown", handleUserActivation);
       window.removeEventListener("keydown", handleUserActivation);
     };
-  }, [active, releaseLock, requestLock, shouldKeepAwake]);
+  }, [releaseLock, requestLock, shouldKeepAwake]);
 
   return children;
 }

@@ -15,6 +15,7 @@ import { CubeColorLegend } from "@/components/cube-color-legend";
 import { FormulaTopViewImage } from "@/components/formula-cube-image";
 import { MoveToken } from "@/components/move-token";
 import { getFaceHexColors, mapMoveToOrientation } from "@/lib/cube-appearance";
+import { useClientReady } from "@/lib/client-ready";
 import {
   appendFixedViewMoveLogMove,
   appendNormalizedMoveLogMove,
@@ -516,10 +517,6 @@ function freshSmartSolveStatus(length: number) {
   return Array.from({ length }, () => "pending" as SmartSolveStepStatus);
 }
 
-function colorTextClass(hex: string) {
-  return hex === "#F5F4EF" || hex === "#F2C744" ? " light" : "";
-}
-
 export function CubePracticeApp() {
   const { t } = useLanguage();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
@@ -531,6 +528,7 @@ export function CubePracticeApp() {
   const visualPendingMoveRef = useRef<string | null>(null);
   const historyScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextScrambleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beginAutoNextScrambleRef = useRef<() => void>(() => undefined);
   const inspectionAudioContextRef = useRef<AudioContext | null>(null);
   const inspectionAudioTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const inspectionAudioVoicesRef = useRef<InspectionAudioVoice[]>([]);
@@ -598,7 +596,7 @@ export function CubePracticeApp() {
   const [practiceMode, setPracticeMode] = useState<PracticeMode>("scramble");
   const [freeState, setFreeState] = useState<FreePracticeState>("waitingSolved");
   const [freeIdleMsLeft, setFreeIdleMsLeft] = useState(FREE_SCRAMBLE_IDLE_MS);
-  const [freeScrambleMoveCount, setFreeScrambleMoveCount] = useState(0);
+  const [, setFreeScrambleMoveCount] = useState(0);
   const [freeNotice, setFreeNotice] = useState(t("切换到自由练习后，请先连接并复原魔方。"));
   const [gyroDisabled, setGyroDisabled] = useState(false);
   const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
@@ -634,7 +632,7 @@ export function CubePracticeApp() {
   const [f2lSubTimes, setF2lSubTimes] = useState<LiveF2lSubphaseMetrics>(EMPTY_F2L_SUBPHASES);
   const [f2lSubMoves, setF2lSubMoves] = useState<LiveF2lSubphaseMetrics>(EMPTY_F2L_SUBPHASES);
   const [historyCfopTip, setHistoryCfopTip] = useState<HistoryCfopTip | null>(null);
-  const [portalReady, setPortalReady] = useState(false);
+  const portalReady = useClientReady();
   const [moveLogCapacity, setMoveLogCapacity] = useState(DEFAULT_MOVE_LOG_CAPACITY);
   const [moveLogColumns, setMoveLogColumns] = useState(DEFAULT_MOVE_LOG_CAPACITY);
   const [moveLogRows, setMoveLogRows] = useState(MOVE_LOG_FALLBACK_ROWS);
@@ -666,10 +664,6 @@ export function CubePracticeApp() {
     [inspectionSettings],
   );
   const inspectionNoticeLabel = inspectionDurationMs === null ? t("无限观察") : t(`${inspectionSettings.seconds} 秒观察`);
-
-  useEffect(() => {
-    setPortalReady(true);
-  }, []);
 
   useEffect(() => {
     return () => {
@@ -863,9 +857,9 @@ export function CubePracticeApp() {
   const loadFormulaRecognitionModule = useCallback(() => {
     if (formulaRecognitionModuleRef.current) return Promise.resolve(formulaRecognitionModuleRef.current);
     if (!formulaRecognitionLoadRef.current) {
-      formulaRecognitionLoadRef.current = import("@/lib/formula-recognition").then((module) => {
-        formulaRecognitionModuleRef.current = module;
-        return module;
+      formulaRecognitionLoadRef.current = import("@/lib/formula-recognition").then((recognitionModule) => {
+        formulaRecognitionModuleRef.current = recognitionModule;
+        return recognitionModule;
       });
     }
     return formulaRecognitionLoadRef.current;
@@ -874,9 +868,9 @@ export function CubePracticeApp() {
   const detectFormulaRecognition = useCallback(
     (nextFacelets: string) => {
       if (!formulaRecognitionEnabledRef.current) return;
-      const module = formulaRecognitionModuleRef.current;
-      if (!module) return;
-      const match = module.recognizeLastLayerFormula(nextFacelets, orientation);
+      const recognitionModule = formulaRecognitionModuleRef.current;
+      if (!recognitionModule) return;
+      const match = recognitionModule.recognizeLastLayerFormula(nextFacelets, orientation);
       if (!match) return;
       setRecognizedFormula((current) => (
         current?.phase === match.phase && current.id === match.id ? current : match
@@ -1208,14 +1202,14 @@ export function CubePracticeApp() {
     setSolveMoveCount(solveMoveCountRef.current);
   }, []);
 
-  function commitSolveHistory(next: SolveHistoryEntry[]) {
+  const commitSolveHistory = useCallback((next: SolveHistoryEntry[]) => {
     historyRef.current = next;
     touchLocalUserDataPackageUpdatedAt();
     saveSolveHistory(next);
     setHistory(next);
-  }
+  }, []);
 
-  function appendAndCommitSolveHistory(entry: SolveHistoryEntry, completedDailyTestId: string | null = null) {
+  const appendAndCommitSolveHistory = useCallback((entry: SolveHistoryEntry, completedDailyTestId: string | null = null) => {
     const current = mergeSolveHistories(historyRef.current, loadSolveHistory());
     const entryKey = solveHistoryEntryKey(entry);
     const appended = prependSolveHistoryEntry(
@@ -1230,7 +1224,7 @@ export function CubePracticeApp() {
         )
       : appended;
     commitSolveHistory(next);
-  }
+  }, [commitSolveHistory]);
 
   const markCfopTimes = useCallback((nextFacelets: string, forceSolved = false) => {
     if (phaseRef.current !== "solving") return cfopTimesRef.current;
@@ -1352,7 +1346,7 @@ export function CubePracticeApp() {
           autoNextScrambleTimerRef.current = setTimeout(() => {
             autoNextScrambleTimerRef.current = null;
             if (dailyTestRef.current || practiceModeRef.current !== "scramble" || phaseRef.current !== "done") return;
-            beginAutoNextScramble();
+            beginAutoNextScrambleRef.current();
           }, AUTO_NEXT_SCRAMBLE_DELAY_MS);
         }
         return;
@@ -1396,11 +1390,11 @@ export function CubePracticeApp() {
           ) {
             return;
           }
-          beginAutoNextScramble();
+          beginAutoNextScrambleRef.current();
         }, AUTO_NEXT_SCRAMBLE_DELAY_MS);
       }
     },
-    [clearAutoNextScrambleTimer, clearFreeTimers, clearSolveTick, requestBattery, requestFacelets, setFreePracticeState, updateSolveMs, t],
+    [appendAndCommitSolveHistory, clearAutoNextScrambleTimer, clearFreeTimers, clearPendingAutoNextScrambleMoves, clearSolveTick, requestBattery, requestFacelets, setFreePracticeState, updateSolveMs, t],
   );
 
   const startSolving = useCallback(
@@ -1419,6 +1413,19 @@ export function CubePracticeApp() {
       });
     });
   }, []);
+
+  const clearVisualPendingTimer = useCallback(() => {
+    if (visualPendingTimerRef.current === null) return;
+    clearTimeout(visualPendingTimerRef.current);
+    visualPendingTimerRef.current = null;
+  }, []);
+
+  const flushVisualPendingMove = useCallback(() => {
+    const pending = visualPendingMoveRef.current;
+    clearVisualPendingTimer();
+    visualPendingMoveRef.current = null;
+    if (pending) animateCubeMoves([pending]);
+  }, [animateCubeMoves, clearVisualPendingTimer]);
 
   const resetMoveLog = useCallback(() => {
     moveLogCoordinateRef.current = createMoveCoordinateState();
@@ -1505,6 +1512,78 @@ export function CubePracticeApp() {
     setSmartSolveWrong(false);
     setSmartSolveUndoDisplay([]);
   }, [clearSmartSolveFaceletsWait, t]);
+
+  const resetAttempt = useCallback((
+    nextScramble = scramble,
+    options: { preservePostSolveMoveGate?: boolean; preserveAutoNextScrambleMoves?: boolean } = {},
+  ) => {
+    resetSmartSolveState();
+    cancelInspectionAudio();
+    clearSolveTick();
+    clearFreeTimers();
+    clearAutoNextScrambleTimer();
+    flushVisualPendingMove();
+    if (!options.preservePostSolveMoveGate) clearPostSolveMoveGate();
+    if (!options.preserveAutoNextScrambleMoves) clearPendingAutoNextScrambleMoves();
+    phaseRef.current = "idle";
+    scrambleIndexRef.current = 0;
+    scrambleRef.current = nextScramble;
+    pendingScrambleMovesRef.current = [];
+    pendingScrambleAnimatedCountRef.current = 0;
+    pendingUndoMovesRef.current = [];
+    pendingUndoAnimatedCountRef.current = 0;
+    forceNextVisualFaceletsSyncRef.current = false;
+    suppressSolvedTrailingMoveUntilRef.current = 0;
+    undoStackRef.current = [];
+    setUndoDisplay([]);
+    solveStartRef.current = 0;
+    setPhase("idle");
+    setScramble(nextScramble);
+    setScrambleIndex(0);
+    setScrambleStatus(freshScrambleStatus());
+    setScrambleWrong(false);
+    setScrambleNotice(t("点击开始打乱后，按公式转动真实魔方。"));
+    setInspectMs(inspectionDurationMs ?? 0);
+    if (practiceModeRef.current === "free") {
+      resetFreeReadiness();
+    }
+  }, [
+    cancelInspectionAudio,
+    clearAutoNextScrambleTimer,
+    clearFreeTimers,
+    clearPendingAutoNextScrambleMoves,
+    clearPostSolveMoveGate,
+    clearSolveTick,
+    flushVisualPendingMove,
+    inspectionDurationMs,
+    resetFreeReadiness,
+    resetSmartSolveState,
+    scramble,
+    t,
+  ]);
+
+  const cancelCurrentAttempt = useCallback(() => {
+    if (!dailyTestRef.current) {
+      resetAttempt();
+      return;
+    }
+    const completedCount = dailyTestRef.current.solves.length;
+    dailyTestRef.current = null;
+    setDailyTest(null);
+    resetAttempt();
+    setScrambleNotice(
+      completedCount > 0
+        ? t(`已取消每日五次测试，已完成的 ${completedCount} 次已保留在历史中。`)
+        : t("已取消每日五次测试。"),
+    );
+  }, [resetAttempt, t]);
+
+  const autoCancelIfUndoHintQueueTooLong = useCallback((undoQueue: string[]) => {
+    if (undoQueue.length <= MAX_UNDO_HINT_QUEUE_LENGTH) return false;
+    cancelCurrentAttempt();
+    setScrambleNotice(t("撤销提示过长，已自动取消当前练习，请重新尝试。"));
+    return true;
+  }, [cancelCurrentAttempt, t]);
 
   const failSmartSolve = useCallback((message: string) => {
     clearSmartSolveFaceletsWait();
@@ -1638,21 +1717,8 @@ export function CubePracticeApp() {
         if (smartSolveUndoStackRef.current.length === 0) setSmartSolveWrong(false);
       }
     },
-    [animateCubeMoves, animateUnplayedPendingMoves, requestFacelets, t],
+    [animateCubeMoves, animateUnplayedPendingMoves, autoCancelIfUndoHintQueueTooLong, requestFacelets, t],
   );
-
-  const clearVisualPendingTimer = useCallback(() => {
-    if (visualPendingTimerRef.current === null) return;
-    clearTimeout(visualPendingTimerRef.current);
-    visualPendingTimerRef.current = null;
-  }, []);
-
-  const flushVisualPendingMove = useCallback(() => {
-    const pending = visualPendingMoveRef.current;
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
-    if (pending) animateCubeMoves([pending]);
-  }, [animateCubeMoves, clearVisualPendingTimer]);
 
   const syncVisualFacelets = useCallback(
     (nextFacelets: string) => {
@@ -1806,7 +1872,7 @@ export function CubePracticeApp() {
         if (undoStackRef.current.length === 0) setScrambleWrong(false);
       }
     },
-    [animateCubeMoves, animateUnplayedPendingMoves, inspectionDurationMs, inspectionNoticeLabel, requestFacelets, t],
+    [animateCubeMoves, animateUnplayedPendingMoves, autoCancelIfUndoHintQueueTooLong, inspectionDurationMs, inspectionNoticeLabel, requestFacelets, t],
   );
 
   const handleFreePracticeMove = useCallback(
@@ -2112,7 +2178,6 @@ export function CubePracticeApp() {
   useEffect(() => {
     if (phase !== "inspect") return;
     if (inspectionDurationMs === null) {
-      setInspectMs(0);
       cancelInspectionAudio();
       return () => cancelInspectionAudio();
     }
@@ -2428,65 +2493,6 @@ export function CubePracticeApp() {
     }
   }
 
-  function resetAttempt(
-    nextScramble = scramble,
-    options: { preservePostSolveMoveGate?: boolean; preserveAutoNextScrambleMoves?: boolean } = {},
-  ) {
-    resetSmartSolveState();
-    cancelInspectionAudio();
-    clearSolveTick();
-    clearFreeTimers();
-    clearAutoNextScrambleTimer();
-    flushVisualPendingMove();
-    if (!options.preservePostSolveMoveGate) clearPostSolveMoveGate();
-    if (!options.preserveAutoNextScrambleMoves) clearPendingAutoNextScrambleMoves();
-    phaseRef.current = "idle";
-    scrambleIndexRef.current = 0;
-    scrambleRef.current = nextScramble;
-    pendingScrambleMovesRef.current = [];
-    pendingScrambleAnimatedCountRef.current = 0;
-    pendingUndoMovesRef.current = [];
-    pendingUndoAnimatedCountRef.current = 0;
-    forceNextVisualFaceletsSyncRef.current = false;
-    suppressSolvedTrailingMoveUntilRef.current = 0;
-    undoStackRef.current = [];
-    setUndoDisplay([]);
-    solveStartRef.current = 0;
-    setPhase("idle");
-    setScramble(nextScramble);
-    setScrambleIndex(0);
-    setScrambleStatus(freshScrambleStatus());
-    setScrambleWrong(false);
-    setScrambleNotice(t("点击开始打乱后，按公式转动真实魔方。"));
-    setInspectMs(inspectionDurationMs ?? 0);
-    if (practiceModeRef.current === "free") {
-      resetFreeReadiness();
-    }
-  }
-
-  function cancelCurrentAttempt() {
-    if (!dailyTestRef.current) {
-      resetAttempt();
-      return;
-    }
-    const completedCount = dailyTestRef.current.solves.length;
-    dailyTestRef.current = null;
-    setDailyTest(null);
-    resetAttempt();
-    setScrambleNotice(
-      completedCount > 0
-        ? t(`已取消每日五次测试，已完成的 ${completedCount} 次已保留在历史中。`)
-        : t("已取消每日五次测试。"),
-    );
-  }
-
-  function autoCancelIfUndoHintQueueTooLong(undoQueue: string[]) {
-    if (undoQueue.length <= MAX_UNDO_HINT_QUEUE_LENGTH) return false;
-    cancelCurrentAttempt();
-    setScrambleNotice(t("撤销提示过长，已自动取消当前练习，请重新尝试。"));
-    return true;
-  }
-
   function cancelFreePractice() {
     if (practiceModeRef.current !== "free") return;
     clearFreeTimers();
@@ -2527,6 +2533,10 @@ export function CubePracticeApp() {
     startScrambleAttempt(true);
   }
 
+  useEffect(() => {
+    beginAutoNextScrambleRef.current = beginAutoNextScramble;
+  });
+
   function startDailyLevelTest(localDate = getDailyTestDateKey()) {
     if (!isConnected) {
       setScrambleNotice(t("请先连接智能魔方。"));
@@ -2552,10 +2562,6 @@ export function CubePracticeApp() {
     dailyTestRef.current = run;
     setDailyTest(run);
     beginScramble();
-  }
-
-  function regenerateScramble() {
-    resetAttempt(generateScramble(SCRAMBLE_LENGTH));
   }
 
   function changePracticeMode(nextMode: PracticeMode) {

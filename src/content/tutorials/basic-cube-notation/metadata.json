@@ -1,0 +1,20 @@
+{
+  "id": 1,
+  "slug": "basic-cube-notation",
+  "draft": false,
+  "order": 10,
+  "defaultLocale": "zh-CN",
+  "locales": {
+    "zh-CN": {
+      "title": "认识魔方公式",
+      "description": "了解魔方，认识公式符号",
+      "contentFile": "article.zh-CN.md"
+    },
+    "en": {
+      "title": "Understanding Cube Notation",
+      "description": "Learn the cube and the notation used for its moves",
+      "contentFile": "article.en.md"
+    }
+  },
+  "cover": "cover.png"
+}

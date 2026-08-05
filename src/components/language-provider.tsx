@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   LANGUAGE_COOKIE_KEY,
   LANGUAGE_STORAGE_KEY,
@@ -17,33 +18,50 @@ type LanguageContextValue = {
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
+const LANGUAGE_CHANGE_EVENT = "cube-language-change";
+
+function readStoredLocale(fallback: Locale) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const savedLocale = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return isLocale(savedLocale) ? savedLocale : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function LanguageProvider({ children, initialLocale }: { children: ReactNode; initialLocale: Locale }) {
-  const [locale, setLocaleState] = useState(initialLocale);
-
-  useEffect(() => {
-    try {
-      const savedLocale = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-      if (isLocale(savedLocale)) setLocaleState(savedLocale);
-    } catch {
-      // localStorage can be unavailable in restricted browsing modes.
-    }
+  const pathname = usePathname();
+  const subscribeLocale = useCallback((onStoreChange: () => void) => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === LANGUAGE_STORAGE_KEY) onStoreChange();
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(LANGUAGE_CHANGE_EVENT, onStoreChange);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(LANGUAGE_CHANGE_EVENT, onStoreChange);
+    };
   }, []);
+  const getLocaleSnapshot = useCallback(() => readStoredLocale(initialLocale), [initialLocale]);
+  const getServerLocaleSnapshot = useCallback(() => initialLocale, [initialLocale]);
+  const locale = useSyncExternalStore(subscribeLocale, getLocaleSnapshot, getServerLocaleSnapshot);
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-    document.title = locale === "zh" ? "立方" : "Cube";
-  }, [locale]);
+    const isArticle = pathname.startsWith("/articles/");
+    if (!isArticle) document.title = locale === "zh" ? "立方" : "Cube";
+  }, [locale, pathname]);
 
   const value = useMemo<LanguageContextValue>(() => ({
     locale,
     setLocale(nextLocale) {
-      setLocaleState(nextLocale);
       try {
         window.localStorage.setItem(LANGUAGE_STORAGE_KEY, nextLocale);
       } catch {
         // localStorage can be unavailable in restricted browsing modes.
       }
+      window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
       document.cookie = `${LANGUAGE_COOKIE_KEY}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
     },
     t(key) {

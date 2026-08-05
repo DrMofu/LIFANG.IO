@@ -121,6 +121,7 @@ export const englishSourceMessages: Record<string, string> = {
   "旋转": "Rotation",
   "阶段摘要": "Stage summary",
   "专注模式": "Focus mode",
+  "透明显示": "Transparent view",
   "禁用陀螺仪": "Disable gyroscope",
   "启用陀螺仪": "Enable gyroscope",
   "视角归位": "Reset view",

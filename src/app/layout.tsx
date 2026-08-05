@@ -1,22 +1,13 @@
 import type { Metadata } from "next";
-import { cookies, headers } from "next/headers";
 import { AuthProvider } from "@/components/auth-provider";
 import { CubeAppearanceProvider } from "@/components/cube-appearance-provider";
 import { CubeConnectionProvider } from "@/components/cube-connection-provider";
 import { LanguageProvider } from "@/components/language-provider";
 import { ScrollbarVisibilityProvider } from "@/components/scrollbar-visibility-provider";
 import { SystemNotificationProvider } from "@/components/system-notification-dialog";
-import { detectLocale, isLocale, LANGUAGE_COOKIE_KEY } from "@/lib/i18n";
+import { getRequestLocale } from "@/lib/request-locale";
 import { ScreenWakeLockProvider } from "@/lib/screen-wake-lock";
 import "./globals.css";
-
-async function getRequestLocale() {
-  const cookieStore = await cookies();
-  const savedLocale = cookieStore.get(LANGUAGE_COOKIE_KEY)?.value;
-  if (isLocale(savedLocale)) return savedLocale;
-  const requestHeaders = await headers();
-  return detectLocale(requestHeaders.get("accept-language"));
-}
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();

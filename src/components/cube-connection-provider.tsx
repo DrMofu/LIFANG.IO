@@ -863,7 +863,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     handleDisconnectEvent,
     hideConnectionPrompt,
     logReceivedEvent,
-    publishFacelets,
     publishGyro,
     publishMove,
     requestBattery,

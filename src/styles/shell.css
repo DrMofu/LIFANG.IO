@@ -2,6 +2,7 @@
   position: relative;
   z-index: 100;
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   min-height: 58px;
@@ -1029,7 +1030,7 @@
   }
 
   .topnav-mobile .navitem {
-    flex: 1 1 calc((100% - 12px) / 4);
+    flex: 1 1 calc((100% - 16px) / 5);
     min-width: 0;
     gap: 3px;
     padding: 0 4px;
@@ -1038,7 +1039,7 @@
   }
 
   .topnav-mobile .navgroup {
-    flex: 1 1 calc((100% - 12px) / 4);
+    flex: 1 1 calc((100% - 16px) / 5);
     min-width: 0;
   }
 
@@ -1053,5 +1054,17 @@
 
   .topnav-mobile .navitem small {
     display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  .topnav-mobile .navitem {
+    gap: 2px;
+    font-size: 9px;
+  }
+
+  .topnav-mobile .nav-icon {
+    width: 13px;
+    height: 13px;
   }
 }

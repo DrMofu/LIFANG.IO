@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { CubeColorLegend } from "@/components/cube-color-legend";
@@ -75,7 +75,6 @@ import {
   type CloudSnapshotMetadata,
 } from "@/lib/cloud-sync";
 import {
-  CONSOLE_SETTING_KEYS,
   applyUserDataImport,
   buildUserDataExportPayload,
   cleanupDeprecatedFormulaLocalStorage,
@@ -223,7 +222,7 @@ export function SettingsApp() {
       }
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled]);
+  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, orientation, renderMaxFps]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -240,41 +239,46 @@ export function SettingsApp() {
     const authResult = url.searchParams.get("auth");
     if (authResult !== "success" && authResult !== "error") return;
 
-    setAuthStatusMessage(authResult === "success"
-      ? { kind: "success", text: t("已登录，可以同步云端数据。") }
-      : { kind: "error", text: t("登录链接无效或已过期，请重新发送验证码。") });
+    const timer = window.setTimeout(() => {
+      setAuthStatusMessage(authResult === "success"
+        ? { kind: "success", text: t("已登录，可以同步云端数据。") }
+        : { kind: "error", text: t("登录链接无效或已过期，请重新发送验证码。") });
+    }, 0);
     url.searchParams.delete("auth");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    return () => window.clearTimeout(timer);
   }, [t]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!supabase || !user) {
-      setCloudSnapshotMetadata(null);
-      setCloudLoading(false);
-      return;
-    }
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      if (!supabase || !user) {
+        setCloudSnapshotMetadata(null);
+        setCloudLoading(false);
+        return;
+      }
 
-    const recentMetadata = getRecentCloudSnapshotMetadata(user.id);
-    if (recentMetadata !== null) {
-      setCloudSnapshotMetadata(recentMetadata.metadata);
-      setCloudLoading(false);
-      return;
-    }
+      const recentMetadata = getRecentCloudSnapshotMetadata(user.id);
+      if (recentMetadata !== null) {
+        setCloudSnapshotMetadata(recentMetadata.metadata);
+        setCloudLoading(false);
+        return;
+      }
 
-    setCloudLoading(true);
-    loadCloudSnapshotMetadata(supabase)
-      .then((metadata) => {
+      setCloudLoading(true);
+      try {
+        const metadata = await loadCloudSnapshotMetadata(supabase);
         if (cancelled) return;
         rememberCloudSnapshotMetadata(user.id, metadata);
         setCloudSnapshotMetadata(metadata);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) flashStatus("error", t("读取云端数据失败，请检查 Supabase 表和 RLS 配置。"));
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setCloudLoading(false);
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;

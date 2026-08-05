@@ -385,17 +385,12 @@ export function CfopTrainerApp() {
   const formulaHintUndoStackRef = useRef<string[]>([]);
   const formulaHintPendingUndoMovesRef = useRef<string[]>([]);
   const formulaHintCoordinateRef = useRef<MoveCoordinateState>(createMoveCoordinateState());
-  const formulaRotationVariantsRef = useRef(readStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY));
-  const formulaHintEnabledRef = useRef(readStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY));
-  const formulaArrowEnabledRef = useRef(readStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY));
-  const f2lEdgeOnlyRef = useRef(readStoredTrainerBoolean(TRAINER_F2L_EDGE_ONLY_KEY));
   const gyroDisabledRef = useRef(loadPracticeGyroDisabled());
   const visualPendingMoveRef = useRef<string | null>(null);
   const visualPendingTimerRef = useRef<number | null>(null);
   const gyroCostNoticeFadeTimerRef = useRef<number | null>(null);
   const gyroCostNoticeTimerRef = useRef<number | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
-  const autoNextPendingRef = useRef(false);
   const moveQueueRef = useRef(Promise.resolve());
   const mountedRef = useRef(false);
   const runIdRef = useRef(0);
@@ -403,20 +398,24 @@ export function CfopTrainerApp() {
 
   const [selectedPhase, setSelectedPhase] = useState<CfopTrainerPhase>(readStoredTrainerPhase);
   const [state, setState] = useState<TrainerState>("idle");
-  const [notice, setNotice] = useState(t("选择阶段后开始专项训练。"));
+  const [, setNotice] = useState(t("选择阶段后开始专项训练。"));
   const [scenario, setScenario] = useState<CfopTrainerScenario | null>(null);
   const [observeMs, setObserveMs] = useState(0);
   const [solveMs, setSolveMs] = useState(0);
   const [timerKind, setTimerKind] = useState<"observe" | "solve">("solve");
   const [sessionResults, setSessionResults] = useState<TrainerRoundResult[]>([]);
-  const [history, setHistory] = useState<CfopTrainerHistoryEntry[]>([]);
+  const [history, setHistory] = useState<CfopTrainerHistoryEntry[]>(readCfopTrainerHistory);
   const [averageSettings] = useState<AverageTimeSettings>(loadAverageTimeSettings);
   const [historyRows, setHistoryRows] = useState(HISTORY_FALLBACK_ROWS);
   const [historyScrolling, setHistoryScrolling] = useState(false);
-  const [formulaRotationVariants, setFormulaRotationVariants] = useState(() => formulaRotationVariantsRef.current);
-  const [formulaHintEnabled, setFormulaHintEnabled] = useState(() => formulaHintEnabledRef.current);
-  const [formulaArrowEnabled, setFormulaArrowEnabled] = useState(() => formulaArrowEnabledRef.current);
-  const [f2lEdgeOnly, setF2lEdgeOnly] = useState(() => f2lEdgeOnlyRef.current);
+  const [formulaRotationVariants, setFormulaRotationVariants] = useState(() => readStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY));
+  const [formulaHintEnabled, setFormulaHintEnabled] = useState(() => readStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY));
+  const [formulaArrowEnabled, setFormulaArrowEnabled] = useState(() => readStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY));
+  const [f2lEdgeOnly, setF2lEdgeOnly] = useState(() => readStoredTrainerBoolean(TRAINER_F2L_EDGE_ONLY_KEY));
+  const formulaRotationVariantsRef = useRef(formulaRotationVariants);
+  const formulaHintEnabledRef = useRef(formulaHintEnabled);
+  const formulaArrowEnabledRef = useRef(formulaArrowEnabled);
+  const f2lEdgeOnlyRef = useRef(f2lEdgeOnly);
   const [formulaHintMoves, setFormulaHintMoves] = useState<string[]>([]);
   const [formulaHintIndex, setFormulaHintIndex] = useState(0);
   const [formulaHintStatus, setFormulaHintStatus] = useState<FormulaHintStepStatus[]>([]);
@@ -424,10 +423,9 @@ export function CfopTrainerApp() {
   const [formulaHintUndoDisplay, setFormulaHintUndoDisplay] = useState<string[]>([]);
   const [f2lFocusMode, setF2lFocusMode] = useState(readF2lFocusModeEnabled);
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
-  const [sessionRoundLimit, setSessionRoundLimit] = useState(DEFAULT_TRAINER_SESSION_ROUNDS);
+  const [sessionRoundLimit, setSessionRoundLimit] = useState(readStoredTrainerSessionRounds);
   const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
   const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
-  const [autoNextPending, setAutoNextPending] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
 
   const { connectionState, connectRealCube, getLatestGyro, subscribeMove, subscribeGyro } = useCubeConnection();
@@ -437,12 +435,13 @@ export function CfopTrainerApp() {
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
   const activePhaseMeta = CFOP_TRAINER_PHASES.find((phase) => phase.key === selectedPhase) ?? CFOP_TRAINER_PHASES[0];
   const trainingActive = state === "loading" || state === "observe" || state === "solving";
-  const canCancelTrainerAction = trainingActive || autoNextPending;
   const timerDisplayMs = timerKind === "observe" ? observeMs : solveMs;
   const canUseFocusMode = canUseFocusModeForPhase(selectedPhase);
   const formulaHintVisible = formulaHintEnabled && selectedPhase !== "cross" && formulaHintMoves.length > 0;
   const formulaHintCounter = formulaHintMoves.length > 0 ? Math.min(formulaHintIndex + 1, formulaHintMoves.length) : 0;
   const sessionRoundCount = sessionResults.length;
+  const autoNextPending = state === "done" && connected && sessionRoundCount > 0 && sessionRoundCount < sessionRoundLimit;
+  const canCancelTrainerAction = trainingActive || autoNextPending;
   const sessionAverageObserveMs = useMemo(
     () => averageTime(sessionResults.map((entry) => entry.observeMs)),
     [sessionResults],
@@ -501,16 +500,6 @@ export function CfopTrainerApp() {
         window.clearTimeout(gyroCostNoticeTimerRef.current);
       }
     };
-  }, []);
-
-  useEffect(() => {
-    const disabled = loadPracticeGyroDisabled();
-    gyroDisabledRef.current = disabled;
-    setGyroDisabled(disabled);
-    const focusModeEnabled = readF2lFocusModeEnabled();
-    f2lFocusModeRef.current = focusModeEnabled;
-    setF2lFocusMode(focusModeEnabled);
-    setSessionRoundLimit(readStoredTrainerSessionRounds());
   }, []);
 
   useEffect(() => {
@@ -676,13 +665,10 @@ export function CfopTrainerApp() {
       window.clearTimeout(autoNextTimerRef.current);
       autoNextTimerRef.current = null;
     }
-    autoNextPendingRef.current = false;
-    if (mountedRef.current) setAutoNextPending(false);
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    setHistory(readCfopTrainerHistory());
     return () => {
       mountedRef.current = false;
       clearVisualPendingTimer();
@@ -800,25 +786,17 @@ export function CfopTrainerApp() {
     }
   }, []);
 
-  function getFormulaHintMove() {
+  const getFormulaHintMove = useCallback(() => {
     if (!formulaHintEnabled || !formulaArrowEnabled || selectedPhaseRef.current === "cross") return null;
     const undoNext = formulaHintUndoStackRef.current[formulaHintUndoStackRef.current.length - 1];
     if (undoNext) return hintMoveForDoubleTurnProgress(formulaHintPendingUndoMovesRef.current, undoNext);
     const expected = formulaHintMovesRef.current[formulaHintIndexRef.current];
     return expected ? hintMoveForDoubleTurnProgress(formulaHintPendingMovesRef.current, expected) : null;
-  }
+  }, [formulaArrowEnabled, formulaHintEnabled]);
 
   useEffect(() => {
     cubeApiRef.current?.setHintMove(getFormulaHintMove());
-  }, [
-    formulaArrowEnabled,
-    formulaHintEnabled,
-    formulaHintIndex,
-    formulaHintMoves,
-    formulaHintStatus,
-    formulaHintUndoDisplay,
-    selectedPhase,
-  ]);
+  }, [getFormulaHintMove, formulaHintIndex, formulaHintMoves, formulaHintStatus, formulaHintUndoDisplay, selectedPhase]);
 
   const resetRun = useCallback((message = t("选择阶段后开始专项训练。")) => {
     runIdRef.current += 1;
@@ -890,7 +868,7 @@ export function CfopTrainerApp() {
       return;
     }
     setNotice(t(`${trainerPhaseShort(phase)} 阶段第 ${nextResults.length}/${sessionRoundLimit} 局完成，准备自动下一局。`));
-  }, [getCurrentHistoryOptions, sessionRoundLimit, t]);
+  }, [getCurrentHistoryOptions, sessionRoundLimit, t, updateTrainerState]);
 
   const recordSolveMove = useCallback((move: string) => {
     const nextGroup = solveMoveCountGroup(move);
@@ -1010,7 +988,7 @@ export function CfopTrainerApp() {
   }, [beginCrossScenario, beginFormulaScenario]);
 
   const startTraining = useCallback(async () => {
-    if (autoNextPendingRef.current) {
+    if (autoNextPending) {
       cancelRun();
       return;
     }
@@ -1024,29 +1002,18 @@ export function CfopTrainerApp() {
     }
     resetRun(t("准备开始专项训练。"));
     await beginTrainerRound(runIdRef.current);
-  }, [beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, trainingActive, t]);
+  }, [autoNextPending, beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, trainingActive, t]);
 
   useEffect(() => {
-    if (
-      state !== "done" ||
-      !connected ||
-      sessionRoundCount <= 0 ||
-      sessionRoundCount >= sessionRoundLimit
-    ) {
-      return;
-    }
-    autoNextPendingRef.current = true;
-    setAutoNextPending(true);
+    if (!autoNextPending) return;
     autoNextTimerRef.current = window.setTimeout(() => {
       autoNextTimerRef.current = null;
-      autoNextPendingRef.current = false;
-      setAutoNextPending(false);
       if (!mountedRef.current || stateRef.current !== "done") return;
       runIdRef.current += 1;
       void beginTrainerRound(runIdRef.current);
     }, 1000);
     return clearAutoNextTimer;
-  }, [beginTrainerRound, clearAutoNextTimer, connected, sessionRoundCount, sessionRoundLimit, state]);
+  }, [autoNextPending, beginTrainerRound, clearAutoNextTimer]);
 
   const clearGyroCostNoticeTimers = useCallback(() => {
     if (gyroCostNoticeFadeTimerRef.current !== null) {

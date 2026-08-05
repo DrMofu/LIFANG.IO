@@ -13,16 +13,15 @@ import { type SmartCubeApi, mountSmartCube } from "@/lib/smart-cube";
 const HOME_NAV: Array<{ href: string; labelKey: MessageKey; icon: string; index: string }> = [
   { href: "/practice", labelKey: "nav.practice", icon: "practice", index: "01" },
   { href: "/formulas", labelKey: "nav.formulas", icon: "cube", index: "02" },
-  { href: "/stats", labelKey: "nav.stats", icon: "stats", index: "03" },
-  { href: "/settings", labelKey: "nav.settings", icon: "settings", index: "04" },
+  { href: "/articles", labelKey: "nav.tutorials", icon: "tutorials", index: "03" },
+  { href: "/stats", labelKey: "nav.stats", icon: "stats", index: "04" },
+  { href: "/settings", labelKey: "nav.settings", icon: "settings", index: "05" },
 ];
 
 export function HomeLandingApp() {
   const { t } = useLanguage();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
-  const visualStateRef = useRef<CubeVisualState>({ baseFacelets: null, moves: [] });
-  const faceletsRef = useRef<string | null>(null);
   const lastAppliedFaceletsRef = useRef<string | null>(null);
   const hasRealtimeMovesRef = useRef(false);
   const {
@@ -32,9 +31,13 @@ export function HomeLandingApp() {
     subscribeFacelets,
   } = useCubeConnection();
   const { orientation, faceColors, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance } = useCubeAppearance();
+  const visualStateRef = useRef<CubeVisualState>(visualState);
+  const faceletsRef = useRef<string | null>(facelets);
 
-  visualStateRef.current = visualState;
-  faceletsRef.current = facelets;
+  useEffect(() => {
+    visualStateRef.current = visualState;
+    faceletsRef.current = facelets;
+  }, [facelets, visualState]);
 
   const restoreVisualCubeState = useCallback((api: SmartCubeApi) => {
     const visualStateSnapshot = visualStateRef.current;
@@ -69,7 +72,7 @@ export function HomeLandingApp() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [backFaceProjectionEnabled, faceColors, orientation, renderMaxFps, restoreVisualCubeState]);
+  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, orientation, renderMaxFps, restoreVisualCubeState]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);

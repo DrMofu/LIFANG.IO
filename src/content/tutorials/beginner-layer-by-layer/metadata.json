@@ -1,0 +1,15 @@
+{
+  "id": 2,
+  "slug": "beginner-layer-by-layer",
+  "draft": true,
+  "order": 20,
+  "defaultLocale": "zh-CN",
+  "locales": {
+    "zh-CN": {
+      "title": "三阶魔方层先法教程",
+      "description": "从认识块的位置开始，用尽量少的公式依次完成白色十字、前两层和黄色顶层，第一次完整复原三阶魔方。",
+      "contentFile": "article.zh-CN.md"
+    }
+  },
+  "cover": "cover.png"
+}
