@@ -27,6 +27,16 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.1.3",
+    changes: [
+      "练习界面添加OLL，PLL公式识别",
+      "新增教程界面",
+      "修复调整部分公式",
+      "修复无法使用邮箱进行云端同步的问题",
+      "修复公式研究模式中进行旋转操作M/S/E后，面映射错误的问题。",
+    ],
+  },
+  {
     version: "v0.1.2",
     changes: [
       "调整移动端布局",
