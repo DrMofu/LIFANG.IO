@@ -51,7 +51,6 @@ import {
   type AverageTimeSettings,
 } from "@/lib/average-time";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
-import { useClientReady } from "@/lib/client-ready";
 import {
   FORMULA_LEARNING_STATUSES as LEARNING_STATUSES,
   getFormulaLearningStatus as getLearningStatus,
@@ -1815,7 +1814,7 @@ export function FormulasApp() {
   const [showFavOnly, setShowFavOnly] = useState(initialFormulaState.showFavOnly);
   const [formulaTip, setFormulaTip] = useState<FormulaTip | null>(null);
   const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(() => new Set());
-  const hydrated = useClientReady();
+  const [archiveDataReady, setArchiveDataReady] = useState(false);
   const [archiveRefreshKey, setArchiveRefreshKey] = useState(0);
   const keyboardSelectionRef = useRef(false);
   const formulaCases = useMemo(
@@ -1869,23 +1868,28 @@ export function FormulasApp() {
     }
 
     refreshArchiveData();
-    return subscribeStatisticsArchiveChange(refreshArchiveData);
+    const readyTimer = window.setTimeout(() => setArchiveDataReady(true), 0);
+    const unsubscribe = subscribeStatisticsArchiveChange(refreshArchiveData);
+    return () => {
+      window.clearTimeout(readyTimer);
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!archiveDataReady) return;
     saveFormulaState({ cat, activeKey, showFavOnly, statusFilter });
-  }, [hydrated, cat, activeKey, showFavOnly, statusFilter]);
+  }, [archiveDataReady, cat, activeKey, showFavOnly, statusFilter]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!archiveDataReady) return;
     saveFavs(favs);
-  }, [hydrated, favs]);
+  }, [archiveDataReady, favs]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!archiveDataReady) return;
     saveLearningStatuses(learningStatuses);
-  }, [hydrated, learningStatuses]);
+  }, [archiveDataReady, learningStatuses]);
 
   function changeCat(nextCat: FormulaViewKey) {
     if (nextCat === cat) return;
