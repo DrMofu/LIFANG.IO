@@ -222,7 +222,7 @@ export function SettingsApp() {
       }
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, orientation, renderMaxFps]);
+  }, [backFaceProjectionEnabled, faceColors, orientation, renderMaxFps]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);

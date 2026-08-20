@@ -132,33 +132,44 @@ const FACE_VECTOR: Record<CubeFace, THREE.Vector3> = {
   B: new THREE.Vector3(0, 0, -1),
 };
 
-type Cubie = THREE.Group & {
-  userData: {
-    logicalPos: THREE.Vector3;
-  };
-};
-
 type StickerMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> & {
   userData: {
     stickerLocalFace: CubeFace;
     stickerBaseColor: string;
     stickerBaseFace: CubeFace;
     stickerLowerLayerDimmed: boolean;
+    isProjectionSticker?: boolean;
+    projectionLocalNormal?: THREE.Vector3;
   };
 };
 
-type ProjectionSurfaceObject = THREE.Object3D & {
+type ProjectionBorderObject = THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial> & {
   userData: {
-    isProjectionBorder?: boolean;
-    isProjectionSticker?: boolean;
+    isProjectionBorder: true;
     projectionLocalNormal: THREE.Vector3;
   };
 };
 
-type ProjectionBorderRecord = {
-  object: ProjectionSurfaceObject;
-  cubie: Cubie;
+type CubieFaceRecord = {
+  localFace: CubeFace;
+  sticker: StickerMesh;
+  projectionSticker?: StickerMesh;
+  projectionBorder?: ProjectionBorderObject;
   localNormal: THREE.Vector3;
+};
+
+type Cubie = THREE.Group & {
+  userData: {
+    logicalPos: THREE.Vector3;
+    homePos: THREE.Vector3;
+    faces: CubieFaceRecord[];
+  };
+};
+
+type CubieGeometryAssets = {
+  body: THREE.BoxGeometry;
+  sticker: THREE.PlaneGeometry;
+  projectionBorder: THREE.EdgesGeometry;
 };
 
 type HintArrowAssets = {
@@ -175,6 +186,13 @@ const AXIS_VECTOR: Record<"x" | "y" | "z", THREE.Vector3> = {
 };
 const HINT_LAYER_COORD_SCALE = 1;
 const HINT_MAX_RINGS = 3;
+const CUBIE_SIZE = 0.96;
+const STICKER_SIZE = 0.86;
+
+function freezeLocalTransform(object: THREE.Object3D) {
+  object.updateMatrix();
+  object.matrixAutoUpdate = false;
+}
 
 function createHintArrowRing(material: THREE.Material, geometries: THREE.BufferGeometry[]) {
   const group = new THREE.Group();
@@ -191,6 +209,7 @@ function createHintArrowRing(material: THREE.Material, geometries: THREE.BufferG
     geometries.push(torusGeom);
     const torus = new THREE.Mesh(torusGeom, material);
     torus.renderOrder = 10;
+    freezeLocalTransform(torus);
     arrowGroup.add(torus);
 
     const headLength = tubeRadius * 7.2;
@@ -205,9 +224,11 @@ function createHintArrowRing(material: THREE.Material, geometries: THREE.BufferG
     cone.position.set(Math.cos(arcAngle) * tipRadius, Math.sin(arcAngle) * tipRadius, 0);
     cone.rotation.z = arcAngle; // align cone +Y with tangent at end of arc
     cone.translateY(headLength / 2 - tubeRadius * 0.4);
+    freezeLocalTransform(cone);
     arrowGroup.add(cone);
 
     arrowGroup.rotation.z = i * Math.PI;
+    freezeLocalTransform(arrowGroup);
     group.add(arrowGroup);
   }
 
@@ -257,6 +278,7 @@ function makeCubie(
   x: number,
   y: number,
   z: number,
+  geometries: CubieGeometryAssets,
   colors: Record<CubeFace | "inner", string>,
   orientation: CubeOrientation,
   colorByCubeColor: Record<CubeColor, string>,
@@ -266,24 +288,22 @@ function makeCubie(
   showBackFaceProjection = false,
   backFaceProjectionDistance = DEFAULT_BACK_FACE_PROJECTION_DISTANCE,
   lowerLayerDimmed = false,
-  size = 0.96,
 ): Cubie {
   const transparentFormulaMode = transparentFormulaFacelets && Boolean(formulaFacelets);
   const group = new THREE.Group() as Cubie;
-  const geom = new THREE.BoxGeometry(size, size, size);
+  group.userData.faces = [];
   const inner = new THREE.MeshBasicMaterial({
     color: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE : colors.inner,
     transparent: transparentFormulaMode,
     opacity: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE_OPACITY : 1,
     depthWrite: !transparentFormulaMode,
   });
-  const cube = new THREE.Mesh(geom, [inner, inner, inner, inner, inner, inner]);
+  const cube = new THREE.Mesh(geometries.body, inner);
   if (transparentFormulaMode) cube.renderOrder = -2;
+  freezeLocalTransform(cube);
   group.add(cube);
 
-  const stickerSize = 0.86;
-  const stickerGeom = new THREE.PlaneGeometry(stickerSize, stickerSize);
-  const offset = size / 2 + 0.001;
+  const offset = CUBIE_SIZE / 2 + 0.001;
 
   const stickers: Array<{
     face: CubeFace;
@@ -353,8 +373,9 @@ function makeCubie(
           ? TRANSPARENT_FORMULA_FACELET_OPACITY
           : 1,
       depthWrite: !transparent,
+      forceSinglePass: transparentFacelet,
     });
-    const mesh = new THREE.Mesh(stickerGeom, mat) as StickerMesh;
+    const mesh = new THREE.Mesh(geometries.sticker, mat) as StickerMesh;
     if (projected) {
       const [px, py, pz] = sticker.pos;
       const localNormal = new THREE.Vector3(px, py, pz).normalize();
@@ -371,6 +392,7 @@ function makeCubie(
     mesh.userData.stickerBaseColor = stickerColor;
     mesh.userData.stickerBaseFace = stickerBaseFace;
     mesh.userData.stickerLowerLayerDimmed = stickerLowerLayerDimmed;
+    freezeLocalTransform(mesh);
     return mesh;
   }
 
@@ -381,14 +403,14 @@ function makeCubie(
     const [px, py, pz] = sticker.pos;
     const localNormal = new THREE.Vector3(px, py, pz).normalize();
     const border = new THREE.LineSegments(
-      new THREE.EdgesGeometry(stickerGeom),
+      geometries.projectionBorder,
       new THREE.LineBasicMaterial({
         color: 0x0e0e0c,
         transparent: true,
         opacity: BACK_FACE_PROJECTION_BORDER_OPACITY,
         depthWrite: false,
       }),
-    );
+    ) as ProjectionBorderObject;
     border.position.copy(localNormal).multiplyScalar(backFaceProjectionDistance + BACK_FACE_PROJECTION_BORDER_OFFSET);
     border.rotation.set(...sticker.rot);
     border.renderOrder = 0;
@@ -398,6 +420,7 @@ function makeCubie(
     // sticker — only show when the face is pointing away from the camera.
     border.userData.isProjectionBorder = true;
     border.userData.projectionLocalNormal = localNormal.clone();
+    freezeLocalTransform(border);
     return border;
   }
 
@@ -405,24 +428,45 @@ function makeCubie(
     if (!sticker.cond) return;
     const { stickerColor, stickerBaseFace, transparentFacelet } = resolveSticker(sticker);
     const stickerLowerLayerDimmed = isInitialLowerLayerSticker(sticker.face, y);
-    group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, false, transparentFacelet));
+    const stickerMesh = createStickerMesh(
+      sticker,
+      stickerColor,
+      stickerBaseFace,
+      stickerLowerLayerDimmed,
+      false,
+      transparentFacelet,
+    );
+    const faceRecord: CubieFaceRecord = {
+      localFace: sticker.face,
+      sticker: stickerMesh,
+      localNormal: FACE_VECTOR[sticker.face],
+    };
+    group.add(stickerMesh);
     if (showBackFaceProjection && !transparentFormulaMode) {
-      group.add(createStickerMesh(sticker, stickerColor, stickerBaseFace, stickerLowerLayerDimmed, true, false));
-      group.add(createProjectionBorder(sticker));
+      faceRecord.projectionSticker = createStickerMesh(
+        sticker,
+        stickerColor,
+        stickerBaseFace,
+        stickerLowerLayerDimmed,
+        true,
+        false,
+      );
+      faceRecord.projectionBorder = createProjectionBorder(sticker);
+      group.add(faceRecord.projectionSticker, faceRecord.projectionBorder);
     }
+    group.userData.faces.push(faceRecord);
   });
 
   group.position.set(x, y, z);
   group.userData.logicalPos = new THREE.Vector3(x, y, z);
+  group.userData.homePos = new THREE.Vector3(x, y, z);
   return group;
 }
 
 function disposeCubie(cubie: Cubie) {
-  const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   cubie.traverse((child) => {
     if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
-      geometries.add(child.geometry);
       if (Array.isArray(child.material)) {
         child.material.forEach((material) => materials.add(material));
       } else {
@@ -430,7 +474,6 @@ function disposeCubie(cubie: Cubie) {
       }
     }
   });
-  geometries.forEach((geometry) => geometry.dispose());
   materials.forEach((material) => material.dispose());
 }
 
@@ -611,6 +654,7 @@ export function mountSmartCube(
 
   const scene = new THREE.Scene();
   scene.background = null;
+  scene.matrixAutoUpdate = false;
 
   const camera = new THREE.PerspectiveCamera(32, container.clientWidth / container.clientHeight, 0.1, 100);
   const defaultDisplayState: CubeDisplayState = {
@@ -717,18 +761,26 @@ export function mountSmartCube(
     finiteOrDefault(options.sceneOffset?.y, 0),
     finiteOrDefault(options.sceneOffset?.z, 0),
   );
+  freezeLocalTransform(viewRoot);
   scene.add(viewRoot);
 
   const cubeRoot = new THREE.Group();
   viewRoot.add(cubeRoot);
+
+  const stickerGeometry = new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE);
+  const cubieGeometries: CubieGeometryAssets = {
+    body: new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE),
+    sticker: stickerGeometry,
+    projectionBorder: new THREE.EdgesGeometry(stickerGeometry),
+  };
 
   const orientationBasis = makeOrientationBasis(options.orientation ?? DEFAULT_GYRO_ORIENTATION);
   const defaultCubeOrientation = cubeRoot.quaternion.clone();
   const targetCubeOrientation = cubeRoot.quaternion.clone();
 
   const cubies: Cubie[] = [];
-  const projectionSurfaces: ProjectionSurfaceObject[] = [];
-  const projectionBorders: ProjectionBorderRecord[] = [];
+  const projectionSurfaces: Array<StickerMesh | ProjectionBorderObject> = [];
+  const projectionCubies: Cubie[] = [];
   const queue: QueuedMove[] = [];
   let current: ActiveMove | null = null;
   let frameId = 0;
@@ -754,16 +806,15 @@ export function mountSmartCube(
   const gyroHardwareOrientation = new THREE.Quaternion();
   const gyroCubeOrientation = new THREE.Quaternion();
   const rotatedLogicalPosition = new THREE.Vector3();
-  const stickerPosition = new THREE.Vector3();
   const stickerNormal = new THREE.Vector3();
   const cubieWorldQuaternion = new THREE.Quaternion();
   const cubeRootWorldQuaternion = new THREE.Quaternion();
   const cubeRootWorldQuaternionInverse = new THREE.Quaternion();
   const cubieToCubeQuaternion = new THREE.Quaternion();
-  const projectionBorderWorldNormal = new THREE.Vector3();
-  const projectionBorderWorldPosition = new THREE.Vector3();
-  const projectionBorderCameraOffset = new THREE.Vector3();
-  const projectionBorderCubieQuaternion = new THREE.Quaternion();
+  const projectionWorldNormal = new THREE.Vector3();
+  const projectionWorldPosition = new THREE.Vector3();
+  const projectionCameraOffset = new THREE.Vector3();
+  const projectionCubieQuaternion = new THREE.Quaternion();
 
   renderer.domElement.style.touchAction = "none";
 
@@ -778,14 +829,13 @@ export function mountSmartCube(
   }
 
   function registerProjectionObjects(cubie: Cubie) {
-    cubie.children.forEach((child) => {
-      const userData = child.userData as Partial<ProjectionSurfaceObject["userData"]>;
-      if (!userData.projectionLocalNormal || (!userData.isProjectionSticker && !userData.isProjectionBorder)) return;
-      const object = child as ProjectionSurfaceObject;
-      projectionSurfaces.push(object);
-      if (userData.isProjectionBorder) {
-        projectionBorders.push({ object, cubie, localNormal: userData.projectionLocalNormal });
-      }
+    const projectedFaces = cubie.userData.faces.filter(
+      (face) => face.projectionSticker && face.projectionBorder,
+    );
+    if (projectedFaces.length === 0) return;
+    projectionCubies.push(cubie);
+    projectedFaces.forEach((face) => {
+      projectionSurfaces.push(face.projectionSticker!, face.projectionBorder!);
     });
   }
 
@@ -796,7 +846,7 @@ export function mountSmartCube(
     });
     cubies.length = 0;
     projectionSurfaces.length = 0;
-    projectionBorders.length = 0;
+    projectionCubies.length = 0;
     for (let x = -1; x <= 1; x++) {
       for (let y = -1; y <= 1; y++) {
         for (let z = -1; z <= 1; z++) {
@@ -804,6 +854,7 @@ export function mountSmartCube(
             x,
             y,
             z,
+            cubieGeometries,
             colors,
             displayOrientation,
             colorByCubeColor,
@@ -826,12 +877,14 @@ export function mountSmartCube(
   function applyBackFaceProjectionDistance(distance: number) {
     const nextDistance = Number.isFinite(distance) ? distance : DEFAULT_BACK_FACE_PROJECTION_DISTANCE;
     const changed = Math.abs(nextDistance - backFaceProjectionDistance) > 0.001;
+    if (!changed) return false;
     backFaceProjectionDistance = nextDistance;
     projectionSurfaces.forEach((surface) => {
       const offset = surface.userData.isProjectionBorder
         ? backFaceProjectionDistance + BACK_FACE_PROJECTION_BORDER_OFFSET
         : backFaceProjectionDistance;
-      surface.position.copy(surface.userData.projectionLocalNormal).multiplyScalar(offset);
+      surface.position.copy(surface.userData.projectionLocalNormal!).multiplyScalar(offset);
+      surface.updateMatrix();
     });
     projectionBorderVisibilityDirty = true;
     return changed;
@@ -845,17 +898,30 @@ export function mountSmartCube(
 
   function refreshStickerDisplayColors() {
     cubies.forEach((cubie) => {
-      cubie.traverse((child) => {
-        const sticker = child as Partial<StickerMesh>;
-        if (!sticker.userData?.stickerLocalFace || !(child instanceof THREE.Mesh) || !(child.material instanceof THREE.MeshBasicMaterial)) return;
-
-        child.material.color.set(
-          lowerLayerDimmed && (child as StickerMesh).userData.stickerLowerLayerDimmed
+      cubie.userData.faces.forEach(({ sticker, projectionSticker }) => {
+        const color = lowerLayerDimmed && sticker.userData.stickerLowerLayerDimmed
             ? LOWER_LAYER_DIMMED_STICKER
-            : (child as StickerMesh).userData.stickerBaseColor,
-        );
+            : sticker.userData.stickerBaseColor;
+        sticker.material.color.set(color);
+        projectionSticker?.material.color.set(color);
       });
     });
+  }
+
+  function resetCubiesInPlace() {
+    cubies.forEach((cubie) => {
+      cubie.position.copy(cubie.userData.homePos);
+      cubie.quaternion.identity();
+      cubie.scale.set(1, 1, 1);
+      cubie.userData.logicalPos.copy(cubie.userData.homePos);
+      cubie.userData.faces.forEach(({ localFace, sticker, projectionSticker }) => {
+        const color = colors[localFace];
+        paintSticker(sticker, color, localFace);
+        if (projectionSticker) paintSticker(projectionSticker, color, localFace);
+      });
+    });
+    refreshStickerDisplayColors();
+    projectionBorderVisibilityDirty = true;
   }
 
   function repaintCubies(facelets: string) {
@@ -863,21 +929,15 @@ export function mountSmartCube(
     cubeRootWorldQuaternionInverse.copy(cubeRootWorldQuaternion).invert();
 
     cubies.forEach((cubie) => {
-      cubie.getWorldPosition(stickerPosition);
-      cubeRoot.worldToLocal(stickerPosition);
-      const x = Math.round(stickerPosition.x);
-      const y = Math.round(stickerPosition.y);
-      const z = Math.round(stickerPosition.z);
+      const x = Math.round(cubie.userData.logicalPos.x);
+      const y = Math.round(cubie.userData.logicalPos.y);
+      const z = Math.round(cubie.userData.logicalPos.z);
       const hardwarePos = displayPositionToHardware(x, y, z, displayOrientation);
 
       cubie.getWorldQuaternion(cubieWorldQuaternion);
       cubieToCubeQuaternion.copy(cubeRootWorldQuaternionInverse).multiply(cubieWorldQuaternion).normalize();
 
-      cubie.traverse((child) => {
-        const sticker = child as Partial<StickerMesh>;
-        const localFace = sticker.userData?.stickerLocalFace;
-        if (!localFace || !(child instanceof THREE.Mesh) || !(child.material instanceof THREE.MeshBasicMaterial)) return;
-
+      cubie.userData.faces.forEach(({ localFace, sticker, projectionSticker }) => {
         stickerNormal.copy(FACE_VECTOR[localFace]).applyQuaternion(cubieToCubeQuaternion).normalize();
         const displayFace = vectorToFace(stickerNormal);
         const hardwareFace = displayFaceToHardware(displayFace, displayOrientation);
@@ -885,7 +945,9 @@ export function mountSmartCube(
         const rawFace = toCubeFace(facelet);
         if (!rawFace) return;
 
-        paintSticker(child as StickerMesh, colorForHardwareFace(rawFace), rawFace);
+        const color = colorForHardwareFace(rawFace);
+        paintSticker(sticker, color, rawFace);
+        if (projectionSticker) paintSticker(projectionSticker, color, rawFace);
       });
     });
     refreshStickerDisplayColors();
@@ -951,28 +1013,30 @@ export function mountSmartCube(
 
     cubeRoot.remove(pivot);
     current = null;
-    refreshStickerDisplayColors();
     projectionBorderVisibilityDirty = true;
   }
 
   function hasActiveRenderWork() {
-    return !!current || queue.length > 0 || dragging || gyroActive ||
+    return !!current || queue.length > 0 || gyroActive ||
       (animateHintArrow && hintArrow.group.visible) || autoRotateDegPerSecond !== 0;
   }
 
   function updateProjectionBorderVisibility() {
     if (!showBackFaceProjection || !projectionBorderVisibilityDirty) return;
-    // Mirror THREE.BackSide culling for the line-segment borders: only show a
-    // border when its face's outward normal points away from the camera, i.e.
-    // the face belongs to the back half of the cube.
-    projectionBorders.forEach(({ object, cubie, localNormal }) => {
-      cubie.getWorldQuaternion(projectionBorderCubieQuaternion);
-      projectionBorderWorldNormal
-        .copy(localNormal)
-        .applyQuaternion(projectionBorderCubieQuaternion);
-      object.getWorldPosition(projectionBorderWorldPosition);
-      projectionBorderCameraOffset.subVectors(projectionBorderWorldPosition, camera.position);
-      object.visible = projectionBorderCameraOffset.dot(projectionBorderWorldNormal) > 0;
+    projectionCubies.forEach((cubie) => {
+      cubie.getWorldQuaternion(projectionCubieQuaternion);
+      cubie.userData.faces.forEach(({ localNormal, projectionSticker, projectionBorder }) => {
+        if (!projectionSticker || !projectionBorder) return;
+        projectionWorldNormal.copy(localNormal).applyQuaternion(projectionCubieQuaternion);
+        projectionWorldPosition
+          .copy(localNormal)
+          .multiplyScalar(backFaceProjectionDistance)
+          .applyMatrix4(cubie.matrixWorld);
+        projectionCameraOffset.subVectors(projectionWorldPosition, camera.position);
+        const visible = projectionCameraOffset.dot(projectionWorldNormal) > 0;
+        projectionSticker.visible = visible;
+        projectionBorder.visible = visible;
+      });
     });
     projectionBorderVisibilityDirty = false;
   }
@@ -1356,10 +1420,12 @@ export function mountSmartCube(
     },
     setFacelets(facelets) {
       if (!isValidFacelets(facelets)) return false;
+      const requiresTopologyRebuild = transparentFormulaFacelets && Boolean(formulaFacelets);
       formulaFacelets = null;
       queue.length = 0;
       if (current) finishCurrent();
-      repaintCubies(facelets);
+      if (requiresTopologyRebuild) rebuildCubies(facelets);
+      else repaintCubies(facelets);
       requestRender();
       return true;
     },
@@ -1369,7 +1435,6 @@ export function mountSmartCube(
       queue.length = 0;
       if (current) finishCurrent();
       rebuildCubies();
-      refreshStickerDisplayColors();
       requestRender();
       return true;
     },
@@ -1410,9 +1475,10 @@ export function mountSmartCube(
     reset() {
       queue.length = 0;
       if (current) finishCurrent();
+      const requiresTopologyRebuild = transparentFormulaFacelets && Boolean(formulaFacelets);
       formulaFacelets = null;
-      rebuildCubies();
-      refreshStickerDisplayColors();
+      if (requiresTopologyRebuild) rebuildCubies();
+      else resetCubiesInPlace();
       requestRender();
     },
     setLowerLayerDimmed(dimmed) {
@@ -1427,7 +1493,6 @@ export function mountSmartCube(
       queue.length = 0;
       if (current) finishCurrent();
       rebuildCubies();
-      refreshStickerDisplayColors();
       requestRender();
     },
     setBackFaceProjectionDistance(distance) {
@@ -1457,7 +1522,10 @@ export function mountSmartCube(
       cubies.forEach((cubie) => disposeCubie(cubie));
       cubies.length = 0;
       projectionSurfaces.length = 0;
-      projectionBorders.length = 0;
+      projectionCubies.length = 0;
+      cubieGeometries.body.dispose();
+      cubieGeometries.sticker.dispose();
+      cubieGeometries.projectionBorder.dispose();
       hintArrow.geometries.forEach((geom) => geom.dispose());
       hintArrow.material.dispose();
       renderer.dispose();

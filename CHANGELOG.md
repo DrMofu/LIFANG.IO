@@ -1,6 +1,11 @@
 ## v0.1.4 (working)
 
 
+IMPROVEMENTS:
+- 优化渲染计算
+- 调整部分公式
+
+
 ## v0.1.3 (26.08.05)
 
 FEATURES:
@@ -14,7 +19,7 @@ BUG FIXES:
 - 修复公式研究模式中进行旋转操作M/S/E后，面映射错误的问题
 - 修复部分ESLint Warning
 
-## v0.1.2
+## v0.1.2 (26.07.29)
 
 IMPROVEMENTS:
 - 调整移动端布局

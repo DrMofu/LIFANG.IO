@@ -308,6 +308,10 @@ function isLearningStatusFilter(value: unknown): value is LearningStatusFilter {
   return value === "all" || isLearningStatus(value);
 }
 
+function isOllShapeFilter(value: unknown): value is OllShapeFilter {
+  return OLL_SHAPE_OPTIONS.some((shape) => shape === value);
+}
+
 function isFormulaStats(value: unknown): value is FormulaStats {
   return (
     typeof value === "object" &&
@@ -541,10 +545,17 @@ function getDefaultFormulaState() {
     activeKey: formulaVariantKey(FORMULAS.pll.items[0].id, "main"),
     showFavOnly: false,
     statusFilter: "all" as LearningStatusFilter,
+    ollShapeFilter: "all" as OllShapeFilter,
   };
 }
 
-function readFormulaState(): { cat: FormulaViewKey; activeKey: string; showFavOnly: boolean; statusFilter: LearningStatusFilter } | null {
+function readFormulaState(): {
+  cat: FormulaViewKey;
+  activeKey: string;
+  showFavOnly: boolean;
+  statusFilter: LearningStatusFilter;
+  ollShapeFilter: OllShapeFilter;
+} | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(getArchiveScopedStorageKey(STATE_KEY));
@@ -557,13 +568,16 @@ function readFormulaState(): { cat: FormulaViewKey; activeKey: string; showFavOn
     ) {
       const showFavOnly = typeof parsed.showFavOnly === "boolean" ? parsed.showFavOnly : false;
       const statusFilter = isLearningStatusFilter(parsed.statusFilter) ? parsed.statusFilter : "all";
+      const ollShapeFilter = isOllShapeFilter(parsed.ollShapeFilter) ? parsed.ollShapeFilter : "all";
       if (parsed.cat === "favorites") {
-        return parsed.activeId.includes(":") ? { cat: "favorites", activeKey: parsed.activeId, showFavOnly, statusFilter } : null;
+        return parsed.activeId.includes(":")
+          ? { cat: "favorites", activeKey: parsed.activeId, showFavOnly, statusFilter, ollShapeFilter }
+          : null;
       }
       if (!(parsed.cat in FORMULAS)) return null;
       const cat = parsed.cat as FormulaKey;
       if (hasFormulaVariantKey(cat, parsed.activeId)) {
-        return { cat, activeKey: parsed.activeId, showFavOnly, statusFilter };
+        return { cat, activeKey: parsed.activeId, showFavOnly, statusFilter, ollShapeFilter };
       }
     }
   } catch {
@@ -572,7 +586,13 @@ function readFormulaState(): { cat: FormulaViewKey; activeKey: string; showFavOn
   return null;
 }
 
-function saveFormulaState(state: { cat: FormulaViewKey; activeKey: string; showFavOnly: boolean; statusFilter: LearningStatusFilter }) {
+function saveFormulaState(state: {
+  cat: FormulaViewKey;
+  activeKey: string;
+  showFavOnly: boolean;
+  statusFilter: LearningStatusFilter;
+  ollShapeFilter: OllShapeFilter;
+}) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(getArchiveScopedStorageKey(STATE_KEY), JSON.stringify({
@@ -580,6 +600,7 @@ function saveFormulaState(state: { cat: FormulaViewKey; activeKey: string; showF
       activeId: state.activeKey,
       showFavOnly: state.showFavOnly,
       statusFilter: state.statusFilter,
+      ollShapeFilter: state.ollShapeFilter,
     }));
   } catch {
     // local storage may be unavailable
@@ -874,11 +895,11 @@ function FormulaStage({
   function setPreviewStartState() {
     const cube = cubeApiRef.current;
     if (!cube) return;
-    cube.reset();
     if (displayFacelets) {
       cube.setFormulaFacelets(displayFacelets);
       return;
     }
+    cube.reset();
     if (!shouldSolveToReset) return;
     setupMoves.forEach((move) => {
       cube.applyMoves(expandMoveNotation(move), 0);
@@ -1243,7 +1264,7 @@ function FormulaStage({
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [algoMoves, backFaceProjectionDistance, backFaceProjectionEnabled, canUseFocusMode, displayFacelets, faceColors, orientation, renderMaxFps, setupMoves, shouldSolveToReset]);
+  }, [algoMoves, backFaceProjectionEnabled, canUseFocusMode, displayFacelets, faceColors, orientation, renderMaxFps, setupMoves, shouldSolveToReset]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -1810,7 +1831,7 @@ export function FormulasApp() {
   const [learningStatuses, setLearningStatuses] = useState<Record<string, LearningStatus>>({});
   const [averageSettings, setAverageSettings] = useState<AverageTimeSettings>(DEFAULT_AVERAGE_TIME_SETTINGS);
   const [statusFilter, setStatusFilter] = useState<LearningStatusFilter>(initialFormulaState.statusFilter);
-  const [ollShapeFilter, setOllShapeFilter] = useState<OllShapeFilter>("all");
+  const [ollShapeFilter, setOllShapeFilter] = useState<OllShapeFilter>(initialFormulaState.ollShapeFilter);
   const [showFavOnly, setShowFavOnly] = useState(initialFormulaState.showFavOnly);
   const [formulaTip, setFormulaTip] = useState<FormulaTip | null>(null);
   const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(() => new Set());
@@ -1856,7 +1877,7 @@ export function FormulasApp() {
       setActiveKey(saved.activeKey);
       setShowFavOnly(saved.showFavOnly);
       setStatusFilter(saved.statusFilter);
-      setOllShapeFilter("all");
+      setOllShapeFilter(saved.ollShapeFilter);
       setFilter("");
       setFormulaTip(null);
       setExpandedCaseIds(new Set());
@@ -1878,8 +1899,8 @@ export function FormulasApp() {
 
   useEffect(() => {
     if (!archiveDataReady) return;
-    saveFormulaState({ cat, activeKey, showFavOnly, statusFilter });
-  }, [archiveDataReady, cat, activeKey, showFavOnly, statusFilter]);
+    saveFormulaState({ cat, activeKey, showFavOnly, statusFilter, ollShapeFilter });
+  }, [archiveDataReady, cat, activeKey, showFavOnly, statusFilter, ollShapeFilter]);
 
   useEffect(() => {
     if (!archiveDataReady) return;
@@ -1906,7 +1927,6 @@ export function FormulasApp() {
     const firstVariant = nextItems[0]?.variants[0];
     if (firstVariant) setActiveKey(firstVariant.key);
     setFilter("");
-    setOllShapeFilter("all");
     if (nextCat === "favorites") setShowFavOnly(false);
   }
 

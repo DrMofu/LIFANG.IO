@@ -72,7 +72,7 @@ export function HomeLandingApp() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, orientation, renderMaxFps, restoreVisualCubeState]);
+  }, [backFaceProjectionEnabled, faceColors, orientation, renderMaxFps, restoreVisualCubeState]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);

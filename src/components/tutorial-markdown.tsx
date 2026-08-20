@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TutorialAlgorithmPlayer } from "@/components/tutorial-algorithm-player";
 import { TutorialCubePlayground } from "@/components/tutorial-cube-playground";
 import { TutorialCubeStage } from "@/components/tutorial-cube-stage";
 import { TutorialNotationGallery } from "@/components/tutorial-notation-gallery";
@@ -10,6 +11,9 @@ type TutorialWidgetProps = Record<string, string>;
 type TutorialWidgetRenderer = (props: TutorialWidgetProps) => ReactNode;
 
 const TUTORIAL_WIDGETS: Record<string, TutorialWidgetRenderer> = {
+  "algorithm-player": ({ title, algorithm, note }) => (
+    <TutorialAlgorithmPlayer title={title} algorithm={algorithm} note={note} />
+  ),
   "cube-playground": () => <TutorialCubePlayground />,
   "cube-stage": ({ stage }) => <TutorialCubeStage stage={stage} />,
   "notation-gallery": ({ group }) => <TutorialNotationGallery group={group} />,

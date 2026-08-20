@@ -7,7 +7,7 @@
   "locales": {
     "zh-CN": {
       "title": "三阶魔方层先法教程",
-      "description": "从认识块的位置开始，用尽量少的公式依次完成白色十字、前两层和黄色顶层，第一次完整复原三阶魔方。",
+      "description": "从白色小花到完整复原：配合 3D 步骤图、公式动画与检查清单的新手层先法教程",
       "contentFile": "article.zh-CN.md"
     }
   },

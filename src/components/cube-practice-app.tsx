@@ -81,7 +81,7 @@ import {
 import { touchLocalUserDataPackageUpdatedAt } from "@/lib/user-data-package";
 import type { FormulaRecognitionResult } from "@/lib/formula-recognition";
 
-const SCRAMBLE_MOVES: CubeFace[] = ["U", "D", "L", "R", "F"];
+const SCRAMBLE_MOVES: CubeFace[] = ["U", "D", "L", "R", "F", "B"];
 const SCRAMBLE_AXES: Record<CubeFace, "ud" | "lr" | "fb"> = {
   U: "ud",
   D: "ud",
@@ -2141,7 +2141,7 @@ export function CubePracticeApp() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance, getInitialVisualCubeState, getLatestGyro]);
+  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled, getInitialVisualCubeState, getLatestGyro]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);

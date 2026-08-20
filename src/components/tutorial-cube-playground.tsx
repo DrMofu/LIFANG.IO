@@ -81,12 +81,15 @@ export function TutorialCubePlayground() {
       setCubeApi((current) => current === api ? null : current);
     };
   }, [
-    backFaceProjectionDistance,
     backFaceProjectionEnabled,
     faceColors,
     orientation,
     renderMaxFps,
   ]);
+
+  useEffect(() => {
+    cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
+  }, [backFaceProjectionDistance]);
 
   useEffect(() => {
     if (!cubeApi) return;

@@ -13,12 +13,14 @@ type TutorialStaticCubeProps = {
   hintMove?: string;
   transparentFormulaFacelets?: boolean;
   cameraDistance?: number;
+  cameraLatitude?: number;
   className?: string;
   sizes?: string;
 };
 
 const FACE_ORDER: CubeFace[] = ["U", "R", "F", "D", "L", "B"];
 const SNAPSHOT_CACHE_LIMIT = 160;
+const SNAPSHOT_PRELOAD_MARGIN_PX = 600;
 const snapshotCache = new Map<string, string>();
 let snapshotQueue: Promise<void> = Promise.resolve();
 
@@ -42,6 +44,7 @@ function snapshotKey({
   hintMove,
   transparentFormulaFacelets,
   cameraDistance,
+  cameraLatitude,
 }: TutorialStaticCubeProps) {
   const colors = FACE_ORDER.map((face) => faceColors[face]).join("|");
   return [
@@ -49,6 +52,7 @@ function snapshotKey({
     formulaFacelets ?? "",
     transparentFormulaFacelets ? "transparent" : "solid",
     String(cameraDistance ?? CUBE_CAMERA_PRESETS.formulas.displayState.cameraDistance),
+    String(cameraLatitude ?? CUBE_CAMERA_PRESETS.formulas.displayState.cameraLatitude),
     orientation.top,
     orientation.front,
     colors,
@@ -63,18 +67,41 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
     hintMove,
     transparentFormulaFacelets = false,
     cameraDistance = CUBE_CAMERA_PRESETS.formulas.displayState.cameraDistance,
+    cameraLatitude = CUBE_CAMERA_PRESETS.formulas.displayState.cameraLatitude,
     className,
     sizes = "240px",
   } = props;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const key = snapshotKey(props);
+  const [requestedKey, setRequestedKey] = useState<string | null>(null);
   const [renderedSnapshot, setRenderedSnapshot] = useState<{ key: string; src: string } | null>(null);
   const snapshot = renderedSnapshot?.key === key
     ? renderedSnapshot.src
     : snapshotCache.get(key) ?? null;
 
   useEffect(() => {
+    setRequestedKey(null);
     if (snapshotCache.has(key)) return;
+
+    const target = mountRef.current?.parentElement;
+    if (!target || typeof IntersectionObserver === "undefined") {
+      setRequestedKey(key);
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      setRequestedKey(key);
+      observer.disconnect();
+    }, {
+      rootMargin: `${SNAPSHOT_PRELOAD_MARGIN_PX}px 0px`,
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [key]);
+
+  useEffect(() => {
+    if (requestedKey !== key || snapshotCache.has(key)) return;
 
     let cancelled = false;
     let api: SmartCubeApi | null = null;
@@ -113,6 +140,7 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
             defaultDisplayState: {
               ...CUBE_CAMERA_PRESETS.formulas.displayState,
               cameraDistance,
+              cameraLatitude,
             },
             onFirstRender(canvas) {
               const dataUrl = canvas.toDataURL("image/png");
@@ -134,10 +162,12 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
   }, [
     faceColors,
     cameraDistance,
+    cameraLatitude,
     formulaFacelets,
     hintMove,
     key,
     orientation,
+    requestedKey,
     transparentFormulaFacelets,
   ]);
 

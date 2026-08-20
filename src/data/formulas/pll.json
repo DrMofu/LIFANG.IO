@@ -428,7 +428,7 @@
         {
           "id": "pll-nb-2",
           "name": "公式二",
-          "algo": "(R' U R U') R' (F' U' F) (R U R' F) R' F' (R U' R)"
+          "algo": "(R' U R U') (R' F' U' F) (R U R' F) R' F' (R U' R)"
         }
       ],
       "facelets": "UUUUUUUUULLRRRRRRRFFBFFFFFFDDDDDDDDDRRLLLLLLLBBFBBBBBB",

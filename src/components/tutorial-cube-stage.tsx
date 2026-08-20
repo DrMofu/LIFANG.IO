@@ -9,6 +9,7 @@ type CubeStageId =
   | "piece-types"
   | "white-daisy"
   | "white-cross"
+  | "white-cross-check"
   | "first-layer-corner-cases"
   | "first-layer"
   | "middle-edge-cases"
@@ -26,6 +27,7 @@ type CubeStageItem = {
   label: string;
   note: string;
   facelets: string;
+  cameraLatitude?: number;
 };
 
 type CubeStageGroup = {
@@ -147,23 +149,53 @@ const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
       ]),
     }],
   },
+  "white-cross-check": {
+    label: "白色十字的正确与错误",
+    items: [
+      {
+        label: "正确：白棱侧色也对齐",
+        note: "白色朝上只是第一项检查；四颗棱块的侧面颜色还要分别连接同色中心。",
+        facelets: createFacelets(WHITE_TOP_CENTERS, [
+          ["D", [1, 3, 4, 5, 7]],
+          ["F", [19]],
+          ["R", [10]],
+          ["L", [37]],
+          ["B", [46]],
+        ]),
+      },
+      {
+        label: "错误：只拼出白色图案",
+        note: "白色十字虽然完整，但前、右两颗棱块放错了位置，必须重新按中心颜色对齐。",
+        facelets: createFacelets(WHITE_TOP_CENTERS, [
+          ["D", [1, 3, 4, 5, 7]],
+          ["R", [19]],
+          ["F", [10]],
+          ["L", [37]],
+          ["B", [46]],
+        ]),
+      },
+    ],
+  },
   "first-layer-corner-cases": {
     label: "白色角块的三种朝向",
     items: [
       {
         label: "白色朝右",
-        note: "把目标角放在右前位置，完整重复四步手法直到归位。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["F", [8]], ["D", [9]], ["R", [20]]]),
+        note: "目标角在右前下方；完整重复四步手法，直到它进入正上方的槽位。",
+        facelets: createFacelets(WHITE_TOP_CENTERS, [["F", [29]], ["D", [15]], ["R", [26]]]),
+        cameraLatitude: -28,
       },
       {
         label: "白色朝前",
         note: "仍然使用同一手法，不需要记另一条角块公式。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["R", [8]], ["F", [9]], ["D", [20]]]),
+        facelets: createFacelets(WHITE_TOP_CENTERS, [["R", [29]], ["F", [15]], ["D", [26]]]),
+        cameraLatitude: -28,
       },
       {
-        label: "白色朝上",
-        note: "如果方向或位置错误，先用四步手法把它移出，再重新插入。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["D", [8]], ["R", [9]], ["F", [20]]]),
+        label: "白色朝下",
+        note: "白色在底面时会多重复几组；每组四步都必须完整做完。",
+        facelets: createFacelets(WHITE_TOP_CENTERS, [["D", [29]], ["R", [15]], ["F", [26]]]),
+        cameraLatitude: -28,
       },
     ],
   },
@@ -191,7 +223,7 @@ const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
       },
       {
         label: "目标槽在左边",
-        note: "另一种颜色属于左面；可水平转动整颗魔方，把目标槽换到右前方。",
+        note: "另一种颜色属于左面；保持当前正面，使用向左插入的镜像公式。",
         facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_LAYER_BOTTOM, ["F", [19]], ["L", [7]]]),
       },
     ],
@@ -233,12 +265,19 @@ const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
     }],
   },
   "yellow-edge-check": {
-    label: "检查黄色棱块",
-    items: [{
-      label: "两颗相邻棱块已对齐",
-      note: "图中前面与右面的上层棱块都和中心同色；另外两颗需要循环换位。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_CROSS, ["F", [19]], ["R", [10]]]),
-    }],
+    label: "黄色棱块的两种待处理情形",
+    items: [
+      {
+        label: "两颗相邻棱块对齐",
+        note: "图中先找到了前面与右面；执行前水平转动整颗魔方，把它们移到右面与后面。",
+        facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_CROSS, ["F", [19]], ["R", [10]]]),
+      },
+      {
+        label: "两颗相对棱块对齐",
+        note: "先从任意方向执行一次公式，重新转动 U 检查，通常会变成相邻情形。",
+        facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_CROSS, ["F", [19]], ["B", [46]]]),
+      },
+    ],
   },
   "yellow-edges": {
     label: "黄色棱块归位",
@@ -250,16 +289,28 @@ const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
   },
   "yellow-corner-check": {
     label: "检查黄色角块的位置",
-    items: [{
-      label: "右前角位置正确但方向未正",
-      note: "这颗角块包含黄、橙、绿三色，正好属于三个同色中心围成的角落。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [
-        ...YELLOW_EDGES,
-        ["R", [8]],
-        ["F", [9]],
-        ["U", [20]],
-      ]),
-    }],
+    items: [
+      {
+        label: "位置正确，方向可以暂时不对",
+        note: "这颗角的三种颜色与周围三个中心相同，所以它已经属于这个角落。",
+        facelets: createFacelets(YELLOW_TOP_CENTERS, [
+          ...YELLOW_EDGES,
+          ["R", [8]],
+          ["F", [9]],
+          ["U", [20]],
+        ]),
+      },
+      {
+        label: "位置错误，黄色朝上也不算完成",
+        note: "角块含有不属于这个角落的颜色；判断位置时要同时看完三种颜色。",
+        facelets: createFacelets(YELLOW_TOP_CENTERS, [
+          ...YELLOW_EDGES,
+          ["U", [8]],
+          ["R", [9]],
+          ["B", [20]],
+        ]),
+      },
+    ],
   },
   "yellow-corners": {
     label: "黄色角块归位",
@@ -318,6 +369,7 @@ function StageCube({
       className="tutorial-stage-cube-render"
       formulaFacelets={item.facelets}
       cameraDistance={6.4}
+      cameraLatitude={item.cameraLatitude}
       faceColors={faceColors}
       orientation={orientation}
       sizes="(max-width: 560px) 44vw, 190px"

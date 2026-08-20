@@ -238,7 +238,8 @@ export function hintMoveForDoubleTurnProgress(pendingMoves: string[], expectedMo
   const actual = moveToAtom(compressed[0]);
   if (!actual || (actual.amount !== 1 && actual.amount !== 3)) return expectedMove;
   if (actual.layer !== expected.layer && !faceMoveCanEmulateWide(actual, expected)) return expectedMove;
-  return formatMove(actual.layer, actual.amount);
+  const hintLayer = faceMoveCanEmulateWide(actual, expected) ? expected.layer : actual.layer;
+  return formatMove(hintLayer, actual.amount);
 }
 
 export function shouldAnimateExpectedWideMoveAfterMatch(pendingMoves: string[], expectedMove: string) {

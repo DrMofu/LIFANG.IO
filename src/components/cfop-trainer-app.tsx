@@ -547,7 +547,11 @@ export function CfopTrainerApp() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, getLatestGyro, orientation, renderMaxFps, renderTrainerCubeFacelets]);
+  }, [backFaceProjectionEnabled, faceColors, getLatestGyro, orientation, renderMaxFps, renderTrainerCubeFacelets]);
+
+  useEffect(() => {
+    cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
+  }, [backFaceProjectionDistance]);
 
   const resetDisplayOrientation = useCallback(() => {
     cubeApiRef.current?.resetDisplayOrientation();
