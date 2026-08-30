@@ -19,6 +19,11 @@ export type CubeDisplayState = {
   cameraLongitude: number;
 };
 
+export type CubeCameraDistanceRange = {
+  min: number;
+  max: number;
+};
+
 export type CubeCameraViewportInsets = {
   top?: number;
   right?: number;
@@ -596,11 +601,13 @@ export type SmartCubeOptions = {
   compensateInitialGyroOffset?: boolean;
   interactionLocked?: boolean;
   wheelZoomEnabled?: boolean;
+  preserveDrawingBuffer?: boolean;
   animateHintArrow?: boolean;
   initialHintMove?: string | null;
   showBackFaceProjection?: boolean;
   transparentFormulaFacelets?: boolean;
   backFaceProjectionDistance?: number;
+  cameraDistanceRange?: Partial<CubeCameraDistanceRange>;
   defaultDisplayState?: Partial<CubeDisplayState> | null;
   initialDisplayState?: CubeDisplayState | null;
   initialFacelets?: string | null;
@@ -651,6 +658,14 @@ export function mountSmartCube(
   const compensateInitialGyroOffset = options.compensateInitialGyroOffset ?? true;
   const wheelZoomEnabled = options.wheelZoomEnabled ?? true;
   const animateHintArrow = options.animateHintArrow ?? true;
+  const minCameraDistance = Math.max(
+    0.1,
+    finiteOrDefault(options.cameraDistanceRange?.min, MIN_CAMERA_DISTANCE),
+  );
+  const maxCameraDistance = Math.max(
+    minCameraDistance,
+    finiteOrDefault(options.cameraDistanceRange?.max, MAX_CAMERA_DISTANCE),
+  );
 
   const scene = new THREE.Scene();
   scene.background = null;
@@ -660,8 +675,8 @@ export function mountSmartCube(
   const defaultDisplayState: CubeDisplayState = {
     cameraDistance: clamp(
       finiteOrDefault(options.defaultDisplayState?.cameraDistance, DEFAULT_CAMERA_DISTANCE),
-      MIN_CAMERA_DISTANCE,
-      MAX_CAMERA_DISTANCE,
+      minCameraDistance,
+      maxCameraDistance,
     ),
     cameraLatitude: clamp(
       finiteOrDefault(options.defaultDisplayState?.cameraLatitude, DEFAULT_CAMERA_LATITUDE),
@@ -711,7 +726,7 @@ export function mountSmartCube(
   }
 
   function applyCameraDistance(distance: number) {
-    const nextDistance = clamp(distance, MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE);
+    const nextDistance = clamp(distance, minCameraDistance, maxCameraDistance);
     const changed = Math.abs(nextDistance - cameraDistance) > 0.001;
     if (!changed) return false;
     cameraDistance = nextDistance;
@@ -735,8 +750,8 @@ export function mountSmartCube(
   if (options.initialDisplayState) {
     cameraDistance = clamp(
       finiteOrDefault(options.initialDisplayState.cameraDistance, defaultDisplayState.cameraDistance),
-      MIN_CAMERA_DISTANCE,
-      MAX_CAMERA_DISTANCE,
+      minCameraDistance,
+      maxCameraDistance,
     );
     cameraLatitude = clamp(
       finiteOrDefault(options.initialDisplayState.cameraLatitude, defaultDisplayState.cameraLatitude),
@@ -749,7 +764,11 @@ export function mountSmartCube(
   }
   applyCameraOrbit();
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
+  });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(container.clientWidth, container.clientHeight);
   applyCameraViewport(Math.max(container.clientWidth, 1), Math.max(container.clientHeight, 1));

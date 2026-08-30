@@ -1,10 +1,11 @@
 export function fmtTime(ms: number | null) {
-  if (ms == null) return "--:--.--";
-  const total = ms / 1000;
-  const minutes = Math.floor(total / 60);
-  const seconds = Math.floor(total % 60);
-  const centiseconds = Math.floor((ms % 1000) / 10);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
+  if (ms == null) return "--.--";
+  const elapsedMs = Math.max(0, ms);
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const centiseconds = Math.floor((elapsedMs % 1000) / 10);
+  const secondsWithFraction = `${String(totalSeconds % 60).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
+  if (totalSeconds < 60) return secondsWithFraction;
+  return `${Math.floor(totalSeconds / 60)}:${secondsWithFraction}`;
 }
 
 export function fmtShort(ms: number | null) {

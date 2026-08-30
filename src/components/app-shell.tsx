@@ -437,24 +437,24 @@ export function CompactConnectButton() {
         <div className="top-connect-grid">
           <div className="top-connect-section">
             <div className="top-connect-title">{t("connection.device")}</div>
-            <TopInfoRow label="Name" value={connectionInfo.deviceName} />
-            <TopInfoRow label="MAC" value={connectionInfo.deviceMAC} />
-            <TopInfoRow label="Battery" value={connectionInfo.batteryLevel == null ? "—" : `${connectionInfo.batteryLevel}%`} />
-            <TopInfoRow label="Protocol" value={connectionInfo.protocol} />
-            <TopInfoRow label="Hardware" value={connectionInfo.hardwareName} />
-            <TopInfoRow label="HW Version" value={connectionInfo.hardwareVersion} />
-            <TopInfoRow label="SW Version" value={connectionInfo.softwareVersion} />
-            <TopInfoRow label="Product Date" value={connectionInfo.productDate} />
-            <TopInfoRow label="Gyro" value={connectionInfo.gyroSupported} />
-            <TopInfoRow label="Facelets" value={facelets ? "READY" : "—"} />
+            <TopInfoRow label={t("connection.field.name")} value={connectionInfo.deviceName} />
+            <TopInfoRow label={t("connection.field.mac")} value={connectionInfo.deviceMAC} />
+            <TopInfoRow label={t("connection.field.battery")} value={connectionInfo.batteryLevel == null ? "—" : `${connectionInfo.batteryLevel}%`} />
+            <TopInfoRow label={t("connection.field.protocol")} value={connectionInfo.protocol} />
+            <TopInfoRow label={t("connection.field.hardware")} value={connectionInfo.hardwareName} />
+            <TopInfoRow label={t("connection.field.hardwareVersion")} value={connectionInfo.hardwareVersion} />
+            <TopInfoRow label={t("connection.field.softwareVersion")} value={connectionInfo.softwareVersion} />
+            <TopInfoRow label={t("connection.field.productDate")} value={connectionInfo.productDate} />
+            <TopInfoRow label={t("connection.field.gyro")} value={connectionInfo.gyroSupported} />
+            <TopInfoRow label={t("connection.field.facelets")} value={facelets ? "READY" : "—"} />
           </div>
           <div className="top-connect-section">
             <div className="top-connect-title">{t("connection.telemetry")}</div>
-            <TopInfoRow label="Last Move" value={telemetry.lastMove} />
-            <TopInfoRow label="Updated" value={telemetry.updatedAt} />
-            <TopInfoRow label="Clock Skew" value={telemetry.clockSkew} />
-            <TopVectorGrid label="Quaternion" parts={quaternionParts} fallback={telemetry.quaternion} />
-            <TopInfoRow label="Angular Velocity" value={telemetry.angularVelocity} />
+            <TopInfoRow label={t("connection.field.lastMove")} value={telemetry.lastMove} />
+            <TopInfoRow label={t("connection.field.updated")} value={telemetry.updatedAt} />
+            <TopInfoRow label={t("connection.field.clockSkew")} value={telemetry.clockSkew} />
+            <TopVectorGrid label={t("connection.field.quaternion")} parts={quaternionParts} fallback={telemetry.quaternion} />
+            <TopInfoRow label={t("connection.field.angularVelocity")} value={telemetry.angularVelocity} />
             {connectionInfo.error && <div className="top-connect-error">{connectionInfo.error}</div>}
             {connected && (
               <div className="top-connect-actions">

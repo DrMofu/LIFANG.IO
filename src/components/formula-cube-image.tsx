@@ -10,6 +10,8 @@ type FormulaCubeImageProps = {
   faceColors: Record<CubeFace, string>;
   className?: string;
   title?: string;
+  displayMode?: "full" | "last-layer";
+  highlightedFacelets?: number[];
 };
 
 type FormulaTopViewImageProps = FormulaCubeImageProps & {
@@ -304,33 +306,80 @@ function generateTopViewImage(facelets: string, faceColors: Record<CubeFace, str
   return dataUrl;
 }
 
-export function FormulaCubeImage({ facelets: rawFacelets, faceColors, className, title }: FormulaCubeImageProps) {
+export function FormulaCubeImage({
+  facelets: rawFacelets,
+  faceColors,
+  className,
+  title,
+  displayMode = "full",
+  highlightedFacelets = [],
+}: FormulaCubeImageProps) {
   const facelets = rawFacelets.padEnd(54, UNKNOWN_FACELET);
+  const highlighted = new Set(highlightedFacelets);
   const faces = [
-    { key: "top", origin: TOP_ORIGIN, u: TOP_U, v: TOP_V, offset: 0 },
-    { key: "front", origin: FRONT_ORIGIN, u: FRONT_U, v: FRONT_V, offset: 18 },
-    { key: "right", origin: RIGHT_ORIGIN, u: RIGHT_U, v: RIGHT_V, offset: 9 },
+    { key: "top", origin: TOP_ORIGIN, u: TOP_U, v: TOP_V, offset: 0, visibleRows: 3 },
+    {
+      key: "front",
+      origin: FRONT_ORIGIN,
+      u: FRONT_U,
+      v: FRONT_V,
+      offset: 18,
+      visibleRows: displayMode === "last-layer" ? 1 : 3,
+    },
+    {
+      key: "right",
+      origin: RIGHT_ORIGIN,
+      u: RIGHT_U,
+      v: RIGHT_V,
+      offset: 9,
+      visibleRows: displayMode === "last-layer" ? 1 : 3,
+    },
   ];
+  const visibleFacelets = faces.flatMap((face) =>
+    Array.from({ length: face.visibleRows * 3 }, (_, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      return {
+        key: `${face.key}-${index}`,
+        faceletIndex: face.offset + index,
+        points: pointsToString(cellPoints(face.origin, face.u, face.v, col, row)),
+      };
+    }),
+  );
 
   return (
-    <svg className={className} viewBox="0 0 100 92" role={title ? "img" : "presentation"} aria-label={title}>
+    <svg
+      className={className}
+      viewBox={displayMode === "last-layer" ? "0 0 100 66" : "0 0 100 92"}
+      role={title ? "img" : "presentation"}
+      aria-label={title}
+    >
       {title && <title>{title}</title>}
-      {faces.map((face) =>
-        Array.from({ length: 9 }, (_, index) => {
-          const row = Math.floor(index / 3);
-          const col = index % 3;
-          return (
+      {visibleFacelets.map((facelet) => (
+        <polygon
+          key={facelet.key}
+          points={facelet.points}
+          fill={colorForFacelet(facelets[facelet.faceletIndex], faceColors)}
+          stroke={STROKE_COLOR}
+          strokeWidth="1.15"
+          strokeLinejoin="round"
+        />
+      ))}
+      <g aria-hidden="true" pointerEvents="none">
+        {visibleFacelets
+          .filter((facelet) => highlighted.has(facelet.faceletIndex))
+          .map((facelet) => (
             <polygon
-              key={`${face.key}-${index}`}
-              points={pointsToString(cellPoints(face.origin, face.u, face.v, col, row))}
-              fill={colorForFacelet(facelets[face.offset + index], faceColors)}
-              stroke={STROKE_COLOR}
-              strokeWidth="1.15"
+              key={`highlight-${facelet.key}`}
+              points={facelet.points}
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2.3"
               strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 0 1.6px #2f6ff2)" }}
             />
-          );
-        }),
-      )}
+          ))}
+      </g>
     </svg>
   );
 }

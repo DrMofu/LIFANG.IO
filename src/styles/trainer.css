@@ -1,252 +1,379 @@
-.lf-trainer-app .trainer-phase-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
+.trainer-focus-app .trainer-left,
+.trainer-focus-app .trainer-right {
+  gap: 14px;
 }
 
-.lf-trainer-app .trainer-phase-btn {
+.trainer-focus-app .trainer-case-card,
+.trainer-focus-app .trainer-summary-card {
+  flex: 0 0 auto;
+}
+
+.trainer-focus-app .trainer-settings-panel {
+  gap: 10px;
+}
+
+.trainer-focus-app .trainer-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.trainer-focus-app .trainer-phase-btn {
   display: grid;
   min-width: 0;
-  min-height: 64px;
+  min-height: 58px;
   place-items: center;
-  border: 1px solid var(--tech-line);
+  border: 1px solid rgba(205, 220, 242, 0.78);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
-  color: var(--tech-muted);
+  background: #ffffff;
+  color: #8495b1;
   cursor: pointer;
 }
 
-.lf-trainer-app .trainer-phase-btn b {
-  color: var(--tech-ink);
-  font-size: 21px;
-  font-weight: 950;
+.trainer-focus-app .trainer-phase-btn b {
+  color: #19386f;
+  font-family: var(--timer-number);
+  font-size: 18px;
+  font-weight: 900;
   line-height: 1;
 }
 
-.lf-trainer-app .trainer-phase-btn span {
+.trainer-focus-app .trainer-phase-btn span {
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
-.lf-trainer-app .trainer-phase-btn.active {
-  border-color: rgba(47, 111, 242, 0.42);
-  background: linear-gradient(145deg, #3d7cff, #2363e8);
+.trainer-focus-app .trainer-phase-btn:hover {
+  border-color: rgba(47, 111, 242, 0.28);
+  background: #f3f7ff;
+  color: #205fd8;
+}
+
+.trainer-focus-app .trainer-phase-btn.active,
+.trainer-focus-app .trainer-phase-btn.active:hover {
+  border-color: #2f6ff2;
+  background: #2f6ff2;
   color: #ffffff;
 }
 
-.lf-trainer-app .trainer-phase-btn.active b {
+.trainer-focus-app .trainer-phase-btn.active b {
   color: #ffffff;
 }
 
-.lf-trainer-app .trainer-variant-toggle,
-.lf-trainer-app .trainer-round-setting {
+.trainer-focus-app .trainer-settings-panel > .dt-meta {
+  margin: 0 4px;
+  color: #7e90ad;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.trainer-focus-app .trainer-round-setting,
+.trainer-focus-app .trainer-variant-toggle {
   display: grid;
   align-items: center;
   gap: 9px;
-  margin-top: 10px;
-  border: 1px solid rgba(219, 229, 244, 0.86);
+  border: 1px solid rgba(205, 220, 242, 0.72);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.68);
+  background: #ffffff;
   padding: 9px 10px;
-  color: var(--tech-ink-2);
+  color: #234578;
 }
 
-.lf-trainer-app .trainer-variant-toggle {
+.trainer-focus-app .trainer-round-setting {
+  grid-template-columns: minmax(0, 1fr) 58px;
+}
+
+.trainer-focus-app .trainer-variant-toggle {
   grid-template-columns: auto minmax(0, 1fr);
   cursor: pointer;
 }
 
-.lf-trainer-app .trainer-round-setting {
-  grid-template-columns: minmax(0, 1fr) 68px;
+.trainer-focus-app .trainer-option-list {
+  display: grid;
+  gap: 7px;
 }
 
-.lf-trainer-app .trainer-variant-toggle input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--tech-blue);
-}
-
-.lf-trainer-app .trainer-variant-toggle span,
-.lf-trainer-app .trainer-round-setting span {
+.trainer-focus-app .trainer-round-setting > span,
+.trainer-focus-app .trainer-variant-toggle > span {
   display: grid;
   min-width: 0;
   gap: 2px;
 }
 
-.lf-trainer-app .trainer-variant-toggle b,
-.lf-trainer-app .trainer-round-setting b {
-  color: var(--tech-ink);
+.trainer-focus-app .trainer-round-setting b,
+.trainer-focus-app .trainer-variant-toggle b {
+  color: #19386f;
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
 }
 
-.lf-trainer-app .trainer-variant-toggle small,
-.lf-trainer-app .trainer-round-setting small {
-  color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 750;
+.trainer-focus-app .trainer-round-setting small,
+.trainer-focus-app .trainer-variant-toggle small {
+  color: #8495b1;
+  font-size: 10px;
+  font-weight: 800;
   line-height: 1.35;
 }
 
-.lf-trainer-app .trainer-variant-toggle:has(input:disabled) {
+.trainer-focus-app .trainer-variant-toggle input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: #2f6ff2;
+}
+
+.trainer-focus-app .trainer-variant-toggle:has(input:disabled),
+.trainer-focus-app .trainer-round-setting:has(input:disabled) {
   cursor: not-allowed;
   opacity: 0.62;
 }
 
-.lf-trainer-app .trainer-round-setting input {
+.trainer-focus-app .trainer-round-setting input {
   width: 100%;
   min-width: 0;
-  height: 36px;
+  height: 34px;
   border: 1px solid rgba(47, 111, 242, 0.2);
   border-radius: 10px;
   outline: none;
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--tech-ink);
+  background: #f8fbff;
+  color: #19386f;
   font-family: var(--timer-number);
-  font-size: 16px;
-  font-weight: 850;
+  font-size: 15px;
+  font-weight: 900;
   text-align: center;
 }
 
-.lf-trainer-app .trainer-round-setting input:focus-visible {
-  border-color: var(--tech-blue);
+.trainer-focus-app .trainer-round-setting input:focus-visible {
+  border-color: #2f6ff2;
   box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.12);
 }
 
-.lf-trainer-app .trainer-round-setting input:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
+.trainer-focus-app .trainer-stage-tools {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 2px;
 }
 
-.lf-trainer-app .trainer-case-name {
+.trainer-focus-app .trainer-stage-tools > :only-child,
+.trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.trainer-focus-app .trainer-case-name {
   overflow: hidden;
-  color: var(--tech-ink);
+  color: #19386f;
   font-size: 20px;
-  font-weight: 950;
+  font-weight: 900;
   line-height: 1.18;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.lf-trainer-app .trainer-case-meta {
+.trainer-focus-app .trainer-case-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
   margin-top: 12px;
 }
 
-.lf-trainer-app .trainer-case-meta span {
+.trainer-focus-app .trainer-case-meta span {
   display: inline-flex;
   min-height: 26px;
   align-items: center;
-  border: 1px solid var(--tech-line);
+  border: 1px solid rgba(205, 220, 242, 0.72);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.74);
+  background: #ffffff;
   padding: 0 10px;
-  color: var(--tech-muted);
+  color: #8495b1;
   font-size: 11px;
-  font-weight: 850;
+  font-weight: 800;
 }
 
-.lf-trainer-app .trainer-status-hint {
-  border-color: rgba(47, 111, 242, 0.24);
+.trainer-focus-app .trainer-summary-card .stat-grid {
+  gap: 7px;
 }
 
-.lf-trainer-app .trainer-status-error {
-  border-color: rgba(217, 45, 32, 0.28);
+.trainer-focus-app .trainer-summary-card .st {
+  min-height: 70px;
+  border-color: rgba(213, 226, 246, 0.72);
+  background: #ffffff;
 }
 
-.lf-trainer-app .trainer-status-error .sh-kicker {
-  color: #b42318;
+.trainer-focus-app .trainer-summary-card .st-primary {
+  border-color: rgba(47, 111, 242, 0.22);
+  background: #eaf2ff;
 }
 
-.lf-trainer-app .trainer-metric-grid {
+.trainer-focus-app .trainer-stage .cube-mount {
+  inset: 8px 0 160px;
+}
+
+.trainer-focus-app .trainer-formula-stage {
+  background: #ffffff;
+}
+
+.trainer-focus-app .trainer-score-panel {
+  flex: 0 0 auto;
+}
+
+.trainer-focus-app .trainer-score-panel .practice-card-head {
+  margin-bottom: 10px;
+}
+
+.trainer-focus-app .trainer-metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
 }
 
-.lf-trainer-app .trainer-history-list {
+.trainer-focus-app .trainer-metric-grid .solve-phase-card {
+  display: block;
+  min-height: 58px;
+  border: 1px solid rgba(213, 226, 246, 0.72);
+  border-radius: 13px;
+  background: #ffffff;
+  padding: 9px 10px;
+}
+
+.trainer-focus-app .trainer-metric-grid .solve-phase-card::before {
+  display: none;
+}
+
+.trainer-focus-app .trainer-metric-grid .solve-phase-card span {
+  color: #7e90ad;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.trainer-focus-app .trainer-metric-grid .solve-phase-card b {
+  margin-top: 6px;
+  color: #1d62de;
+  font-family: var(--timer-number);
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.trainer-focus-app .trainer-history-panel {
+  min-height: 180px;
+}
+
+.trainer-focus-app .trainer-history-list {
   display: grid;
-  gap: var(--history-row-gap);
   grid-auto-rows: var(--history-row-size);
   align-content: start;
   overscroll-behavior-x: none;
 }
 
-.lf-trainer-app .trainer-history-row-cross {
-  grid-template-columns: 40px minmax(34px, 0.58fr) repeat(3, minmax(0, 1fr)) minmax(44px, auto);
+.trainer-focus-app .trainer-history-row-cross {
+  grid-template-columns: 34px minmax(28px, 0.5fr) repeat(3, minmax(0, 1fr)) minmax(36px, auto);
 }
 
-.lf-trainer-app .trainer-history-row-total {
-  grid-template-columns: 40px minmax(0, 1fr) 92px minmax(44px, auto);
+.trainer-focus-app .trainer-history-row-total {
+  grid-template-columns: 34px minmax(0, 1fr) 76px minmax(36px, auto);
 }
 
-.lf-trainer-app .trainer-history-value,
-.lf-trainer-app .trainer-history-total {
+.trainer-focus-app .trainer-history-value,
+.trainer-focus-app .trainer-history-total {
   min-width: 0;
-  color: var(--tech-ink);
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 900;
-  text-align: right;
   overflow: hidden;
+  color: #19386f;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.lf-trainer-app .trainer-history-total {
+.trainer-focus-app .trainer-history-total {
   justify-self: end;
 }
 
-.lf-trainer-app .trainer-history-options {
+.trainer-focus-app .trainer-history-options {
   display: flex;
   min-width: 0;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 3px;
   overflow: hidden;
 }
 
-.lf-trainer-app .trainer-history-options b {
+.trainer-focus-app .trainer-history-options b {
   display: inline-flex;
   min-width: 0;
-  height: 18px;
+  height: 20px;
   align-items: center;
-  border: 1px solid rgba(47, 111, 242, 0.18);
+  border: 1px solid rgba(47, 111, 242, 0.16);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-  padding: 0 6px;
-  color: var(--tech-muted);
+  background: #ffffff;
+  padding: 0 5px;
+  color: #8495b1;
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
 }
 
-@media (max-width: 980px) {
-  .lf-trainer-app .trainer-left,
-  .lf-trainer-app .trainer-right {
-    overflow: visible;
-  }
-}
-
-@media (max-width: 560px) {
-  .lf-trainer-app .trainer-phase-grid {
+@media (max-width: 1280px) {
+  .trainer-focus-app .trainer-phase-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .lf-trainer-app .trainer-history-row-cross {
-    grid-template-columns: 38px minmax(30px, 0.5fr) repeat(3, minmax(0, 1fr)) 38px;
+  .trainer-focus-app .trainer-stage-tools {
+    grid-template-columns: 1fr;
   }
 
-  .lf-trainer-app .trainer-history-row-total {
-    grid-template-columns: 38px minmax(0, 1fr) 84px 38px;
+  .trainer-focus-app .trainer-stage-tools > * {
+    grid-column: 1;
   }
 
-  .lf-trainer-app .trainer-history-options b {
-    overflow: hidden;
-    padding: 0 5px;
-    text-overflow: ellipsis;
+  .trainer-focus-app .trainer-history-row-cross {
+    grid-template-columns: 32px minmax(24px, 0.42fr) repeat(3, minmax(0, 1fr));
+  }
+
+  .trainer-focus-app .trainer-history-row-cross .trainer-history-options {
+    display: none;
+  }
+}
+
+@media (max-width: 1060px) {
+  .trainer-focus-app .trainer-left,
+  .trainer-focus-app .trainer-right {
+    overflow: visible;
+  }
+
+  .trainer-focus-app .trainer-phase-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .trainer-focus-app .trainer-stage-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .trainer-focus-app .trainer-stage .cube-mount {
+    inset: 18px 0 150px;
+  }
+
+  .trainer-focus-app .trainer-history-panel {
+    min-height: 340px;
+  }
+}
+
+@media (max-width: 420px) {
+  .trainer-focus-app .trainer-phase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trainer-focus-app .trainer-stage-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .trainer-focus-app .trainer-stage-tools > * {
+    grid-column: 1;
   }
 }

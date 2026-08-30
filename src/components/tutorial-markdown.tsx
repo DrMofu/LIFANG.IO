@@ -5,6 +5,7 @@ import { TutorialAlgorithmPlayer } from "@/components/tutorial-algorithm-player"
 import { TutorialCubePlayground } from "@/components/tutorial-cube-playground";
 import { TutorialCubeStage } from "@/components/tutorial-cube-stage";
 import { TutorialNotationGallery } from "@/components/tutorial-notation-gallery";
+import { TutorialPllRecognition } from "@/components/tutorial-pll-recognition";
 import { toTutorialHeadingId } from "@/lib/tutorial-headings";
 
 type TutorialWidgetProps = Record<string, string>;
@@ -17,6 +18,7 @@ const TUTORIAL_WIDGETS: Record<string, TutorialWidgetRenderer> = {
   "cube-playground": () => <TutorialCubePlayground />,
   "cube-stage": ({ stage }) => <TutorialCubeStage stage={stage} />,
   "notation-gallery": ({ group }) => <TutorialNotationGallery group={group} />,
+  "pll-recognition": ({ group }) => <TutorialPllRecognition group={group} />,
 };
 
 function parseWidgetProps(source: string | undefined) {

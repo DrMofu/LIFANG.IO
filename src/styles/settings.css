@@ -92,8 +92,8 @@
   padding: 8px 11px;
   color: var(--tech-muted);
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
@@ -153,18 +153,10 @@
   padding-top: 0;
 }
 
-.settings-setting-group-head {
-  display: flex;
-  min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
 .settings-setting-title {
   color: var(--tech-ink);
-  font-size: 14px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   line-height: 1.2;
 }
 
@@ -207,8 +199,8 @@
   padding: 0 8px;
   color: var(--tech-ink);
   font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   outline: none;
   text-align: right;
 }
@@ -216,8 +208,8 @@
 .settings-inspection-seconds-control span {
   color: var(--tech-muted);
   font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-inspection-seconds-input:focus {
@@ -279,8 +271,8 @@
     0 10px 22px rgba(45, 78, 128, 0.09);
   color: var(--tech-ink-2);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   line-height: 1;
   outline: none;
   padding: 0 44px 0 14px;
@@ -326,16 +318,15 @@
   margin-bottom: 10px;
   color: var(--tech-muted);
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0.14em;
 }
 
-.settings-row-hint,
 .settings-data-note {
   color: var(--tech-muted);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0;
   line-height: 1.58;
 }
@@ -392,8 +383,8 @@
     0 10px 22px rgba(45, 78, 128, 0.09);
   color: var(--tech-ink-2);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   line-height: 1;
   outline: none;
   padding: 0 44px 0 42px;
@@ -453,8 +444,8 @@
   background: transparent;
   padding: 0 9px;
   color: var(--tech-ink-2);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   text-align: left;
   cursor: pointer;
 }
@@ -513,8 +504,8 @@
   padding: 6px 9px;
   color: var(--tech-muted);
   font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0.12em;
   cursor: pointer;
 }
@@ -554,8 +545,8 @@
   background: transparent;
   color: var(--tech-muted);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0;
   cursor: pointer;
   transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
@@ -578,11 +569,6 @@
   gap: 10px;
 }
 
-.settings-number-grid-single {
-  max-width: 240px;
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .settings-number-field {
   display: flex;
   min-width: 0;
@@ -592,8 +578,8 @@
 
 .settings-number-field span {
   color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 850;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-number-field input {
@@ -604,8 +590,8 @@
   padding: 10px 11px;
   color: var(--tech-ink);
   font-family: var(--mono);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   outline: none;
 }
 
@@ -643,8 +629,8 @@
   align-items: center;
   gap: 10px;
   color: var(--tech-ink);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   cursor: pointer;
 }
 
@@ -674,8 +660,8 @@
 .settings-projection-distance b {
   overflow: hidden;
   color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 850;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -684,8 +670,8 @@
   flex: none;
   color: var(--tech-ink);
   font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 850;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-projection-distance input[type="range"] {
@@ -710,8 +696,8 @@
 .settings-cloud-account span,
 .settings-cloud-metrics span {
   color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 850;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-auth-field input {
@@ -722,8 +708,8 @@
   padding: 11px 12px;
   color: var(--tech-ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   outline: none;
 }
 
@@ -754,8 +740,8 @@
   min-width: 0;
   overflow: hidden;
   color: var(--tech-ink-2);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -786,8 +772,8 @@
   overflow: hidden;
   color: var(--tech-ink-2);
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -825,8 +811,8 @@
   padding: 8px 11px;
   color: var(--tech-muted);
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
@@ -848,8 +834,8 @@
 
 .settings-archive-select-field > span {
   color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 850;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-action {
@@ -861,8 +847,8 @@
   padding: 0 15px;
   color: var(--tech-ink-2);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0;
 }
 
@@ -898,8 +884,8 @@
   padding: 0 12px;
   color: rgba(115, 130, 160, 0.76);
   font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0.08em;
 }
 
@@ -1031,26 +1017,26 @@
 .settings-toggle-copy b {
   overflow: hidden;
   color: var(--tech-ink);
-  font-size: 12px;
-  font-weight: 850;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .settings-card-console .settings-toggle-copy b {
-  font-size: 11px;
+  font-size: var(--ui-type-sm);
 }
 
 .settings-toggle-copy small {
   color: var(--tech-muted);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
   letter-spacing: 0;
   line-height: 1.45;
 }
 
 .settings-card-console .settings-toggle-copy small {
-  font-size: 10px;
+  font-size: var(--ui-type-xs);
   line-height: 1.28;
 }
 
@@ -1059,8 +1045,8 @@
   border-radius: var(--tech-radius-md);
   background: rgba(255, 255, 255, 0.78);
   padding: 10px 12px;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
 }
 
 .settings-status-success {
@@ -1126,10 +1112,6 @@
 
   .settings-preview {
     min-height: 320px;
-  }
-
-  .settings-setting-group-head {
-    flex-direction: column;
   }
 
   .settings-inline-select-row {

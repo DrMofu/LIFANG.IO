@@ -1473,8 +1473,10 @@ export function StatsApp() {
           >
             <div className="st-daily-level-head">
               <div className="st-daily-title-block">
-                <div className="st-ch-kicker">— DAILY LEVEL</div>
-                <div className="st-ch-title">{t("每日能力水平")}</div>
+                <div className="ui-section-title-line">
+                  <div className="ui-section-title">{t("每日能力水平")}</div>
+                  <div className="ui-section-kicker">DAILY LEVEL</div>
+                </div>
               </div>
               {todayDailyLevel ? (
                 <div className="dl-today-result">
@@ -1584,8 +1586,10 @@ export function StatsApp() {
                 >
                   <div className="dl-history-dialog-head">
                     <div>
-                      <div className="st-ch-kicker">— DAILY LEVEL</div>
-                      <h2 id="daily-history-title">{t("全部每日成绩")}</h2>
+                      <div className="ui-section-title-line">
+                        <h2 className="ui-section-title" id="daily-history-title">{t("全部每日成绩")}</h2>
+                        <div className="ui-section-kicker">DAILY LEVEL</div>
+                      </div>
                       <p>{dailyLevelRows.length} {t("天测试")}</p>
                     </div>
                     <button
@@ -1646,9 +1650,9 @@ export function StatsApp() {
         <section className="st-heatmap-row">
           <div className="st-card st-heatmap">
             <div className="st-card-head">
-              <div>
-                <div className="st-ch-kicker">— ACTIVITY</div>
-                <div className="st-ch-title">{t("练习热力图 · 最近 16 周")}</div>
+              <div className="ui-section-title-line">
+                <div className="ui-section-title">{t("练习热力图 · 最近 16 周")}</div>
+                <div className="ui-section-kicker">ACTIVITY</div>
               </div>
               <div className="st-heat-summary" aria-label={t("最近 16 周练习摘要")}>
                 <span>{t("活跃天数")}{" "}<b>{heatmap.activeDays}</b></span>
@@ -1734,9 +1738,9 @@ export function StatsApp() {
           >
             <div className="st-card-head st-trend-head">
               <div className="trend-heading">
-                <div>
-                  <div className="st-ch-kicker">— TREND</div>
-                  <div className="st-ch-title">{t("成绩趋势")}</div>
+                <div className="ui-section-title-line">
+                  <div className="ui-section-title">{t("成绩趋势")}</div>
+                  <div className="ui-section-kicker">TREND</div>
                 </div>
                 <div className="st-legend trend-legend">
                   <span><span className="lg-dot trend-dot-single"></span>{t("单次")}</span>
@@ -1819,9 +1823,9 @@ export function StatsApp() {
 
           <div className="st-card st-cfop">
             <div className="st-card-head">
-              <div>
-                <div className="st-ch-kicker">— PERFORMANCE</div>
-                <div className="st-ch-title">{t("近期成绩概览")}</div>
+              <div className="ui-section-title-line">
+                <div className="ui-section-title">{t("近期成绩概览")}</div>
+                <div className="ui-section-kicker">PERFORMANCE</div>
               </div>
               {activeCfopBreakdown.mode === "single" && trendCfopTip ? (
                 <div className="cfop-point-badge" aria-label={t(`当前练习编号 ${trendCfopTip.pointNumber}`)}>

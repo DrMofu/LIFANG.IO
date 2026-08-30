@@ -42,7 +42,7 @@ import {
   applyMovesToFacelets,
   applyMovesToFormulaFacelets,
 } from "@/lib/facelets-pattern";
-import { fmtShort } from "@/lib/format";
+import { fmtShort, fmtTime } from "@/lib/format";
 import { generateScramble, isSameSolveMoveCountGroup, solveMoveCountGroup } from "@/lib/scramble";
 import { getArchiveScopedStorageKey } from "@/lib/solve-history";
 import {
@@ -337,12 +337,6 @@ function averageTime(values: number[]) {
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
-function formatTrainerTime(ms: number) {
-  const seconds = Math.floor(ms / 1000);
-  const centiseconds = Math.floor((ms % 1000) / 10);
-  return `${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
-}
-
 function formatMoveAverage(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—步";
   const rounded = Math.round(value * 10) / 10;
@@ -535,6 +529,7 @@ export function CfopTrainerApp() {
       maxFps: renderMaxFps,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
+      cameraDistanceRange: TRAINER_CUBE_CAMERA_PRESET.distanceRange,
       compensateInitialGyroOffset: false,
       defaultDisplayState: TRAINER_CUBE_CAMERA_PRESET.displayState,
       sceneOffset: TRAINER_CUBE_CAMERA_PRESET.sceneOffset,
@@ -1160,15 +1155,170 @@ export function CfopTrainerApp() {
   };
 
   return (
-    <div className="app lf-practice-app lf-trainer-app">
+    <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
       <AppTopbar />
       <main className="practice-layout trainer-layout">
         <section className="practice-left trainer-left">
-          <div className="practice-card trainer-phase-card">
+          <div className="practice-card trainer-case-card">
             <div className="practice-card-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("专项阶段")}</div>
-                <div className="practice-kicker">CFOP TRAINER</div>
+                <div className="practice-card-title">{t("当前场景")}</div>
+                <div className="practice-kicker">CASE</div>
+              </div>
+            </div>
+            <div className="trainer-case-name">{t(scenario?.caseName ?? (selectedPhase === "cross" ? SCRAMBLE_LABEL : "尚未生成"))}</div>
+            <div className="trainer-case-meta">
+              <span>{t(activePhaseMeta.title)}</span>
+              <span>{t("旋转")}{" "}{rotationLabel(scenario?.rotation ?? 0)}</span>
+            </div>
+          </div>
+
+          <div className="practice-card trainer-summary-card">
+            <div className="practice-card-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("阶段摘要")}</div>
+                <div className="practice-kicker">SUMMARY</div>
+              </div>
+            </div>
+            <div className="stat-grid">
+              <div className="st st-primary"><div className="st-l">AO5</div><div className="st-v">{fmtShort(summary.avg5)}</div></div>
+              <div className="st st-stable-score" tabIndex={0}>
+                <div className="st-l">{t("稳定成绩")}</div>
+                <div className="st-v">{fmtShort(summary.stableScore)}</div>
+                <span className="stable-score-popover" role="tooltip">
+                  {stableScoreDescription}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="practice-live-panel practice-score-panel trainer-score-panel">
+            <div className="practice-card-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("本组成绩")}</div>
+                <div className="practice-kicker">SCORE</div>
+              </div>
+            </div>
+            <div className="solve-metrics">
+              <div className="trainer-metric-grid">
+                <div className="solve-phase-card">
+                  <span>{t("平均观察")}</span>
+                  <b>{fmtShort(sessionAverageObserveMs)}</b>
+                </div>
+                <div className="solve-phase-card">
+                  <span>{t("平均复原")}</span>
+                  <b>{fmtShort(sessionAverageSolveMs)}</b>
+                </div>
+                <div className="solve-phase-card">
+                  <span>{t("本组进度")}</span>
+                  <b>{sessionRoundCount}/{sessionRoundLimit}</b>
+                </div>
+                <div className="solve-phase-card">
+                  <span>{t("历史组数")}</span>
+                  <b>{summary.count}</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="practice-center">
+          <div className="practice-stage trainer-stage">
+            <div ref={cubeMountRef} className="cube-mount" />
+            {gyroCostNoticeVisible && (
+              <div
+                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
+                id="gyro-cost-notice"
+                role="status"
+              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
+            )}
+            <div className="stage-bottom-stack">
+              {formulaHintVisible && (
+                <div className="stage-hint trainer-formula-stage" role="status" aria-label={t("公式提示")}>
+                  <div className="sh-head sh-head-scramble">
+                    <div className="sh-kicker">{t("公式提示")}</div>
+                    {formulaHintUndoDisplay.length > 0 && (
+                      <div className="sh-notice sh-notice-inline error">
+                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                        <span className="sh-undo-list">
+                          {[...formulaHintUndoDisplay].reverse().map((move, index) => (
+                            <MoveToken key={`${move}-${index}`} move={move} />
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    <div className="sh-actions">
+                      <div className="sh-counter">
+                        <span className="sh-counter-num">{formulaHintCounter}</span>
+                        <span className="sh-counter-sep">/</span>
+                        <span className="sh-counter-total">{formulaHintMoves.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="sh-grid">
+                    {formulaHintMoves.map((move, index) => {
+                      const stepStatus: AlgorithmStepStatus =
+                        index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
+                          ? "wrong"
+                          : formulaHintStatus[index] === "correct"
+                            ? "correct"
+                            : formulaHintStatus[index] === "partial"
+                              ? "partial"
+                              : "pending";
+                      return (
+                        <AlgorithmStepToken
+                          key={`${move}-${index}`}
+                          move={move}
+                          index={index}
+                          status={stepStatus}
+                          active={index === formulaHintIndex && formulaHintIndex < formulaHintMoves.length}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="stage-timer-stack">
+              <div className={`timer timer-${state}`}>
+                <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
+                <div className="t-phase">
+                  {autoNextPending
+                    ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
+                    : state === "cancelled"
+                    ? t("本组已取消")
+                    : timerKind === "observe"
+                      ? t("观察 / 反应计时")
+                      : state === "solving"
+                        ? t("阶段复原计时")
+                        : sessionRoundCount >= sessionRoundLimit
+                          ? t(`${sessionRoundLimit} 局专项完成`)
+                          : t(`${sessionRoundLimit} 局专项计时器`)}
+                </div>
+              </div>
+
+              <div className="timer-controls">
+                <button
+                  className="practice-btn practice-btn-primary"
+                  type="button"
+                  onClick={startTraining}
+                  disabled={connecting}
+                  aria-keyshortcuts="Space"
+                >
+                  <span>{canCancelTrainerAction ? t("取消 · 按 SPACE") : connected ? t("开始 · 按 SPACE") : t("连接智能魔方")}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="practice-right trainer-right">
+          <div className="practice-control-panel trainer-settings-panel">
+            <div className="practice-card-head practice-control-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("专项设置")}</div>
+                <div className="practice-kicker">SETTINGS</div>
               </div>
             </div>
             <div className="trainer-phase-grid" aria-label={t("专项阶段选择")}>
@@ -1184,8 +1334,7 @@ export function CfopTrainerApp() {
                 </button>
               ))}
             </div>
-            <div className="dt-meta">{t("目标：")} {t(activePhaseMeta.goal)}.
-            </div>
+            <div className="dt-meta">{t("目标：")} {t(activePhaseMeta.goal)}.</div>
             <label className="trainer-round-setting">
               <span>
                 <b>{t("每组测试轮数")}</b>
@@ -1205,7 +1354,7 @@ export function CfopTrainerApp() {
               />
             </label>
             {selectedPhase !== "cross" && (
-              <>
+              <div className="trainer-option-list">
                 <label className="trainer-variant-toggle">
                   <input
                     type="checkbox"
@@ -1277,48 +1426,10 @@ export function CfopTrainerApp() {
                     <small>{formulaHintEnabled ? t("开启后在魔方上显示当前步骤的旋转箭头。") : t("开启公式提示后可操作。")}</small>
                   </span>
                 </label>
-              </>
+              </div>
             )}
-          </div>
 
-          <div className="practice-card trainer-case-card">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("当前场景")}</div>
-                <div className="practice-kicker">CASE</div>
-              </div>
-            </div>
-            <div className="trainer-case-name">{t(scenario?.caseName ?? (selectedPhase === "cross" ? SCRAMBLE_LABEL : "尚未生成"))}</div>
-            <div className="trainer-case-meta">
-              <span>{t(activePhaseMeta.title)}</span>
-              <span>{t("旋转")}{" "}{rotationLabel(scenario?.rotation ?? 0)}</span>
-            </div>
-          </div>
-
-          <div className="practice-card trainer-summary-card">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("阶段摘要")}</div>
-                <div className="practice-kicker">SUMMARY</div>
-              </div>
-            </div>
-            <div className="stat-grid">
-              <div className="st st-primary"><div className="st-l">AO5</div><div className="st-v">{fmtShort(summary.avg5)}</div></div>
-              <div className="st st-stable-score" tabIndex={0}>
-                <div className="st-l">{t("稳定成绩")}</div>
-                <div className="st-v">{fmtShort(summary.stableScore)}</div>
-                <span className="stable-score-popover" role="tooltip">
-                  {stableScoreDescription}
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="practice-center">
-          <div className="practice-stage trainer-stage">
-            <div ref={cubeMountRef} className="cube-mount" />
-            <div className="stage-tools">
+            <div className="stage-tools trainer-stage-tools">
               {canUseFocusMode && (
                 <button
                   className={`tag tag-btn${f2lFocusMode ? " active" : ""}`}
@@ -1327,7 +1438,8 @@ export function CfopTrainerApp() {
                   aria-keyshortcuts="H"
                   aria-pressed={f2lFocusMode}
                 >
-                  <span className="tag-key" aria-hidden="true">H</span>{t("专注模式")}</button>
+                  <span className="tag-key" aria-hidden="true">H</span><span>{t("专注模式")}</span>
+                </button>
               )}
               <button
                 className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
@@ -1338,7 +1450,7 @@ export function CfopTrainerApp() {
                 aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
               >
                 <span className="tag-key" aria-hidden="true">L</span>
-                {gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}
+                <span>{gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}</span>
               </button>
               <button
                 className="tag tag-btn stage-reset-btn"
@@ -1347,184 +1459,75 @@ export function CfopTrainerApp() {
                 disabled={!canResetDisplayOrientation}
                 aria-keyshortcuts="R"
               >
-                <span className="tag-key" aria-hidden="true">R</span>{t("视角归位")}</button>
+                <span className="tag-key" aria-hidden="true">R</span><span>{t("视角归位")}</span>
+              </button>
             </div>
-            {gyroCostNoticeVisible && (
-              <div
-                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
-                id="gyro-cost-notice"
-                role="status"
-              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
-            )}
-            <div className="stage-bottom-stack">
-              {formulaHintVisible && (
-                <div className="stage-hint trainer-formula-stage" role="status" aria-label={t("公式提示")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("公式提示")}</div>
-                    {formulaHintUndoDisplay.length > 0 && (
-                      <div className="sh-notice sh-notice-inline error">
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...formulaHintUndoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
+          </div>
+
+          <div className="practice-live-panel practice-history-panel trainer-history-panel">
+            <div className="hist hist-right trainer-history">
+              <div className="practice-card-head">
+                <div className="practice-title-line">
+                  <div className="practice-card-title">{t("专项记录")}</div>
+                  <div className="practice-kicker">HISTORY</div>
+                </div>
+              </div>
+              {filteredHistory.length === 0 ? (
+                <div className="hist-empty">{t("暂无")}{" "}{trainerPhaseShort(selectedPhase)}{" "}{t("阶段记录")}</div>
+              ) : (
+                <div
+                  className={`hist-list trainer-history-list${historyScrolling ? " scrolling" : ""}`}
+                  ref={historyListRef}
+                  style={{ "--history-rows": historyRows } as CSSProperties}
+                  onScroll={() => setHistoryScrolling(true)}
+                  onPointerLeave={() => setHistoryScrolling(false)}
+                >
+                  {filteredHistory.map((entry, index) => {
+                    const historyNumber = filteredHistory.length - index;
+                    const isCrossRecord = entry.phase === "cross";
+                    const totalMs = entry.observeMs + entry.solveMs;
+                    const barMs = isCrossRecord ? entry.solveMs : totalMs;
+                    const optionBadges = trainerHistoryOptionBadges(entry.options);
+                    const optionTitle = trainerHistoryOptionsTitle(entry.options);
+                    const barWidth = filteredHistoryStats.slowest > 0
+                      ? `${Math.max(12, (barMs / filteredHistoryStats.slowest) * 100)}%`
+                      : "0%";
+                    const isBest = filteredHistoryStats.best === barMs;
+                    const historyTitle = isCrossRecord
+                      ? t(`${entry.rounds}局平均：观察 ${fmtShort(entry.observeMs)}，复原 ${fmtShort(entry.solveMs)}，${formatMoveAverage(entry.moves)}，${optionTitle}`)
+                      : t(`${entry.rounds}局平均：总用时 ${fmtShort(totalMs)}，${optionTitle}`);
+                    return (
+                      <div
+                        key={`${entry.ts}-${index}`}
+                        className={`hist-row trainer-history-row${isCrossRecord ? " trainer-history-row-cross" : " trainer-history-row-total"}${isBest ? " best" : ""}`}
+                        tabIndex={0}
+                        title={historyTitle}
+                        aria-label={t(`专项记录 ${trainerPhaseShort(entry.phase)} #${historyNumber}，${historyTitle}`)}
+                      >
+                        <span className="hr-i">{trainerPhaseShort(entry.phase)}#{String(historyNumber).padStart(2, "0")}</span>
+                        <span className="hr-track" aria-hidden="true">
+                          <span className="hr-bar" style={{ width: barWidth }}></span>
+                        </span>
+                        {isCrossRecord ? (
+                          <>
+                            <span className="trainer-history-value">{t("观察")}{" "}{fmtShort(entry.observeMs)}</span>
+                            <span className="trainer-history-value">{t("复原")}{" "}{fmtShort(entry.solveMs)}</span>
+                            <span className="trainer-history-value">{t("步数")}{" "}{formatMoveAverage(entry.moves)}</span>
+                          </>
+                        ) : (
+                          <span className="trainer-history-total">{t("总用时")}{" "}{fmtShort(totalMs)}</span>
+                        )}
+                        <span className="trainer-history-options" aria-label={optionTitle}>
+                          {optionBadges.length > 0
+                            ? optionBadges.map((badge) => <b key={badge}>{badge}</b>)
+                            : <b>{t("标准")}</b>}
                         </span>
                       </div>
-                    )}
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{formulaHintCounter}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{formulaHintMoves.length}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {formulaHintMoves.map((move, index) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
-                          ? "wrong"
-                          : formulaHintStatus[index] === "correct"
-                            ? "correct"
-                            : formulaHintStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === formulaHintIndex && formulaHintIndex < formulaHintMoves.length}
-                        />
-                      );
-                    })}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
-          </div>
-        </section>
-
-        <section className="practice-right trainer-right">
-          <div className={`timer timer-${state}`}>
-            <div className="t-display t-active">{formatTrainerTime(timerDisplayMs)}</div>
-            <div className="t-phase">
-              {autoNextPending
-                ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
-                : state === "cancelled"
-                ? t("本组已取消")
-                : timerKind === "observe"
-                  ? t("观察 / 反应计时")
-                  : state === "solving"
-                    ? t("阶段复原计时")
-                    : sessionRoundCount >= sessionRoundLimit
-                      ? t(`${sessionRoundLimit} 局专项完成`)
-                      : t(`${sessionRoundLimit} 局专项计时器`)}
-            </div>
-          </div>
-
-          <div className="timer-controls">
-            <button
-              className="practice-btn practice-btn-primary"
-              type="button"
-              onClick={startTraining}
-              disabled={connecting}
-              aria-keyshortcuts="Space"
-            >
-              <span>{canCancelTrainerAction ? t("取消 · 按 SPACE") : connected ? t("开始 · 按 SPACE") : t("连接智能魔方")}</span>
-            </button>
-          </div>
-
-          <div className="solve-metrics">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("成绩详情")}</div>
-                <div className="practice-kicker">DETAILS</div>
-              </div>
-            </div>
-            <div className="trainer-metric-grid">
-              <div className="solve-phase-card">
-                <span>{t("平均观察")}</span>
-                <b>{fmtShort(sessionAverageObserveMs)}</b>
-              </div>
-              <div className="solve-phase-card">
-                <span>{t("平均复原")}</span>
-                <b>{fmtShort(sessionAverageSolveMs)}</b>
-              </div>
-              <div className="solve-phase-card">
-                <span>{t("本组进度")}</span>
-                <b>{sessionRoundCount}/{sessionRoundLimit}</b>
-              </div>
-              <div className="solve-phase-card">
-                <span>{t("历史组数")}</span>
-                <b>{summary.count}</b>
-              </div>
-            </div>
-          </div>
-
-          <div className="hist hist-right trainer-history">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("专项记录")}</div>
-                <div className="practice-kicker">HISTORY</div>
-              </div>
-            </div>
-            {filteredHistory.length === 0 ? (
-              <div className="hist-empty">{t("暂无")}{" "}{trainerPhaseShort(selectedPhase)}{" "}{t("阶段记录")}</div>
-            ) : (
-              <div
-                className={`hist-list trainer-history-list${historyScrolling ? " scrolling" : ""}`}
-                ref={historyListRef}
-                style={{ "--history-rows": historyRows } as CSSProperties}
-                onScroll={() => setHistoryScrolling(true)}
-                onPointerLeave={() => setHistoryScrolling(false)}
-              >
-                {filteredHistory.map((entry, index) => {
-                  const historyNumber = filteredHistory.length - index;
-                  const isCrossRecord = entry.phase === "cross";
-                  const totalMs = entry.observeMs + entry.solveMs;
-                  const barMs = isCrossRecord ? entry.solveMs : totalMs;
-                  const optionBadges = trainerHistoryOptionBadges(entry.options);
-                  const optionTitle = trainerHistoryOptionsTitle(entry.options);
-                  const barWidth = filteredHistoryStats.slowest > 0
-                    ? `${Math.max(12, (barMs / filteredHistoryStats.slowest) * 100)}%`
-                    : "0%";
-                  const isBest = filteredHistoryStats.best === barMs;
-                  const historyTitle = isCrossRecord
-                    ? t(`${entry.rounds}局平均：观察 ${fmtShort(entry.observeMs)}，复原 ${fmtShort(entry.solveMs)}，${formatMoveAverage(entry.moves)}，${optionTitle}`)
-                    : t(`${entry.rounds}局平均：总用时 ${fmtShort(totalMs)}，${optionTitle}`);
-                  return (
-                    <div
-                      key={`${entry.ts}-${index}`}
-                      className={`hist-row trainer-history-row${isCrossRecord ? " trainer-history-row-cross" : " trainer-history-row-total"}${isBest ? " best" : ""}`}
-                      tabIndex={0}
-                      title={historyTitle}
-                      aria-label={t(`专项记录 ${trainerPhaseShort(entry.phase)} #${historyNumber}，${historyTitle}`)}
-                    >
-                      <span className="hr-i">{trainerPhaseShort(entry.phase)}#{String(historyNumber).padStart(2, "0")}</span>
-                      <span className="hr-track" aria-hidden="true">
-                        <span className="hr-bar" style={{ width: barWidth }}></span>
-                      </span>
-                      {isCrossRecord ? (
-                        <>
-                          <span className="trainer-history-value">{t("观察")}{" "}{fmtShort(entry.observeMs)}</span>
-                          <span className="trainer-history-value">{t("复原")}{" "}{fmtShort(entry.solveMs)}</span>
-                          <span className="trainer-history-value">{t("步数")}{" "}{formatMoveAverage(entry.moves)}</span>
-                        </>
-                      ) : (
-                        <span className="trainer-history-total">{t("总用时")}{" "}{fmtShort(totalMs)}</span>
-                      )}
-                      <span className="trainer-history-options" aria-label={optionTitle}>
-                        {optionBadges.length > 0
-                          ? optionBadges.map((badge) => <b key={badge}>{badge}</b>)
-                          : <b>{t("标准")}</b>}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </section>
       </main>

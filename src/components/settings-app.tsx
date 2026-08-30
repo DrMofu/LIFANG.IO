@@ -705,9 +705,9 @@ export function SettingsApp() {
       <main className="settings-main">
         <section className="settings-card settings-card-appearance">
           <div className="settings-card-head">
-            <div>
-              <div className="st-ch-kicker">— APPEARANCE</div>
-              <div className="st-ch-title">{t("settings.display.title")}</div>
+            <div className="ui-section-title-line">
+              <div className="ui-section-title">{t("settings.display.title")}</div>
+              <div className="ui-section-kicker">APPEARANCE</div>
             </div>
             <CubeColorLegend faceColors={faceColors} className="settings-color-legend" aria-label={t("settings.colorLegend")} />
           </div>
@@ -779,9 +779,9 @@ export function SettingsApp() {
 
         <section className="settings-card settings-card-other">
           <div className="settings-card-head">
-            <div>
-              <div className="st-ch-kicker">— SETTINGS</div>
-              <div className="st-ch-title">{t("settings.other.title")}</div>
+            <div className="ui-section-title-line">
+              <div className="ui-section-title">{t("settings.other.title")}</div>
+              <div className="ui-section-kicker">SETTINGS</div>
             </div>
           </div>
           <div className="settings-card-body settings-card-body-other">
@@ -916,9 +916,9 @@ export function SettingsApp() {
 
         <section className="settings-card settings-card-cloud">
           <div className="settings-card-head">
-            <div>
-              <div className="st-ch-kicker">— CLOUD</div>
-              <div className="st-ch-title">{t("云端同步")}</div>
+            <div className="ui-section-title-line">
+              <div className="ui-section-title">{t("云端同步")}</div>
+              <div className="ui-section-kicker">CLOUD</div>
             </div>
           </div>
           <div className="settings-card-body settings-card-body-cloud">
@@ -1003,9 +1003,9 @@ export function SettingsApp() {
 
         <section className="settings-card settings-card-archive">
           <div className="settings-card-head">
-            <div>
-              <div className="st-ch-kicker">— ARCHIVE</div>
-              <div className="st-ch-title">{t("存档管理")}</div>
+            <div className="ui-section-title-line">
+              <div className="ui-section-title">{t("存档管理")}</div>
+              <div className="ui-section-kicker">ARCHIVE</div>
             </div>
             <div className="settings-archive-metrics" aria-label={t("当前存档统计")}>
               <span>{history.length}{" "}{t("条复原")}</span>
@@ -1063,9 +1063,9 @@ export function SettingsApp() {
             <>
               <section className="settings-card settings-card-console">
                 <div className="settings-card-head">
-                  <div>
-                    <div className="st-ch-kicker">— CONSOLE</div>
-                    <div className="st-ch-title">{t("Console 打印管理")}</div>
+                  <div className="ui-section-title-line">
+                    <div className="ui-section-title">{t("Console 打印管理")}</div>
+                    <div className="ui-section-kicker">CONSOLE</div>
                   </div>
                   <div className="settings-current">{consoleLoggingSettings.enabled ? "ON" : "OFF"}</div>
                 </div>
@@ -1102,9 +1102,9 @@ export function SettingsApp() {
 
               <section className="settings-card settings-card-console settings-card-debug-tools">
                 <div className="settings-card-head">
-                  <div>
-                    <div className="st-ch-kicker">— DEBUG</div>
-                    <div className="st-ch-title">{t("Debug 管理")}</div>
+                  <div className="ui-section-title-line">
+                    <div className="ui-section-title">{t("Debug 管理")}</div>
+                    <div className="ui-section-kicker">DEBUG</div>
                   </div>
                 </div>
                 <div className="settings-card-body settings-card-body-console">

@@ -1,0 +1,15 @@
+{
+  "id": 3,
+  "slug": "pll-six-sticker-recognition",
+  "draft": false,
+  "order": 30,
+  "defaultLocale": "zh-CN",
+  "locales": {
+    "zh-CN": {
+      "title": "PLL 六格观察法",
+      "description": "只看两个相邻侧面的六枚贴纸，利用角块置换、车灯、色块与相对色识别全部 21 个 PLL",
+      "contentFile": "article.zh-CN.md"
+    }
+  },
+  "cover": "cover.png"
+}

@@ -27,6 +27,15 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.1.4",
+    changes: [
+      "优化渲染计算",
+      "调整部分公式",
+      "调整练习、专项和公式页面布局",
+      "新增几篇文章",
+    ],
+  },
+  {
     version: "v0.1.3",
     changes: [
       "练习界面添加OLL，PLL公式识别",

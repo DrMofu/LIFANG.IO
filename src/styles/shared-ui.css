@@ -1,3 +1,28 @@
+.practice-title-line,
+.ui-section-title-line {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.practice-kicker,
+.ui-section-kicker {
+  color: var(--tech-muted);
+  font-family: var(--mono);
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
+  letter-spacing: 0.14em;
+}
+
+.practice-card-title,
+.ui-section-title {
+  color: var(--tech-ink);
+  font-size: var(--ui-type-lg);
+  font-weight: var(--ui-weight-emphasis);
+  line-height: 1.1;
+}
+
 .dot {
   background: #a8b4c9;
 }
@@ -246,12 +271,6 @@
   color: rgba(255, 255, 255, 0.76);
 }
 
-@keyframes pop {
-  from { transform: translateY(-4px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-
 .mini-btn {
   border: 1px solid var(--ink);
   background: none;
@@ -266,17 +285,6 @@
 .mini-btn:hover {
   background: var(--ink);
   color: var(--bg);
-}
-
-.mini-btn.done-btn {
-  border-color: var(--green);
-  background: var(--green);
-  color: var(--bg);
-}
-
-.mini-btn.done-btn:hover {
-  border-color: var(--ink);
-  background: var(--ink);
 }
 
 .mini-btn.full {

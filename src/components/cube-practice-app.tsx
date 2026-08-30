@@ -119,6 +119,7 @@ const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
 const PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY = "cube-practice-formula-recognition-enabled";
 const PRACTICE_DISPLAY_STATE_KEY = "cube-practice-display-state";
 const PRACTICE_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.practice;
+const LEGACY_PRACTICE_CAMERA_DISTANCES = [6.4, 8] as const;
 
 function loadPracticeGyroDisabled() {
   if (typeof window === "undefined") return false;
@@ -187,7 +188,16 @@ function loadPracticeDisplayState() {
   if (typeof window === "undefined") return null;
   try {
     const parsed = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_DISPLAY_STATE_KEY)) || "null");
-    return isStoredDisplayState(parsed) ? parsed : null;
+    if (!isStoredDisplayState(parsed)) return null;
+    if (LEGACY_PRACTICE_CAMERA_DISTANCES.some(
+      (distance) => Math.abs(parsed.cameraDistance - distance) <= DISPLAY_STATE_EPSILON,
+    )) {
+      return {
+        ...parsed,
+        cameraDistance: PRACTICE_CUBE_CAMERA_PRESET.displayState.cameraDistance,
+      };
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -821,9 +831,13 @@ export function CubePracticeApp() {
       const headStyle = head ? window.getComputedStyle(head) : null;
       const headMarginBottom = headStyle ? parseFloat(headStyle.marginBottom) : 0;
       const listBorderY = parseFloat(listStyle.borderTopWidth) + parseFloat(listStyle.borderBottomWidth);
+      const computedRowSize = parseFloat(listStyle.getPropertyValue("--history-row-size"));
+      const computedRowGap = parseFloat(listStyle.getPropertyValue("--history-row-gap"));
+      const rowSize = Number.isFinite(computedRowSize) && computedRowSize > 0 ? computedRowSize : HISTORY_ROW_SIZE;
+      const rowGap = Number.isFinite(computedRowGap) && computedRowGap >= 0 ? computedRowGap : HISTORY_ROW_GAP;
       const availableHeight = parentHeight - parentPaddingY - parentBorderY - headHeight - headMarginBottom;
       const rowSpace = Math.max(0, availableHeight - listBorderY);
-      const rows = Math.max(1, Math.floor((rowSpace + HISTORY_ROW_GAP) / (HISTORY_ROW_SIZE + HISTORY_ROW_GAP)));
+      const rows = Math.max(1, Math.floor((rowSpace + rowGap) / (rowSize + rowGap)));
       setHistoryRows(rows);
     };
 
@@ -2116,7 +2130,9 @@ export function CubePracticeApp() {
       maxFps: renderMaxFps,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
+      cameraDistanceRange: PRACTICE_CUBE_CAMERA_PRESET.distanceRange,
       compensateInitialGyroOffset: false,
+      preserveDrawingBuffer: true,
       defaultDisplayState: PRACTICE_CUBE_CAMERA_PRESET.displayState,
       sceneOffset: PRACTICE_CUBE_CAMERA_PRESET.sceneOffset,
       initialFacelets: initialVisualState.facelets,
@@ -2565,25 +2581,13 @@ export function CubePracticeApp() {
   }
 
   function changePracticeMode(nextMode: PracticeMode) {
-    if (practiceModeRef.current === nextMode) return;
-    if (dailyTestRef.current || smartSolveBusy) return;
-    if (
-      phaseRef.current !== "idle" &&
-      phaseRef.current !== "done" &&
-      !(practiceModeRef.current === "scramble" && nextMode === "free" && (phaseRef.current === "scrambling" || phaseRef.current === "inspect"))
-    ) {
-      return;
-    }
+    if (practiceMode === nextMode || dailyTest || smartSolveBusy || phase === "solving") return;
 
-    if (practiceModeRef.current === "free" && nextMode === "scramble") {
-      cancelFreePractice();
-      return;
-    }
-
+    clearFreeTimers();
     practiceModeRef.current = nextMode;
     setPracticeMode(nextMode);
     resetAttempt();
-    if (nextMode === "free") {
+    if (nextMode === "free" && isConnected) {
       void requestFacelets();
     }
   }
@@ -2636,7 +2640,7 @@ export function CubePracticeApp() {
       count: history.length,
     };
   }, [averageSettings, history]);
-  const recentHistory = useMemo(() => history.slice(0, 20), [history]);
+  const recentHistory = useMemo(() => history.slice(0, 50), [history]);
   const recentSlowest = useMemo(
     () => (recentHistory.length === 0 ? 0 : Math.max(...recentHistory.map((entry) => entry.ms))),
     [recentHistory],
@@ -2657,10 +2661,12 @@ export function CubePracticeApp() {
   const dailyTestDisplaySolves = dailyTest?.solves ?? todayDailyLevel?.solves ?? [];
   const smartSolveVisible = smartSolveStatus !== "idle";
   const smartSolveBusy = smartSolveStatus === "loading" || smartSolveStatus === "active";
+  const freePracticeVisible = practiceMode === "free" && isConnected && !smartSolveVisible && phase !== "solving";
+  const stageGuidanceVisible = smartSolveVisible || phase === "scrambling" || freePracticeVisible;
   const canInterruptScrambleAttempt = practiceMode === "scramble" && (phase === "scrambling" || phase === "inspect");
   const canStartDailyTestFromScramble = practiceMode === "scramble" && (phase === "idle" || phase === "done" || canInterruptScrambleAttempt);
   const canStartDailyTestFromFree = practiceMode === "free" && phase !== "solving";
-  const canSwitchMode = !dailyTest && !smartSolveBusy && (phase === "idle" || phase === "done" || canInterruptScrambleAttempt);
+  const canSwitchMode = !dailyTest && !smartSolveBusy && phase !== "solving";
   const canStartDailyTestSession = isConnected && !dailyTest && !smartSolveBusy && (canStartDailyTestFromScramble || canStartDailyTestFromFree);
   const canStartTodayDailyTest = !todayDailyLevel && canStartDailyTestSession;
   const showYesterdayMakeupTest = !todayDailyLevel && !yesterdayDailyLevel;
@@ -2709,7 +2715,7 @@ export function CubePracticeApp() {
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
   return (
-    <div className="app lf-practice-app">
+    <div className="app lf-practice-app practice-focus-app">
       <AppTopbar />
 
       <main className="practice-layout">
@@ -2723,6 +2729,10 @@ export function CubePracticeApp() {
               <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
                 {dailyTestDisplayDate}
               </div>
+            </div>
+            <div className="dt-progress-copy">
+              <strong>{dailyTestDisplaySolves.length}</strong>
+              <span>/ {DAILY_TEST_TARGET}</span>
             </div>
             <div className="dt-progress" aria-label={t("每日五次测试进度")}>
               {Array.from({ length: DAILY_TEST_TARGET }, (_, index) => {
@@ -2765,24 +2775,54 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="stats">
-            <div className="practice-card-head">
+          <div className="practice-control-panel">
+            <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("统计摘要")}</div>
-                <div className="practice-kicker">SUMMARY</div>
+                <div className="practice-card-title">{t("练习设置")}</div>
+                <div className="practice-kicker">SETTINGS</div>
               </div>
             </div>
-            <div className="stat-grid">
-              <div className="st st-primary"><div className="st-l">{t("总次数 TOTAL")}</div><div className="st-v">{stats.count}</div></div>
-              <div className="st"><div className="st-l">{t("最佳 BEST")}</div><div className="st-v">{fmtShort(stats.best)}</div></div>
-              <div className="st"><div className="st-l">AO5</div><div className="st-v">{fmtShort(stats.avg5)}</div></div>
-              <div className="st st-stable-score" tabIndex={0}>
-                <div className="st-l">{t("稳定成绩")}</div>
-                <div className="st-v">{fmtShort(stats.avg20)}</div>
-                <span className="stable-score-popover" role="tooltip">
-                  {stableScoreDescription}
-                </span>
-              </div>
+            <div className="practice-mode-switch" aria-label={t("练习模式")}>
+              <button
+                type="button"
+                className={practiceMode === "scramble" ? "active" : ""}
+                onClick={() => changePracticeMode("scramble")}
+                disabled={!canSwitchMode}
+              >{t("打乱练习")}</button>
+              <button
+                type="button"
+                className={practiceMode === "free" ? "active" : ""}
+                onClick={() => changePracticeMode("free")}
+                disabled={!canSwitchMode}
+              >{t("自由练习")}</button>
+            </div>
+
+            <div className="stage-tools">
+              <button
+                className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
+                onClick={toggleGyroDisabled}
+                aria-keyshortcuts="L"
+                aria-pressed={!gyroDisabled}
+                aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
+              >
+                <span className="tag-key" aria-hidden="true">L</span>
+                <span>{gyroDisabled ? t("陀螺仪禁用中") : t("陀螺仪启用中")}</span>
+              </button>
+              <button className="tag tag-btn" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">
+                <span className="tag-key" aria-hidden="true">Q</span>
+                <span>{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</span>
+              </button>
+              <button className="tag tag-btn stage-reset-btn" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
+                <span className="tag-key" aria-hidden="true">R</span><span>{t("视角归位")}</span>
+              </button>
+              <button
+                className={`tag tag-btn${formulaRecognitionEnabled ? " active" : ""}`}
+                onClick={toggleFormulaRecognition}
+                aria-keyshortcuts="F"
+                aria-pressed={formulaRecognitionEnabled}
+              >
+                <span className="tag-key" aria-hidden="true">F</span><span>{t("公式识别")}</span>
+              </button>
             </div>
           </div>
 
@@ -2880,32 +2920,6 @@ export function CubePracticeApp() {
 
         <section className="practice-center">
           <div className="practice-stage">
-            <div className="stage-tools">
-              <button
-                className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
-                onClick={toggleGyroDisabled}
-                aria-keyshortcuts="L"
-                aria-pressed={!gyroDisabled}
-                aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
-              >
-                <span className="tag-key" aria-hidden="true">L</span>
-                {gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}
-              </button>
-              <button className="tag tag-btn" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">
-                <span className="tag-key" aria-hidden="true">Q</span>
-                {smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}
-              </button>
-              <button className="tag tag-btn stage-reset-btn" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
-                <span className="tag-key" aria-hidden="true">R</span>{t("视角归位")}</button>
-              <button
-                className={`tag tag-btn${formulaRecognitionEnabled ? " active" : ""}`}
-                onClick={toggleFormulaRecognition}
-                aria-keyshortcuts="F"
-                aria-pressed={formulaRecognitionEnabled}
-              >
-                <span className="tag-key" aria-hidden="true">F</span>{t("公式识别")}
-              </button>
-            </div>
             {gyroCostNoticeVisible && (
               <div
                 className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
@@ -2915,8 +2929,69 @@ export function CubePracticeApp() {
             )}
             <div className="cube-mount" ref={cubeMountRef}></div>
 
-            <div className="stage-bottom-stack">
-              {smartSolveVisible && (
+            {!stageGuidanceVisible && (
+              <div className="stage-timer-stack">
+                <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
+                  {phase === "idle" && <div className="t-display">{fmtTime(0)}</div>}
+                  {phase === "inspect" && (
+                    <div className="t-display t-warn">
+                      {inspectionDurationMs === null ? (
+                        <svg
+                          className="practice-infinity-symbol"
+                          viewBox="0 0 72 40"
+                          role="img"
+                          aria-label={t("无限观察")}
+                        >
+                          <path d="M36 20C29 10 24 6 17 6C9 6 4 12 4 20C4 28 9 34 17 34C24 34 29 30 36 20C43 10 48 6 55 6C63 6 68 12 68 20C68 28 63 34 55 34C48 34 43 30 36 20Z" />
+                        </svg>
+                      ) : Math.ceil(inspectMs / 1000)}
+                      {inspectionDurationMs !== null && <span className="t-unit">s</span>}
+                    </div>
+                  )}
+                  {(phase === "solving" || phase === "done") && <div className="t-display t-active">{fmtTime(solveMs)}</div>}
+                  <div className="t-phase">{timerPhaseLabel}</div>
+                </div>
+
+                <div className="timer-controls">
+                  {practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
+                    <button className="practice-btn practice-btn-primary" onClick={isConnected ? beginScramble : startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
+                      <span>
+                        {smartSolveBusy
+                          ? t("智能求解中")
+                          : !isConnected
+                          ? connectionState === "connecting"
+                            ? t("等待浏览器选择器")
+                            : t("连接魔方")
+                          : dailyTest
+                          ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
+                          : phase === "done"
+                            ? t("下一次 · 开始打乱")
+                            : t("开始打乱 · 按 SPACE")}
+                      </span>
+                    </button>
+                  )}
+                  {practiceMode === "scramble" && phase === "inspect" && (
+                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
+                      <span>{t("取消本次复原 · 按 SPACE")}</span>
+                    </button>
+                  )}
+                  {phase === "solving" && (
+                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
+                      <span>{t("取消 · 按 SPACE")}</span>
+                    </button>
+                  )}
+                  {practiceMode === "free" && phase !== "solving" && (
+                    <button className="practice-btn practice-btn-ghost" disabled>
+                      <span>{t("请先连接智能魔方")}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {stageGuidanceVisible && (
+              <div className="stage-bottom-stack">
+                {smartSolveVisible && (
                 <div className="stage-hint solve-stage-hint" role="status" aria-label={t("智能求解")}>
                   <div className="sh-head">
                     <div className="sh-kicker">{t("智能求解")}</div>
@@ -2969,8 +3044,8 @@ export function CubePracticeApp() {
                     )}
                   </div>
                 </div>
-              )}
-              {phase === "scrambling" && (
+                )}
+                {phase === "scrambling" && (
                 <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
                   <div className="sh-head sh-head-scramble">
                     <div className="sh-kicker">{t("打乱公式")}</div>
@@ -3015,8 +3090,8 @@ export function CubePracticeApp() {
                     })}
                   </div>
                 </div>
-              )}
-              {practiceMode === "free" && isConnected && !smartSolveVisible && phase !== "solving" && (
+                )}
+                {freePracticeVisible && (
                 <div className="stage-hint free-stage-hint" role="status" aria-label={t("自由练习状态")}>
                   <div className="sh-head">
                     <div className="sh-kicker">{t("自由练习")}</div>
@@ -3052,127 +3127,69 @@ export function CubePracticeApp() {
                       : freeNotice}
                   </div>
                 </div>
-              )}
-
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
         <section className="practice-right">
-          <div className="practice-mode-switch" aria-label={t("练习模式")}>
-            <button
-              type="button"
-              className={practiceMode === "scramble" ? "active" : ""}
-              onClick={() => changePracticeMode("scramble")}
-              disabled={!canSwitchMode}
-            >{t("打乱练习")}</button>
-            <button
-              type="button"
-              className={practiceMode === "free" ? "active" : ""}
-              onClick={() => changePracticeMode("free")}
-              disabled={!canSwitchMode}
-            >{t("自由练习")}</button>
-          </div>
-
-          <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
-            {(phase === "idle" || phase === "scrambling") && <div className="t-display">{fmtTime(0)}</div>}
-            {phase === "inspect" && (
-              <div className="t-display t-warn">
-                {inspectionDurationMs === null ? (
-                  <svg
-                    className="practice-infinity-symbol"
-                    viewBox="0 0 72 40"
-                    role="img"
-                    aria-label={t("无限观察")}
-                  >
-                    <path d="M36 20C29 10 24 6 17 6C9 6 4 12 4 20C4 28 9 34 17 34C24 34 29 30 36 20C43 10 48 6 55 6C63 6 68 12 68 20C68 28 63 34 55 34C48 34 43 30 36 20Z" />
-                  </svg>
-                ) : Math.ceil(inspectMs / 1000)}
-                {inspectionDurationMs !== null && <span className="t-unit">s</span>}
+          <div className="stats">
+            <div className="practice-card-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("统计摘要")}</div>
+                <div className="practice-kicker">SUMMARY</div>
               </div>
-            )}
-            {(phase === "solving" || phase === "done") && <div className="t-display t-active">{fmtTime(solveMs)}</div>}
-            <div className="t-phase">
-              {timerPhaseLabel}
+            </div>
+            <div className="stat-grid">
+              <div className="st st-primary"><div className="st-l">{t("总次数 TOTAL")}</div><div className="st-v">{stats.count}</div></div>
+              <div className="st"><div className="st-l">{t("最佳 BEST")}</div><div className="st-v">{fmtShort(stats.best)}</div></div>
+              <div className="st"><div className="st-l">AO5</div><div className="st-v">{fmtShort(stats.avg5)}</div></div>
+              <div className="st st-stable-score" tabIndex={0}>
+                <div className="st-l">{t("稳定成绩")}</div>
+                <div className="st-v">{fmtShort(stats.avg20)}</div>
+                <span className="stable-score-popover" role="tooltip">
+                  {stableScoreDescription}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="timer-controls">
-            {practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
-              <button className="practice-btn practice-btn-primary" onClick={isConnected ? beginScramble : startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
-                <span>
-                  {smartSolveBusy
-                    ? t("智能求解中")
-                    : !isConnected
-                    ? connectionState === "connecting"
-                      ? t("等待浏览器选择器")
-                      : t("连接魔方")
-                    : dailyTest
-                    ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
-                    : phase === "done"
-                      ? t("下一次 · 开始打乱")
-                      : t("开始打乱 · 按 SPACE")}
-                </span>
-              </button>
-            )}
-            {practiceMode === "scramble" && phase === "scrambling" && (
-              <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>
-                <span>{t("取消")}</span>
-              </button>
-            )}
-            {practiceMode === "scramble" && phase === "inspect" && (
-              <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
-                <span>{t("取消本次复原 · 按 SPACE")}</span>
-              </button>
-            )}
-            {phase === "solving" && (
-              <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
-                <span>{t("取消 · 按 SPACE")}</span>
-              </button>
-            )}
-            {practiceMode === "free" && phase !== "solving" && (
-              freeState === "scrambling" || freeState === "armed" ? (
-                <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
-                  <span>{freeState === "scrambling" ? t("静止确认中") : t("等待第一步复原")}</span>
-                </button>
-              ) : (
-                <button className="practice-btn practice-btn-ghost" disabled>
-                  <span>
-                    {!isConnected
-                      ? t("请先连接智能魔方")
-                      : phase === "done"
-                        ? t("完成，可直接再次打乱")
-                        : freeState === "waitingSolved"
-                          ? t("等待魔方状态")
-                          : t("可自由打乱")}
-                  </span>
-                </button>
-              )
-            )}
-          </div>
-
-          <div className="solve-metrics">
+          <div className="practice-live-panel practice-score-panel">
+            <div className="solve-metrics">
             <div className="practice-card-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("成绩详情")}</div>
-                <div className="practice-kicker">DETAILS</div>
+                <div className="practice-card-title">{t("当前成绩")}</div>
+                <div className="practice-kicker">SCORE</div>
               </div>
             </div>
             <div className="solve-current-grid">
-              <div className="solve-metric-main">
-                <span>{t("总成绩")}</span>
-                <em>{solveMoveCount} {t("步")}</em>
-                <b>{fmtShort(solveMs)}</b>
+              <div
+                className="solve-metric-main"
+                aria-label={`${fmtShort(solveMs)} / ${solveMoveCount} ${t("步")}`}
+              >
+                <em>{fmtShort(solveMs)}</em>
+                <span className="solve-score-separator" aria-hidden="true">/</span>
+                <b>{solveMoveCount} {t("步")}</b>
               </div>
               <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
-                <div className="solve-phase-card solve-phase-card-cross">
+                <div className={`solve-phase-card solve-phase-card-cross${cfopTimes.cross !== null ? " completed" : phase === "solving" ? " active" : ""}`}>
                   <span>Cross</span>
-                  <b>{formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")} / {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")}</b>
+                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")}</b>
                 </div>
-                <div className="solve-phase-card solve-phase-card-f2l" tabIndex={0}>
+                <div
+                  className={`solve-phase-card solve-phase-card-f2l${cfopTimes.f2l !== null ? " completed" : phase === "solving" && cfopTimes.cross !== null ? " active" : ""}`}
+                  tabIndex={0}
+                  aria-describedby="current-f2l-subphase-tooltip"
+                >
                   <span>F2L</span>
-                  <b>{formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "f2l")} / {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "f2l")}</b>
-                  <div className="f2l-subphase-popover" role="tooltip" aria-label={t("F2L 子阶段用时和步数")}>
+                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "f2l")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "f2l")}</b>
+                  <div
+                    id="current-f2l-subphase-tooltip"
+                    className="f2l-subphase-popover"
+                    role="tooltip"
+                    aria-label={t("F2L 子阶段用时和步数")}
+                  >
                     {F2L_SUBPHASES.map((subphase, index) => (
                       <span key={subphase.key}>
                         <strong>{index + 1}/4</strong>
@@ -3182,22 +3199,24 @@ export function CubePracticeApp() {
                     ))}
                   </div>
                 </div>
-                <div className="solve-phase-card solve-phase-card-oll">
+                <div className={`solve-phase-card solve-phase-card-oll${cfopTimes.oll !== null ? " completed" : phase === "solving" && cfopTimes.f2l !== null ? " active" : ""}`}>
                   <span>OLL</span>
-                  <b>{formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "oll")} / {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "oll")}</b>
+                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "oll")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "oll")}</b>
                 </div>
-                <div className="solve-phase-card solve-phase-card-pll">
+                <div className={`solve-phase-card solve-phase-card-pll${cfopTimes.pll !== null ? " completed" : phase === "solving" && cfopTimes.oll !== null ? " active" : ""}`}>
                   <span>PLL</span>
-                  <b>{formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")} / {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")}</b>
+                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")}</b>
                 </div>
               </div>
             </div>
           </div>
+          </div>
 
+          <div className="practice-live-panel practice-history-panel">
           <div className="hist hist-right">
             <div className="practice-card-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("历史记录")}</div>
+                <div className="practice-card-title">{t("历史成绩")}</div>
                 <div className="practice-kicker">HISTORY</div>
               </div>
               {history.length > 0 && (
@@ -3335,6 +3354,7 @@ export function CubePracticeApp() {
                 </div>
               </div>
             ), document.body)}
+          </div>
           </div>
         </section>
       </main>

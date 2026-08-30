@@ -67,7 +67,12 @@ export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function refreshAppearanceSettings() {
-      setOrientationState(loadCubeOrientation());
+      const nextOrientation = loadCubeOrientation();
+      setOrientationState((current) => (
+        current.top === nextOrientation.top && current.front === nextOrientation.front
+          ? current
+          : nextOrientation
+      ));
       setColorPaletteIdState(loadCubeColorPaletteId());
       setRenderMaxFpsState(loadCubeRenderMaxFps());
       setBackFaceProjectionEnabledState(loadBackFaceProjectionEnabled());

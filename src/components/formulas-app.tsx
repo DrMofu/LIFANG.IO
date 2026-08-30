@@ -104,9 +104,10 @@ const FORMULA_PLAY_STEP_INTERVAL_MS = 1000;
 const FORMULA_PLAY_MOVE_DURATION_MS = 600;
 const FORMULA_PLAY_FINISH_DELAY_MS = 2000;
 const FORMULA_TOAST_FADE_MS = 260;
-const FORMULA_STATS_ROW_SIZE = 25;
-const FORMULA_STATS_ROW_GAP = 10;
+const FORMULA_STATS_ROW_SIZE = 44;
+const FORMULA_STATS_ROW_GAP = 0;
 const FORMULA_STATS_FALLBACK_ROWS = 1;
+const FORMULA_STATS_MAX_VISIBLE_ROWS = FORMULA_STATS_LIMIT;
 const TRIGGER_NAME_BY_ALGORITHM = new Map(
   FORMULAS.triggers.items.flatMap((item) => {
     const triggers: Array<readonly [string, string]> = [
@@ -624,11 +625,11 @@ function freshPracticeStatus(length: number) {
 }
 
 function formatListStats(stats: FormulaStats | undefined, averageSettings: AverageTimeSettings) {
-  if (!stats || stats.count <= 0) return { best: "--", average: "--" };
+  if (!stats || stats.count <= 0) return { best: "--", stable: "--" };
   const average = calculateAverageTime(stats.times, averageSettings);
   return {
     best: stats.bestMs ? fmtShort(stats.bestMs) : "--",
-    average: average ? fmtShort(average.valueMs) : "--",
+    stable: average ? fmtShort(average.valueMs) : "--",
   };
 }
 
@@ -864,7 +865,7 @@ function FormulaStage({
   const formulaAverageDescription = t(describeAverageTimeSettings(averageSettings));
   const todayPracticeCount = getTodayPracticeCount(practiceStats);
   const todayPracticeTone = getTodayPracticeTone(todayPracticeCount);
-  const bestPracticeLabel = t(`最佳成绩 ${fmtShort(practiceStats.bestMs ?? null)}`);
+  const bestPracticeValue = typeof practiceStats.bestMs === "number" ? fmtShort(practiceStats.bestMs) : "--";
   const displayedMoveCount = researchMode ? researchMoves.length : algoMoves.length;
 
   function setPracticeStatuses(next: PracticeStatus[]) {
@@ -1485,7 +1486,15 @@ function FormulaStage({
       const listBorderY = parseFloat(listStyle.borderTopWidth) + parseFloat(listStyle.borderBottomWidth);
       const availableHeight = sideBottomHeight - sectionPaddingY - sectionBorderY - headHeight - headMarginBottom;
       const rowSpace = Math.max(0, availableHeight - listBorderY);
-      const rows = Math.max(1, Math.floor((rowSpace + FORMULA_STATS_ROW_GAP) / (FORMULA_STATS_ROW_SIZE + FORMULA_STATS_ROW_GAP)));
+      const rowCapacity = Math.max(
+        FORMULA_STATS_FALLBACK_ROWS,
+        Math.floor((rowSpace + FORMULA_STATS_ROW_GAP) / (FORMULA_STATS_ROW_SIZE + FORMULA_STATS_ROW_GAP)),
+      );
+      const rows = Math.min(
+        FORMULA_STATS_MAX_VISIBLE_ROWS,
+        Math.max(FORMULA_STATS_FALLBACK_ROWS, practiceStats.times.length),
+        rowCapacity,
+      );
       setFormulaStatsRows(rows);
     };
 
@@ -1569,43 +1578,68 @@ function FormulaStage({
           </div>
         )}
         <div className="cube-mount" ref={cubeMountRef}></div>
-        <div className={`stage-controls${canUseFocusMode || canUseTransparentDisplay ? " with-layer-toggle" : ""}`}>
-          <button className={`sc-btn${playbackActive ? " active" : ""}`} onClick={play} type="button">
-            <span className="sc-key" aria-hidden="true">P</span>{t("播放公式")}</button>
-          <button className={`sc-btn${researchMode ? " active" : ""}`} onClick={toggleResearchMode} type="button">
-            <span className="sc-key" aria-hidden="true">Q</span>
-            {researchMode ? t("退出研究") : t("研究模式")}
-          </button>
-          <button className="sc-btn" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
-            <span className="sc-key" aria-hidden="true">R</span>{t("视角归位")}</button>
-          {canUseTransparentDisplay && (
-            <button className={`sc-btn${transparentDisplay ? " active" : ""}`} onClick={toggleTransparentDisplay} type="button">
-              <span className="sc-key" aria-hidden="true">T</span>{t("透明显示")}</button>
-          )}
-          {canUseFocusMode && (
-            <button className={`sc-btn${lowerLayerHidden ? " active" : ""}`} onClick={toggleLowerLayerHidden} type="button">
-              <span className="sc-key" aria-hidden="true">H</span>{t("专注模式")}</button>
-          )}
-        </div>
-      </div>
-      <div className="fm-side">
-        <div className="formula-timer-card">
-          <div className={`timer formula-practice-timer${practiceTiming ? " timer-solving" : ""}`} aria-label={t("实时计时")}>
-            <div className={`t-display${practiceTiming ? " t-active" : ""}`}>
-              {fmtLiveSeconds(practiceMs)}
-              <span className="t-unit">s</span>
-            </div>
-            <div className="formula-timer-tags" aria-label={t("公式成绩")}>
-              <span className="formula-hero-tag formula-best-tag">{bestPracticeLabel}</span>
-              <span className="formula-hero-tag strong formula-average-tag" tabIndex={0}>{t("稳定成绩")}{formulaAverageLabel}
-                <span className="formula-average-popover" role="tooltip">
-                  {formulaAverageDescription}
-                </span>
-              </span>
+        {!researchMode && (
+          <div className="stage-timer-stack formula-stage-timer-stack">
+            <div className={`timer formula-practice-timer${practiceTiming ? " timer-solving" : ""}`} aria-label={t("实时计时")}>
+              <div className={`t-display${practiceTiming ? " t-active" : ""}`}>
+                {fmtLiveSeconds(practiceMs)}
+                <span className="t-unit">s</span>
+              </div>
             </div>
           </div>
+        )}
+        <div className="stage-controls" aria-label={t("公式显示控制")}>
+          <button className={`sc-btn${playbackActive ? " active" : ""}`} onClick={play} type="button">
+            <span className="sc-key" aria-hidden="true">P</span>{t("播放公式")}</button>
+          <button className="sc-btn" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
+            <span className="sc-key" aria-hidden="true">R</span>{t("视角归位")}</button>
+          {canUseTransparentDisplay ? (
+            <button
+              className={`sc-btn${transparentDisplay ? " active" : ""}`}
+              onClick={toggleTransparentDisplay}
+              type="button"
+            >
+              <span className="sc-key" aria-hidden="true">T</span>{t("透明显示")}</button>
+          ) : null}
+          {canUseFocusMode ? (
+            <button
+              className={`sc-btn${lowerLayerHidden ? " active" : ""}`}
+              onClick={toggleLowerLayerHidden}
+              type="button"
+            >
+              <span className="sc-key" aria-hidden="true">H</span>{t("专注模式")}</button>
+          ) : null}
         </div>
-        <div className="tr-section formula-main-section">
+      </div>
+      <div className={`fm-side${researchMode ? " is-research" : " is-practice"}`}>
+        <div className="formula-info-stack">
+          <div className="formula-mode-panel practice-card">
+            <div className="practice-mode-switch formula-mode-switch" role="group" aria-label={t("公式模式")}>
+              <button
+                type="button"
+                className={!researchMode ? "active" : ""}
+                aria-pressed={!researchMode}
+                onClick={() => {
+                  if (researchMode) exitResearchMode();
+                }}
+              >
+                {t("练习")}
+              </button>
+              <button
+                type="button"
+                className={researchMode ? "active" : ""}
+                aria-pressed={researchMode}
+                onClick={() => {
+                  if (!researchMode) enterResearchMode();
+                }}
+              >
+                {t("研究")}
+              </button>
+            </div>
+          </div>
+
+          <div className="formula-primary-panel practice-card">
+            <div className="tr-section formula-main-section">
           <div className="formula-hero">
             <div className="formula-hero-image" aria-hidden="true">
               {usesTopViewFormulaImage(active.sourceCat) && displayFacelets ? (
@@ -1678,6 +1712,15 @@ function FormulaStage({
                     </div>
                   )}
                 </div>
+                <span className="formula-stat-text formula-detail-stat">
+                  <span>{t("最佳")}</span>{" "}{bestPracticeValue}
+                </span>
+                <span className="formula-stat-text formula-detail-stat formula-average-tag" tabIndex={0}>
+                  <span>{t("稳定")}</span>{" "}{formulaAverageLabel}
+                  <span className="formula-average-popover" role="tooltip">
+                    {formulaAverageDescription}
+                  </span>
+                </span>
               </div>
             </div>
           </div>
@@ -1721,36 +1764,38 @@ function FormulaStage({
             {canRotateF2lVariant && !researchMode && (
               <>
                 <button
-                  className="mini-btn formula-rotate-btn"
+                  className="mini-btn formula-rotate-btn practice-btn practice-btn-ghost"
                   onClick={rotateFormulaClockwise}
                   type="button"
                 >{t("顺时针旋转")}</button>
                 <button
-                  className="mini-btn formula-rotate-btn"
+                  className="mini-btn formula-rotate-btn practice-btn practice-btn-ghost"
                   onClick={rotateFormulaCounterClockwise}
                   type="button"
                 >{t("逆时针旋转")}</button>
               </>
             )}
             {researchMode ? (
-              <button className="mini-btn full primary" onClick={() => void copyResearchMoves()} disabled={researchMoves.length === 0}>{t("复制记录")}</button>
+              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => void copyResearchMoves()} disabled={researchMoves.length === 0}>{t("复制记录")}</button>
             ) : !connected ? (
-              <button className="mini-btn full primary" onClick={() => void connectRealCube()}>{t("连接魔方")}</button>
+              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => void connectRealCube()}>{t("连接魔方")}</button>
             ) : practiceActive ? (
-              <button className="mini-btn full primary" onClick={() => resetPractice()}>{t("停止练习")}</button>
+              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => resetPractice()}>{t("停止练习")}</button>
             ) : (
-              <button className="mini-btn full primary" onClick={beginPractice}>{t("开始练习")}</button>
+              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={beginPractice}>{t("开始练习")}</button>
             )}
           </div>
+          </div>
+        </div>
         </div>
 
-        <div className={`fm-side-bottom${researchMode ? "" : " fm-side-bottom-stats"}`}>
+        <div className={`fm-side-bottom practice-card${researchMode ? "" : " fm-side-bottom-stats"}`}>
           {researchMode ? (
             <div className="tr-section formula-keypad-section">
               <div className="formula-stats-head">
-                <div className="formula-title-line">
-                  <div className="formula-card-title">{t("公式键盘")}</div>
-                  <div className="formula-kicker">KEYPAD</div>
+                <div className="practice-title-line formula-title-line">
+                  <div className="practice-card-title formula-card-title">{t("公式键盘")}</div>
+                  <div className="practice-kicker formula-card-kicker">KEYPAD</div>
                 </div>
               </div>
               <FormulaKeypad
@@ -1766,14 +1811,14 @@ function FormulaStage({
           ) : (
             <div className="tr-section formula-stats-section">
               <div className="formula-stats-head">
-                <div className="formula-title-line">
-                  <div className="formula-card-title">{t("练习统计")}</div>
-                  <div className="formula-kicker">STATS</div>
+                <div className="practice-title-line formula-title-line">
+                  <div className="practice-card-title formula-card-title">{t("练习统计")}</div>
+                  <div className="practice-kicker formula-card-kicker">STATS</div>
                 </div>
                 <span className={`formula-hero-tag formula-today-stat tone-${todayPracticeTone}`}>{t("今日")}{" "}{todayPracticeCount}{" "}{t("次")}</span>
               </div>
               {practiceStats.count === 0 || practiceStats.times.length === 0 ? (
-                <div className="fm-stats-empty">{t("暂无记录，开始练习后自动统计。")}</div>
+                <div className="hist-empty fm-stats-empty">{t("暂无记录，开始练习后自动统计。")}</div>
               ) : (
                 (() => {
                   const recentTimes = practiceStats.times;
@@ -1783,9 +1828,9 @@ function FormulaStage({
                   return (
                     <div className="fm-stats-dashboard">
                       <div
-                        className={`fm-stats-recent${statsScrolling ? " scrolling" : ""}`}
+                        className={`hist-list fm-stats-recent${statsScrolling ? " scrolling" : ""}`}
                         ref={formulaStatsListRef}
-                        style={{ "--formula-stats-rows": formulaStatsRows } as CSSProperties}
+                        style={{ "--history-rows": formulaStatsRows } as CSSProperties}
                         aria-label={t("最近二十次练习成绩")}
                         onScroll={handleStatsScroll}
                         onPointerLeave={() => setStatsScrolling(false)}
@@ -1795,12 +1840,12 @@ function FormulaStage({
                           const barWidth = `${Math.max(12, (time / slowest) * 100)}%`;
                           const isBest = practiceStats.bestMs === time;
                           return (
-                            <div key={`${n}-${time}`} className={`fm-stat-row${isBest ? " best" : ""}`}>
-                              <span className="fm-stat-row-index">#{n}</span>
-                              <span className="fm-stat-row-track" aria-hidden="true">
-                                <span className="fm-stat-row-bar" style={{ width: barWidth }}></span>
+                            <div key={`${n}-${time}`} className={`hist-row fm-stat-row${isBest ? " best" : ""}`}>
+                              <span className="hr-i">#{String(n).padStart(3, "0")}</span>
+                              <span className="hr-track" aria-hidden="true">
+                                <span className="hr-bar" style={{ width: barWidth }}></span>
                               </span>
-                              <b>{fmtShort(time)}</b>
+                              <span className="hr-t">{fmtShort(time)}</span>
                             </div>
                           );
                         })}
@@ -1880,7 +1925,8 @@ export function FormulasApp() {
       setOllShapeFilter(saved.ollShapeFilter);
       setFilter("");
       setFormulaTip(null);
-      setExpandedCaseIds(new Set());
+      const savedCase = formulaCases.find((item) => caseHasVariantKey(item, saved.activeKey));
+      setExpandedCaseIds(new Set(savedCase && caseUsesVariantList(savedCase) ? [savedCase.id] : []));
       setFavs(readFavs());
       setFormulaStats(readAllFormulaStats());
       setLearningStatuses(readLearningStatuses());
@@ -1895,7 +1941,7 @@ export function FormulasApp() {
       window.clearTimeout(readyTimer);
       unsubscribe();
     };
-  }, []);
+  }, [formulaCases]);
 
   useEffect(() => {
     if (!archiveDataReady) return;
@@ -1925,7 +1971,18 @@ export function FormulasApp() {
           }))
           .filter((item) => item.variants.length > 0);
     const firstVariant = nextItems[0]?.variants[0];
-    if (firstVariant) setActiveKey(firstVariant.key);
+    if (firstVariant) {
+      setActiveKey(firstVariant.key);
+      const firstCase = nextItems[0];
+      if (firstCase && caseUsesVariantList(firstCase)) {
+        setExpandedCaseIds((prev) => {
+          if (prev.has(firstCase.id)) return prev;
+          const next = new Set(prev);
+          next.add(firstCase.id);
+          return next;
+        });
+      }
+    }
     setFilter("");
     if (nextCat === "favorites") setShowFavOnly(false);
   }
@@ -2069,7 +2126,7 @@ export function FormulasApp() {
       <AppTopbar />
 
       <main className="fm-grid">
-        <section className="fm-left">
+        <section className="fm-left practice-card">
           <div className="fm-category-tabs" aria-label={t("公式类别")}>
             {Object.entries(FORMULAS).map(([key, value]) => (
               <button
@@ -2087,40 +2144,43 @@ export function FormulasApp() {
               onClick={() => changeCat("favorites")}
             >{t("收藏夹")}</button>
           </div>
-          <div className="fm-search">
-            <input
-              type="text"
-              placeholder={t(`搜索 ${catData.name}…`)}
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-            />
-            <LearningStatusSelectField selected={statusFilter} onSelect={setStatusFilter} />
-            {!isFavoritesView && (
-              <button
-                className={`fm-fav-toggle${showFavOnly ? " active" : ""}`}
-                onClick={() => setShowFavOnly((value) => !value)}
-                title={t("只看收藏")}
-              >
-                ★
-              </button>
-            )}
-          </div>
-          {cat === "oll" && (
-            <div className="fm-shape-filter">
-              <label htmlFor="oll-shape-filter">{t("formula.shape.label")}</label>
-              <OllShapeSelectField
-                id="oll-shape-filter"
-                selected={ollShapeFilter}
-                faceColors={formulaTopViewFaceColors}
-                onSelect={setOllShapeFilter}
+          <div className="fm-library-panel">
+            <div className="fm-search">
+              <input
+                type="text"
+                placeholder={t(`搜索 ${catData.name}…`)}
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
               />
+              <LearningStatusSelectField selected={statusFilter} onSelect={setStatusFilter} />
+              {!isFavoritesView && (
+                <button
+                  className={`fm-fav-toggle${showFavOnly ? " active" : ""}`}
+                  onClick={() => setShowFavOnly((value) => !value)}
+                  aria-label={t("只看收藏")}
+                  aria-pressed={showFavOnly}
+                  title={t("只看收藏")}
+                >
+                  <span aria-hidden="true">★</span>
+                </button>
+              )}
             </div>
-          )}
-          <div className="fm-list">
-            {items.length === 0 ? (
-              <div className="fm-empty">{emptyMessage}</div>
-            ) : (
-              items.map((item) => {
+            {cat === "oll" && (
+              <div className="fm-shape-filter">
+                <label htmlFor="oll-shape-filter">{t("formula.shape.label")}</label>
+                <OllShapeSelectField
+                  id="oll-shape-filter"
+                  selected={ollShapeFilter}
+                  faceColors={formulaTopViewFaceColors}
+                  onSelect={setOllShapeFilter}
+                />
+              </div>
+            )}
+            <div className="fm-list">
+              {items.length === 0 ? (
+                <div className="fm-empty">{emptyMessage}</div>
+              ) : (
+                items.map((item) => {
                 const caseActive = item.variants.some((variant) => variant.key === resolvedActiveKey);
                 const totalVariantCount = getTotalVariantCount(item);
                 const usesVariantList = caseUsesVariantList(item);
@@ -2186,8 +2246,8 @@ export function FormulasApp() {
                           {usesVariantList && <span className="formula-variant-count">{totalVariantCount}{t("个公式")}</span>}
                           {summary && (
                             <>
-                              <span>{t("最佳")}{" "}{summary.best}</span>
-                              <span>{t("平均")}{" "}{summary.average}</span>
+                              <span className="formula-stat-text">{t("最佳")}{" "}{summary.best}</span>
+                              <span className="formula-stat-text">{t("稳定")}{" "}{summary.stable}</span>
                             </>
                           )}
                         </div>
@@ -2251,8 +2311,8 @@ export function FormulasApp() {
                                 <div className="fvr-algo">{variant.algo}</div>
                                 <div className="fmr-meta">
                                   <span className={`formula-status-badge status-${variantStatus}`}>{variantStatusLabel}</span>
-                                  <span>{t("最佳")}{" "}{variantStats.best}</span>
-                                  <span>{t("平均")}{" "}{variantStats.average}</span>
+                                  <span className="formula-stat-text">{t("最佳")}{" "}{variantStats.best}</span>
+                                  <span className="formula-stat-text">{t("稳定")}{" "}{variantStats.stable}</span>
                                 </div>
                               </div>
                               <button
@@ -2272,25 +2332,26 @@ export function FormulasApp() {
                     )}
                   </div>
                 );
-              })
+                })
+              )}
+            </div>
+            {formulaTip && (
+              <div className="formula-floating-tip" role="tooltip" style={{ left: formulaTip.left, top: formulaTip.top }}>
+                <div className="fft-head">
+                  <span>{formulaTip.title}</span>
+                  <b>{formulaTip.sourceName}</b>
+                </div>
+                <div className="fft-list">
+                  {formulaTip.variants.map((variant) => (
+                    <div key={variant.key} className="fft-row">
+                      {formulaTip.variants.length > 1 && <div className="fft-name">{t(variant.name)}</div>}
+                      <div className="fft-algo">{renderAlgorithmWithGroups(variant.algo)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-          {formulaTip && (
-            <div className="formula-floating-tip" role="tooltip" style={{ left: formulaTip.left, top: formulaTip.top }}>
-              <div className="fft-head">
-                <span>{formulaTip.title}</span>
-                <b>{formulaTip.sourceName}</b>
-              </div>
-              <div className="fft-list">
-                {formulaTip.variants.map((variant) => (
-                  <div key={variant.key} className="fft-row">
-                    {formulaTip.variants.length > 1 && <div className="fft-name">{t(variant.name)}</div>}
-                    <div className="fft-algo">{renderAlgorithmWithGroups(variant.algo)}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </section>
 
         <section className="fm-right">
@@ -2309,7 +2370,7 @@ export function FormulasApp() {
               </div>
             </>
           ) : (
-            <div className="fm-detail-empty">
+            <div className="fm-detail-empty practice-card">
               <div className="fmd-cat">{t("收藏夹")}</div>
               <div className="fmd-name">{t("还没有收藏公式")}</div>
               <div className="fm-empty">{t("点击任意公式右侧的星标后，会在这里集中显示。")}</div>

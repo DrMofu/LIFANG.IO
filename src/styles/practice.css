@@ -61,25 +61,6 @@
   gap: 12px;
   margin-bottom: 14px;
 }
-.practice-title-line {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-}
-.practice-kicker {
-  color: var(--tech-muted);
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-}
-.practice-card-title {
-  color: var(--tech-ink);
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 1.1;
-}
 .practice-btn {
   display: inline-flex;
   min-height: 42px;
@@ -160,14 +141,6 @@
   min-width: 0;
   padding-right: 8px;
   padding-left: 8px;
-}
-.lf-practice-app .dt-recent {
-  border: 1px solid var(--tech-line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.58);
-  padding: 8px 10px;
-  color: var(--tech-muted);
-  font-size: 11px;
 }
 .practice-stage {
   position: relative;
@@ -619,32 +592,6 @@
   font-weight: 800;
   text-align: center;
 }
-.lf-practice-app .practice-mode-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  border: 1px solid var(--tech-line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: var(--tech-shadow-soft);
-  padding: 4px;
-}
-.lf-practice-app .practice-mode-switch button {
-  min-height: 38px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--tech-muted);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 850;
-  cursor: pointer;
-}
-.lf-practice-app .practice-mode-switch button.active {
-  background: linear-gradient(145deg, #3d7cff, #2363e8);
-  box-shadow: 0 10px 18px rgba(47, 111, 242, 0.24);
-  color: #ffffff;
-}
 .lf-practice-app .timer {
   box-sizing: border-box;
   height: 126px;
@@ -810,11 +757,6 @@
 }
 .lf-practice-app .solve-phase-card-f2l {
   grid-area: f2l;
-  cursor: help;
-}
-.lf-practice-app .solve-phase-card-f2l:focus-visible {
-  outline: 2px solid rgba(47, 111, 242, 0.38);
-  outline-offset: 2px;
 }
 .lf-practice-app .solve-phase-card-oll {
   grid-area: oll;
@@ -841,85 +783,6 @@
   margin-top: 3px;
   font-size: 12px;
   white-space: nowrap;
-}
-.lf-practice-app .f2l-subphase-popover {
-  position: absolute;
-  z-index: 12;
-  right: 0;
-  top: calc(100% + 8px);
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  width: min(252px, calc(100vw - 32px));
-  border: 1px solid rgba(47, 111, 242, 0.18);
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(61, 124, 255, 0.11), transparent 46%),
-    rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 42px rgba(35, 61, 105, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.82);
-  padding: 8px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px) scale(0.98);
-  transition: opacity 0.14s ease, transform 0.14s ease;
-  backdrop-filter: blur(18px);
-}
-.lf-practice-app .f2l-subphase-popover::before {
-  position: absolute;
-  top: -6px;
-  right: 22px;
-  width: 10px;
-  height: 10px;
-  border: 1px solid rgba(47, 111, 242, 0.18);
-  border-right: 0;
-  border-bottom: 0;
-  background: rgba(255, 255, 255, 0.96);
-  content: "";
-  transform: rotate(45deg);
-}
-.lf-practice-app .solve-phase-card-f2l:hover .f2l-subphase-popover,
-.lf-practice-app .solve-phase-card-f2l:focus .f2l-subphase-popover,
-.lf-practice-app .solve-phase-card-f2l:focus-within .f2l-subphase-popover {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-.lf-practice-app .f2l-subphase-popover span {
-  min-width: 0;
-  border: 1px solid rgba(47, 111, 242, 0.12);
-  border-radius: 8px;
-  background: rgba(234, 242, 255, 0.5);
-  padding: 5px 4px;
-  color: var(--tech-muted);
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 850;
-  line-height: 1.25;
-  text-align: center;
-}
-.lf-practice-app .f2l-subphase-popover strong,
-.lf-practice-app .f2l-subphase-popover b,
-.lf-practice-app .f2l-subphase-popover em {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lf-practice-app .f2l-subphase-popover strong {
-  color: var(--tech-ink);
-  font-weight: 900;
-}
-.lf-practice-app .f2l-subphase-popover b,
-.lf-practice-app .f2l-subphase-popover em {
-  color: var(--tech-ink-2);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 850;
-}
-.lf-practice-app .f2l-subphase-popover b {
-  color: var(--tech-muted);
-}
-.lf-practice-app .f2l-subphase-popover em {
-  color: var(--tech-ink-2);
 }
 .lf-practice-app .solve-metric-main b {
   grid-row: 5;
@@ -980,13 +843,13 @@
   opacity: 1;
   transform: translateY(0);
 }
-.lf-practice-app .hist-empty {
+:is(.lf-practice-app, .lf-tech-app) .hist-empty {
   border-left: 3px solid var(--tech-line);
   padding: 6px 0 6px 12px;
   color: var(--tech-muted);
   font-size: 13px;
 }
-.lf-practice-app .hist-list {
+:is(.lf-practice-app, .lf-tech-app) .hist-list {
   --history-row-size: 32px;
   --history-row-gap: 7px;
   --history-rows: 1;
@@ -1004,7 +867,7 @@
   touch-action: pan-y;
   border-top: 1px solid var(--tech-line-2);
 }
-.lf-practice-app .hist-row {
+:is(.lf-practice-app, .lf-tech-app) .hist-row {
   display: grid;
   box-sizing: border-box;
   grid-template-columns: 40px minmax(0, 1fr) 54px 40px;
@@ -1020,25 +883,25 @@
   padding: 6px 8px;
   color: var(--tech-ink-2);
 }
-.lf-practice-app .hist-row.editing {
+:is(.lf-practice-app, .lf-tech-app) .hist-row.editing {
   grid-template-columns: 40px minmax(0, 1fr) 54px 40px 22px;
 }
-.lf-practice-app .hist-row > * {
+:is(.lf-practice-app, .lf-tech-app) .hist-row > * {
   min-width: 0;
 }
-.lf-practice-app .hr-i,
-.lf-practice-app .hr-m {
+:is(.lf-practice-app, .lf-tech-app) .hr-i,
+:is(.lf-practice-app, .lf-tech-app) .hr-m {
   color: var(--tech-muted);
   font-family: var(--mono);
   font-size: 10px;
 }
-.lf-practice-app .hr-m {
+:is(.lf-practice-app, .lf-tech-app) .hr-m {
   justify-self: end;
   text-align: right;
   overflow: visible;
   white-space: nowrap;
 }
-.lf-practice-app .hr-track {
+:is(.lf-practice-app, .lf-tech-app) .hr-track {
   position: relative;
   display: block;
   height: 6px;
@@ -1046,7 +909,7 @@
   border-radius: 999px;
   background: #edf2f8;
 }
-.lf-practice-app .hr-bar {
+:is(.lf-practice-app, .lf-tech-app) .hr-bar {
   position: absolute;
   inset: 0 auto 0 0;
   display: block;
@@ -1054,10 +917,10 @@
   border-radius: 999px;
   background: var(--tech-ink);
 }
-.lf-practice-app .hist-row.best .hr-bar {
+:is(.lf-practice-app, .lf-tech-app) .hist-row.best .hr-bar {
   background: var(--tech-green);
 }
-.lf-practice-app .hr-t {
+:is(.lf-practice-app, .lf-tech-app) .hr-t {
   justify-self: end;
   color: var(--tech-ink);
   font-family: var(--mono);
@@ -1230,12 +1093,991 @@
     grid-template-columns: minmax(74px, 0.8fr) repeat(2, minmax(0, 1fr));
   }
 
-  .lf-practice-app .f2l-subphase-popover {
-    right: -2px;
-    width: min(236px, calc(100vw - 28px));
-  }
-
   .lf-practice-app .t-display {
     font-size: 42px;
+  }
+}
+
+/* Focus Arena: the practice page floats controls around one borderless cube stage. */
+.practice-focus-app {
+  background:
+    radial-gradient(circle at 48% 34%, rgba(255, 255, 255, 0.98) 0 11%, rgba(233, 242, 255, 0.72) 42%, transparent 69%),
+    radial-gradient(circle at 18% 10%, rgba(89, 147, 255, 0.16), transparent 32%),
+    linear-gradient(180deg, #f7faff 0%, #eef5ff 100%);
+}
+
+.practice-focus-app::before {
+  background-image:
+    linear-gradient(to right, rgba(45, 111, 242, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(45, 111, 242, 0.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  opacity: 0.7;
+}
+
+.practice-focus-app .practice-layout {
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  grid-template-columns: clamp(270px, 16vw, 390px) minmax(520px, 1fr) clamp(310px, 17vw, 430px);
+  gap: clamp(18px, 1.5vw, 34px);
+  padding: clamp(22px, 2.4vw, 38px) clamp(24px, 1.5vw, 48px) 28px;
+}
+
+.practice-focus-app .practice-left,
+.practice-focus-app .practice-right {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  overflow-x: visible;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.practice-focus-app .practice-left::-webkit-scrollbar,
+.practice-focus-app .practice-right::-webkit-scrollbar {
+  display: none;
+}
+
+.practice-focus-app .practice-left {
+  gap: 14px;
+  justify-content: flex-start;
+}
+
+.practice-focus-app .practice-right {
+  gap: 14px;
+  padding-top: 2px;
+}
+
+.practice-focus-app .practice-center {
+  z-index: 1;
+}
+
+.practice-focus-app .practice-card,
+.practice-focus-app .movelog,
+.practice-focus-app .stats,
+.practice-focus-app .practice-control-panel,
+.practice-focus-app .practice-live-panel {
+  border: 0;
+  border-radius: 22px;
+  background: #f8fbff;
+  box-shadow: 6px 8px 20px rgba(65, 94, 142, 0.07);
+  backdrop-filter: none;
+}
+
+.practice-focus-app .practice-card,
+.practice-focus-app .movelog,
+.practice-focus-app .stats {
+  padding: 16px;
+}
+
+.practice-focus-app .practice-card-head {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.practice-focus-app .practice-card-title {
+  color: #19386f;
+}
+
+.practice-focus-app .practice-kicker {
+  color: #91a2bd;
+  letter-spacing: 0.12em;
+}
+
+html[lang="en"] .practice-focus-app .practice-kicker {
+  display: none;
+}
+
+.practice-focus-app .daily-test-card {
+  padding: 4px 6px 14px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.practice-focus-app .daily-test-card .practice-card-head {
+  margin-bottom: 5px;
+  padding: 0 4px;
+}
+
+.practice-focus-app .daily-test-card .practice-kicker {
+  display: none;
+}
+
+.practice-focus-app .dt-date {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.practice-focus-app .dt-progress-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 4px 8px;
+  color: #18396f;
+}
+
+.practice-focus-app .dt-progress-copy strong {
+  font-family: var(--timer-number);
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.practice-focus-app .dt-progress-copy span {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.practice-focus-app .dt-progress {
+  gap: 5px;
+  margin: 0 4px 7px;
+}
+
+.practice-focus-app .dt-step {
+  position: relative;
+  min-height: 3px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(89, 122, 176, 0.18);
+}
+
+.practice-focus-app .dt-step.done {
+  background: #2f6ff2;
+}
+
+.practice-focus-app .dt-step-time {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+:is(.practice-focus-app, .lf-tech-app) .practice-mode-switch {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid rgba(190, 210, 241, 0.54);
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: none;
+  padding: 4px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .practice-mode-switch button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tech-muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .practice-mode-switch button.active {
+  background: #2f6ff2;
+  box-shadow: none;
+  color: #ffffff;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .practice-mode-switch button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.practice-focus-app .dt-actions {
+  margin-top: 0;
+}
+
+.practice-focus-app .dt-actions .practice-btn {
+  min-height: 36px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.practice-focus-app .practice-btn-primary {
+  background: #2f6ff2;
+  box-shadow: none;
+}
+
+.practice-focus-app .practice-control-panel {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 14px 10px 10px;
+}
+
+.practice-focus-app .practice-control-head {
+  margin: 0 4px 2px;
+}
+
+.practice-focus-app .stats {
+  flex: 0 0 auto;
+}
+
+.practice-focus-app .practice-right > .stats {
+  order: 2;
+}
+
+.practice-focus-app .stats .stat-grid {
+  gap: 7px;
+}
+
+.practice-focus-app .stats .st {
+  min-height: 70px;
+  border-color: rgba(213, 226, 246, 0.72);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 11px 10px;
+}
+
+.practice-focus-app .stats .st-primary {
+  border-color: rgba(47, 111, 242, 0.22);
+  background: #eaf2ff;
+}
+
+.practice-focus-app .stats .st-l {
+  color: #7e90ad;
+  font-size: 10px;
+}
+
+.practice-focus-app .stats .st-v {
+  margin-top: 7px;
+  color: #153a79;
+  font-family: var(--timer-number);
+  font-size: 18px;
+}
+
+.practice-focus-app .movelog {
+  flex: 0 0 auto;
+  max-height: 290px;
+}
+
+.practice-focus-app .formula-recognition-panel {
+  max-height: none;
+  overflow: visible;
+}
+
+.practice-focus-app .ml-head {
+  margin-bottom: 10px;
+}
+
+.practice-focus-app .formula-recognition-empty {
+  min-height: 78px;
+  border: 1px solid rgba(213, 226, 246, 0.7);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.practice-focus-app .formula-recognition-summary {
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.practice-focus-app .formula-recognition-image {
+  box-shadow: none;
+}
+
+.practice-focus-app .formula-recognition-formula-row {
+  background: #ffffff;
+}
+
+.practice-focus-app .formula-recognition-list {
+  max-height: none;
+  overflow-y: visible;
+}
+
+.practice-focus-app .formula-recognition-meta span,
+.practice-focus-app .formula-recognition-count,
+.practice-focus-app .formula-recognition-formula-name {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.practice-focus-app .formula-recognition-algorithm {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-focus-app .formula-recognition-empty {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-focus-app .practice-center {
+  position: relative;
+  min-height: 0;
+}
+
+.practice-focus-app .practice-stage {
+  position: relative;
+  isolation: isolate;
+  min-height: 660px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.practice-focus-app .practice-stage::before {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  z-index: -1;
+  width: min(780px, 92%);
+  height: min(520px, 64%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.94), rgba(228, 239, 255, 0.44) 48%, transparent 72%);
+  content: "";
+  filter: blur(2px);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.practice-focus-app .practice-stage .cube-mount {
+  z-index: 1;
+  inset: 8px 0 160px;
+}
+
+.practice-focus-app .gyro-cost-notice {
+  top: 20px;
+  right: 18px;
+  left: auto;
+  width: min(310px, calc(100% - 36px));
+}
+
+:is(.practice-focus-app, .lf-tech-app) .stage-timer-stack {
+  position: absolute;
+  right: 50%;
+  bottom: 12px;
+  z-index: 7;
+  display: grid;
+  width: min(430px, 82%);
+  justify-items: center;
+  gap: 8px;
+  transform: translateX(50%);
+  transition: bottom 160ms ease;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .timer {
+  display: grid;
+  width: auto;
+  height: auto;
+  justify-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .timer::before {
+  display: none;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .t-display {
+  height: auto;
+  justify-content: center;
+  background: linear-gradient(180deg, #2d70f5 10%, #0751d8 70%, #7ba9ff 116%);
+  color: transparent;
+  font-family: var(--timer-number);
+  font-size: clamp(58px, 6.2vw, 94px);
+  font-weight: 900;
+  letter-spacing: 0.015em;
+  line-height: 0.9;
+  filter: drop-shadow(0 16px 20px rgba(42, 101, 225, 0.2));
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.practice-focus-app .practice-infinity-symbol {
+  width: 72px;
+  height: 42px;
+  color: var(--tech-blue);
+}
+
+:is(.practice-focus-app, .lf-tech-app) .t-unit {
+  color: var(--tech-blue);
+  font-size: 22px;
+}
+
+.practice-focus-app .t-phase {
+  margin-top: 7px;
+  color: #8495b1;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.practice-focus-app .timer-controls {
+  width: min(260px, 80%);
+}
+
+.practice-focus-app .timer-controls .practice-btn {
+  min-height: 36px;
+  border-radius: 999px;
+  box-shadow: 0 12px 28px rgba(47, 111, 242, 0.18);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.practice-focus-app .stage-bottom-stack {
+  right: 0;
+  bottom: 12px;
+  left: 0;
+  z-index: 9;
+}
+
+.practice-focus-app .stage-hint {
+  border-color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: none;
+  backdrop-filter: blur(22px);
+}
+
+.practice-focus-app .stage-tools {
+  position: static;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-width: none;
+}
+
+.practice-focus-app .tag {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: 1fr;
+  align-items: center;
+  justify-items: start;
+  gap: 8px;
+  border-color: rgba(205, 220, 242, 0.78);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: none;
+  padding: 6px 9px;
+  color: #234578;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: left;
+  backdrop-filter: none;
+}
+
+.practice-focus-app .tag > span:last-child {
+  min-width: 0;
+  text-align: left;
+}
+
+.practice-focus-app .tag-key {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid rgba(47, 111, 242, 0.22);
+  border-radius: 50%;
+  background: rgba(234, 242, 255, 0.76);
+  color: #205fd8;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-focus-app .tag-btn.active,
+.practice-focus-app .tag-btn.active:hover {
+  border-color: rgba(47, 111, 242, 0.26);
+  background: #eaf2ff;
+  color: #164aab;
+}
+
+.practice-focus-app .tag-btn.active .tag-key {
+  background: #2f6ff2;
+  color: #fff;
+}
+
+.practice-focus-app .practice-live-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.practice-focus-app .practice-score-panel,
+.practice-focus-app .practice-history-panel {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.practice-focus-app .practice-score-panel {
+  order: 1;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+
+.practice-focus-app .practice-score-panel .practice-card-head {
+  margin-bottom: 4px;
+}
+
+.practice-focus-app .practice-history-panel {
+  order: 3;
+  flex: 1 1 auto;
+}
+
+.practice-focus-app .solve-metrics,
+.practice-focus-app .hist {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+.practice-focus-app .solve-metrics {
+  flex: 0 0 auto;
+}
+
+.practice-focus-app .solve-current-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  gap: 6px;
+}
+
+.practice-focus-app .solve-phase-grid {
+  display: grid;
+  grid-column: 1;
+  grid-row: 2;
+  grid-template-areas:
+    "cross f2l"
+    "oll pll";
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.practice-focus-app .solve-phase-card {
+  display: block;
+  min-height: 52px;
+  border: 1px solid rgba(119, 145, 184, 0.24);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  padding: 8px 9px;
+}
+
+.practice-focus-app .solve-phase-card-cross {
+  grid-area: cross;
+}
+
+.practice-focus-app .solve-phase-card-f2l {
+  grid-area: f2l;
+  cursor: help;
+}
+
+.practice-focus-app .solve-phase-card-oll {
+  grid-area: oll;
+}
+
+.practice-focus-app .solve-phase-card-pll {
+  grid-area: pll;
+}
+
+.practice-focus-app .solve-phase-card.active {
+  border-color: rgba(47, 111, 242, 0.42);
+  box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.1);
+}
+
+.practice-focus-app .solve-phase-card-f2l:focus-visible {
+  outline: 2px solid rgba(47, 111, 242, 0.38);
+  outline-offset: 2px;
+}
+
+.practice-focus-app .solve-phase-card span {
+  color: #173567;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-focus-app .solve-phase-card b {
+  margin-top: 3px;
+  color: #1c5fd8;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.practice-focus-app .solve-metric-main {
+  display: flex;
+  min-height: 42px;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 6px;
+  grid-column: 1;
+  grid-row: 1;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 2px 2px 7px;
+  text-align: left;
+}
+
+.practice-focus-app .solve-metric-main em {
+  color: #1d62de;
+  font-family: var(--timer-number);
+  font-size: 40px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.practice-focus-app .solve-metric-main .solve-score-separator {
+  display: inline;
+  color: #8a9bb4;
+  font-family: var(--mono);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.practice-focus-app .solve-metric-main b {
+  margin: 0;
+  color: #8292aa;
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.practice-focus-app .f2l-subphase-popover {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 8px);
+  right: -2px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  width: min(236px, calc(100vw - 28px));
+  border: 1px solid rgba(47, 111, 242, 0.18);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 20% 0, rgba(61, 124, 255, 0.11), transparent 46%),
+    rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 42px rgba(35, 61, 105, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  padding: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px) scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+  backdrop-filter: blur(18px);
+}
+
+.practice-focus-app .f2l-subphase-popover::before {
+  position: absolute;
+  top: -6px;
+  right: 22px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid rgba(47, 111, 242, 0.18);
+  border-left: 1px solid rgba(47, 111, 242, 0.18);
+  background: rgba(255, 255, 255, 0.96);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.practice-focus-app .solve-phase-card-f2l:is(:hover, :focus, :focus-within) .f2l-subphase-popover {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.practice-focus-app .f2l-subphase-popover > span {
+  min-width: 0;
+  border: 1px solid rgba(47, 111, 242, 0.12);
+  border-radius: 8px;
+  background: rgba(234, 242, 255, 0.5);
+  padding: 5px 4px;
+  font-family: var(--mono);
+  line-height: 1.25;
+  text-align: center;
+}
+
+.practice-focus-app .f2l-subphase-popover strong,
+.practice-focus-app .f2l-subphase-popover em,
+.practice-focus-app .f2l-subphase-popover b {
+  display: block;
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.practice-focus-app .f2l-subphase-popover strong {
+  color: #173567;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.practice-focus-app .f2l-subphase-popover em,
+.practice-focus-app .f2l-subphase-popover b {
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.practice-focus-app .f2l-subphase-popover em {
+  margin-top: 3px;
+  color: #1c5fd8;
+}
+
+.practice-focus-app .f2l-subphase-popover b {
+  margin-top: 2px;
+  color: #8292aa;
+}
+
+.practice-focus-app .hist-right {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hist-list {
+  --history-row-size: 44px;
+  --history-row-gap: 0px;
+  flex: 1 1 auto;
+  height: calc(
+    var(--history-row-size) * var(--history-rows) +
+    var(--history-row-gap) * (var(--history-rows) - 1) +
+    1px
+  );
+  min-height: 0;
+  max-height: none;
+  border-top: 0;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hist-row {
+  grid-template-columns: 30px minmax(0, 1fr) 62px 38px;
+  column-gap: 5px;
+  border-bottom: 1px solid rgba(213, 226, 246, 0.62);
+  border-radius: 0;
+  background: transparent;
+  padding: 7px 2px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hist-row.editing {
+  grid-template-columns: 30px minmax(0, 1fr) 62px 38px 20px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hr-i,
+:is(.practice-focus-app, .lf-tech-app) .hr-m {
+  font-weight: 800;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hr-t {
+  font-weight: 800;
+}
+
+.practice-focus-app .stable-score-popover,
+.practice-focus-app .hist-empty {
+  font-weight: 800;
+}
+
+.practice-focus-app .hist-empty {
+  font-size: 12px;
+}
+
+.practice-focus-app .hr-track {
+  background: rgba(220, 230, 245, 0.7);
+}
+
+.practice-focus-app .hr-bar {
+  background: #2f6ff2;
+}
+
+.practice-focus-app .hr-t {
+  color: #173567;
+}
+
+@media (min-width: 1061px) {
+  .practice-focus-app .practice-left,
+  .practice-focus-app .practice-right {
+    margin: calc(var(--panel-shadow-gutter) * -1);
+    padding: var(--panel-shadow-gutter);
+  }
+}
+
+@media (max-width: 1280px) {
+  .practice-focus-app .practice-layout {
+    grid-template-columns: 240px minmax(440px, 1fr) 280px;
+    gap: 18px;
+    padding-right: 30px;
+    padding-left: 30px;
+  }
+
+  .practice-focus-app .tag {
+    min-height: 46px;
+  }
+
+  .practice-focus-app .practice-live-panel {
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 1060px) {
+  .practice-focus-app {
+    overflow: auto;
+  }
+
+  /* Keep a scrollable gutter on both sides of the full-width tablet canvas. */
+  .practice-focus-app .practice-stage .cube-mount::before,
+  .practice-focus-app .practice-stage .cube-mount::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    display: block;
+    width: max(64px, calc((100% - 720px) / 2));
+    background: transparent;
+    content: "";
+    pointer-events: auto;
+    touch-action: pan-y;
+  }
+
+  .practice-focus-app .practice-stage .cube-mount::before {
+    left: 0;
+  }
+
+  .practice-focus-app .practice-stage .cube-mount::after {
+    right: 0;
+  }
+
+  .practice-focus-app .practice-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 18px;
+    min-height: auto;
+  }
+
+  .practice-focus-app .practice-center {
+    order: 1;
+    grid-column: 1 / -1;
+  }
+
+  .practice-focus-app .practice-left,
+  .practice-focus-app .practice-right {
+    display: flex;
+    margin: 0;
+    padding-right: 0;
+    padding-left: 0;
+    overflow: visible;
+  }
+
+  .practice-focus-app .practice-left {
+    order: 2;
+  }
+
+  .practice-focus-app .practice-left > * {
+    order: 0;
+  }
+
+  .practice-focus-app .daily-test-card {
+    border-radius: 22px;
+    background: #f8fbff;
+    box-shadow: 6px 8px 20px rgba(65, 94, 142, 0.07);
+    padding: 16px;
+  }
+
+  .practice-focus-app .daily-test-card .practice-card-head {
+    padding: 0;
+  }
+
+  .practice-focus-app .practice-right {
+    order: 3;
+  }
+
+  .practice-focus-app .practice-stage {
+    min-height: 660px;
+  }
+
+  .practice-focus-app .practice-history-panel {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 700px) {
+  .practice-focus-app .footbar {
+    display: none;
+  }
+
+  .practice-focus-app .practice-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 14px 12px 54px;
+  }
+
+  .practice-focus-app .practice-center,
+  .practice-focus-app .practice-left,
+  .practice-focus-app .practice-right {
+    grid-column: 1;
+  }
+
+  .practice-focus-app .practice-stage {
+    min-height: 570px;
+  }
+
+  .practice-focus-app .practice-stage .cube-mount {
+    inset: 18px 0 150px;
+  }
+
+  .practice-focus-app .practice-stage .cube-mount::before,
+  .practice-focus-app .practice-stage .cube-mount::after {
+    display: none;
+  }
+
+  .practice-focus-app .stage-timer-stack {
+    bottom: 18px;
+    width: 94%;
+  }
+
+  .practice-focus-app .t-display {
+    font-size: clamp(50px, 18vw, 76px);
+  }
+
+  .practice-focus-app .stage-tools {
+    right: auto;
+    left: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .practice-focus-app .tag {
+    min-height: 46px;
+  }
+
+  .practice-focus-app .stage-bottom-stack {
+    right: 0;
+    bottom: 18px;
+    left: 0;
+  }
+
+  .practice-focus-app .practice-history-panel {
+    min-height: 420px;
+  }
+
+  .practice-focus-app .hist-list {
+    --history-row-size: 44px;
   }
 }
