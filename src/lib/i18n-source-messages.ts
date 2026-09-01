@@ -320,7 +320,9 @@ export const englishSourceMessages: Record<string, string> = {
   "硬件型号、固件版本、生产日期": "Hardware model, firmware version, and production date",
   "蓝牙断开事件": "Bluetooth disconnect events",
   "读取云端数据失败，请检查 Supabase 表和 RLS 配置。": "Could not read cloud data. Check the Supabase table and RLS configuration.",
-  "验证码已发送，请查看邮箱。": "Verification code sent. Check your email.",
+  "验证码已发送，请查看邮箱。若未在收件箱中找到验证码，请检查垃圾邮件。":
+    "Verification code sent. Check your email. If it is not in your inbox, check your spam folder.",
+  "作者：皌白": "Author: M. White",
   "请稍后重试。": "Try again later.",
   "已登录，可以同步云端数据。": "Signed in. Cloud sync is available.",
   "验证码无效或已过期。": "The verification code is invalid or expired.",

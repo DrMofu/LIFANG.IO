@@ -905,8 +905,30 @@
 
 .settings-debug-row {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   margin-top: -4px;
+}
+
+.settings-author-link {
+  color: rgba(83, 100, 132, 0.82);
+  font-size: var(--ui-type-sm);
+  font-weight: var(--ui-weight-support);
+  line-height: 32px;
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+.settings-author-link:hover {
+  color: var(--tech-blue);
+}
+
+.settings-author-link:focus-visible {
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.12);
+  color: var(--tech-blue);
+  outline: none;
 }
 
 .settings-toggle-grid {

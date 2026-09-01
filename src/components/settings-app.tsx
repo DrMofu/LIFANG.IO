@@ -372,8 +372,9 @@ export function SettingsApp() {
       });
       if (error) throw error;
       setAuthCodeSent(true);
-      setAuthStatusMessage({ kind: "success", text: t("验证码已发送，请查看邮箱。") });
-      flashStatus("success", t("验证码已发送，请查看邮箱。"));
+      const successMessage = t("验证码已发送，请查看邮箱。若未在收件箱中找到验证码，请检查垃圾邮件。");
+      setAuthStatusMessage({ kind: "success", text: successMessage });
+      flashStatus("success", successMessage);
     } catch (error) {
       const message = error instanceof Error ? error.message : t("请稍后重试。");
       setAuthStatusMessage({ kind: "error", text: t(`发送验证码失败：${message}`) });
@@ -1139,6 +1140,14 @@ export function SettingsApp() {
             >
               Debug
             </button>
+            <a
+              className="settings-author-link"
+              href="https://mwhitelab.com/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t("作者：皌白")}
+            </a>
           </div>
         </div>
       </main>
