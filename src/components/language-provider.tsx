@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExte
 import {
   LANGUAGE_COOKIE_KEY,
   LANGUAGE_STORAGE_KEY,
+  getSiteTitle,
   isLocale,
   type Locale,
 } from "@/lib/i18n";
@@ -50,7 +51,7 @@ export function LanguageProvider({ children, initialLocale }: { children: ReactN
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
     const isArticle = pathname.startsWith("/articles/");
-    if (!isArticle) document.title = locale === "zh" ? "立方" : "Cube";
+    if (!isArticle) document.title = getSiteTitle(locale);
   }, [locale, pathname]);
 
   const value = useMemo<LanguageContextValue>(() => ({

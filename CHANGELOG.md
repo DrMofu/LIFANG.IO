@@ -1,3 +1,9 @@
+## v0.1.5
+
+FEATURES:
+- 练习界面添加纯计时器模式
+- 项目正式绑定域名 LIFANG.IO
+
 ## v0.1.4 (26.08.29)
 
 IMPROVEMENTS:

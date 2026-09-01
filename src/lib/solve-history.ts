@@ -14,10 +14,13 @@ export type F2lSubphaseMetrics = {
   four: HistoryMetricValue;
 };
 
+export type SolveSource = "smart-cube" | "timer";
+
 export type SolveHistoryEntry = {
   ms: number;
   ts: number;
   mode?: "scramble" | "free";
+  source?: SolveSource;
   moves?: number;
   dailyTest?: {
     id: string;
@@ -34,6 +37,7 @@ export type SolveHistoryEntry = {
 export type DailyLevelSolve = {
   ms: number;
   ts: number;
+  source?: SolveSource;
   moves?: number;
 };
 
@@ -78,6 +82,7 @@ const ARCHIVE_SCOPED_STORAGE_KEYS = [
   "cube-console-logging-settings",
   "cube-practice-gyro-disabled",
   "cube-practice-display-state",
+  "cube-practice-ui-preferences-v1",
   "cube-user-data-package-updated-at",
   "cube-visual-state",
   "formula-favs",
@@ -393,6 +398,7 @@ export function normalizeSolveHistoryEntry(entry: SolveHistoryEntry): SolveHisto
   void scramble;
   return {
     ...rest,
+    source: entry.source === "timer" ? "timer" : "smart-cube",
     cfop: normalizeCfopPhaseMetrics(entry.cfop),
     cfopMoves: normalizeCfopPhaseMetrics(entry.cfopMoves),
     cfopF2l: normalizeF2lSubphaseMetrics(entry.cfopF2l),
@@ -447,6 +453,7 @@ function normalizeDailyLevelSolve(value: unknown): DailyLevelSolve | null {
   return {
     ms: candidate.ms,
     ts: candidate.ts,
+    source: candidate.source === "timer" ? "timer" : "smart-cube",
     ...(typeof candidate.moves === "number" ? { moves: candidate.moves } : {}),
   };
 }

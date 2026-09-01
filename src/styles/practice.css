@@ -1412,6 +1412,15 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   font-weight: 800;
 }
 
+.practice-focus-app .formula-recognition-empty.disconnected {
+  display: block;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
 .practice-focus-app .practice-center {
   position: relative;
   min-height: 0;
@@ -1447,6 +1456,77 @@ html[lang="en"] .practice-focus-app .practice-kicker {
 .practice-focus-app .practice-stage .cube-mount {
   z-index: 1;
   inset: 8px 0 160px;
+}
+
+.practice-focus-app .manual-timer-stage {
+  position: absolute;
+  inset: 26px 4% 20px;
+  z-index: 4;
+  display: grid;
+}
+
+.practice-focus-app .manual-timer-surface {
+  display: grid;
+  min-height: 0;
+  place-content: center;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 34px;
+  text-align: center;
+  touch-action: manipulation;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.practice-focus-app .manual-timer-surface:not(.phase-done):focus-visible {
+  outline: 3px solid rgba(47, 111, 242, 0.18);
+  outline-offset: -3px;
+}
+
+.practice-focus-app .manual-timer-content {
+  transform: translateY(-38px);
+}
+
+.practice-focus-app .manual-timer-value {
+  background: linear-gradient(180deg, #2d70f5 10%, #0751d8 70%, #7ba9ff 116%);
+  color: transparent;
+  font-family: var(--timer-number);
+  font-size: clamp(86px, 11vw, 164px);
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  filter: drop-shadow(0 20px 28px rgba(42, 101, 225, 0.18));
+  background-clip: text;
+  -webkit-background-clip: text;
+  transition: filter 120ms ease;
+}
+
+.practice-focus-app .manual-timer-status {
+  margin-top: 24px;
+  color: #6e83a3;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.practice-focus-app .manual-timer-surface.arm-holding .manual-timer-value {
+  background: linear-gradient(180deg, #efb730, #d58a00);
+  filter: drop-shadow(0 18px 26px rgba(216, 147, 16, 0.2));
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.practice-focus-app .manual-timer-surface.arm-ready .manual-timer-value {
+  background: linear-gradient(180deg, #32b878, #138852);
+  filter: drop-shadow(0 18px 26px rgba(30, 155, 94, 0.2));
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+.practice-focus-app .manual-timer-surface.fallback .manual-timer-status {
+  color: #b66a0a;
 }
 
 .practice-focus-app .gyro-cost-notice {
@@ -1658,6 +1738,19 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 6px;
+}
+
+.practice-focus-app .solve-current-grid.timer-only .solve-metric-main {
+  justify-content: space-between;
+}
+
+.practice-focus-app .solve-metric-main .solve-source-label {
+  border-radius: 999px;
+  background: #eaf2ff;
+  padding: 7px 10px;
+  color: #1d62de;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .practice-focus-app .solve-phase-grid {
@@ -1913,6 +2006,32 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   color: #173567;
 }
 
+.practice-focus-app .hr-m.source-timer {
+  border-radius: 999px;
+  background: #eaf2ff;
+  padding: 3px 6px;
+  color: #1d62de;
+}
+
+.manual-history-tip {
+  display: grid;
+  gap: 6px;
+  padding: 18px 16px;
+}
+
+.manual-history-tip strong {
+  color: #173567;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.manual-history-tip span {
+  color: #7285a2;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
 @media (min-width: 1061px) {
   .practice-focus-app .practice-left,
   .practice-focus-app .practice-right {
@@ -2079,5 +2198,26 @@ html[lang="en"] .practice-focus-app .practice-kicker {
 
   .practice-focus-app .hist-list {
     --history-row-size: 44px;
+  }
+
+  .practice-focus-app .manual-timer-stage {
+    inset: 8px 0 12px;
+  }
+
+  .practice-focus-app .manual-timer-surface {
+    padding: 24px 12px;
+  }
+
+  .practice-focus-app .manual-timer-content {
+    transform: translateY(-26px);
+  }
+
+  .practice-focus-app .manual-timer-value {
+    font-size: clamp(68px, 21vw, 100px);
+  }
+
+  .practice-focus-app .manual-timer-status {
+    margin-top: 18px;
+    font-size: 12px;
   }
 }

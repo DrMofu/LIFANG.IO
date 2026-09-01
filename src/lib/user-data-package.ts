@@ -48,7 +48,7 @@ import {
 type MetricTuple = [number, number, number, number];
 type CompactDailyTestTuple = [string, string, number, boolean];
 type CompactSolveTuple = Array<number | string | boolean | null | MetricTuple | CompactDailyTestTuple>;
-type CompactDailySolveTuple = Array<number | null>;
+type CompactDailySolveTuple = Array<number | string | null>;
 type CompactDailyLevelTuple = [string, string, number, number, CompactDailySolveTuple[]];
 type CompactDailyPracticeTuple = [string, number, number];
 type FormulaLearningStatus = "unpracticed" | "learning" | "mastered";
@@ -124,9 +124,9 @@ const FORMULA_SCOPED_DATA_KEYS = [
 ] as const;
 
 export const USER_DATA_EXPORT_SCHEMA = {
-  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves"],
+  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves", "source"],
   daily: ["id", "date", "completedAt", "avg", "solves"],
-  dailySolve: ["ms", "ts", "moves"],
+  dailySolve: ["ms", "ts", "moves", "source"],
   dailyPractice: ["date", "seconds", "updatedAt"],
   formulaStat: ["key", "count", "times", "best", "today", "todayCount"],
   console: ["enabled", "logSentCommands", "logMove", "logGyro", "logFacelets", "logBattery", "logHardware", "logDisconnect"],
@@ -303,6 +303,16 @@ function expandMode(mode: unknown): SolveHistoryEntry["mode"] | undefined {
   return undefined;
 }
 
+function compactSource(source: SolveHistoryEntry["source"]) {
+  return source === "timer" ? "t" : "s";
+}
+
+function expandSource(source: unknown): SolveHistoryEntry["source"] | undefined {
+  if (source === "t") return "timer";
+  if (source === "s" || source == null) return "smart-cube";
+  return undefined;
+}
+
 function serializeDailyTestMetadata(metadata: SolveHistoryEntry["dailyTest"]): CompactDailyTestTuple | null {
   return metadata ? [metadata.id, metadata.localDate, metadata.index, metadata.completed] : null;
 }
@@ -332,6 +342,7 @@ function serializeCompactSolveHistoryEntry(entry: SolveHistoryEntry): CompactSol
     cfopMoveMetricsToTuple(entry.cfopMoves) ?? null,
     f2lMetricsToTuple(entry.cfopF2l) ?? null,
     f2lMetricsToTuple(entry.cfopF2lMoves, false) ?? null,
+    compactSource(entry.source),
   ]);
 }
 
@@ -340,11 +351,14 @@ function parseCompactSolveHistoryEntry(value: unknown): SolveHistoryEntry | null
   const [ms] = value;
   if (typeof ms !== "number") return null;
   const legacyHasScramble = typeof value[1] === "string";
-  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves] = legacyHasScramble
+  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves, source] = legacyHasScramble
     ? value.slice(2)
     : value.slice(1);
   if (typeof ts !== "number") return null;
   const parsed: SolveHistoryEntry = { ms, ts };
+  const parsedSource = expandSource(source);
+  if (!parsedSource) return null;
+  parsed.source = parsedSource;
   const parsedMode = expandMode(mode);
   if (mode != null && !parsedMode) return null;
   if (parsedMode) parsed.mode = parsedMode;
@@ -377,7 +391,12 @@ function parseCompactSolveHistoryEntry(value: unknown): SolveHistoryEntry | null
 }
 
 function serializeCompactDailySolve(solve: DailyLevelSolve): CompactDailySolveTuple {
-  return compactRow([roundMs(solve.ms), solve.ts, typeof solve.moves === "number" ? solve.moves : null]);
+  return compactRow([
+    roundMs(solve.ms),
+    solve.ts,
+    typeof solve.moves === "number" ? solve.moves : null,
+    compactSource(solve.source),
+  ]);
 }
 
 function parseCompactDailySolve(value: unknown): DailyLevelSolve | null {
@@ -385,9 +404,11 @@ function parseCompactDailySolve(value: unknown): DailyLevelSolve | null {
   const [ms] = value;
   if (typeof ms !== "number") return null;
   const legacyHasScramble = typeof value[1] === "string";
-  const [ts, moves] = legacyHasScramble ? value.slice(2) : value.slice(1);
+  const [ts, moves, source] = legacyHasScramble ? value.slice(2) : value.slice(1);
   if (typeof ts !== "number") return null;
-  const parsed: DailyLevelSolve = { ms, ts };
+  const parsedSource = expandSource(source);
+  if (!parsedSource) return null;
+  const parsed: DailyLevelSolve = { ms, ts, source: parsedSource };
   if (moves != null) {
     if (typeof moves !== "number") return null;
     parsed.moves = moves;

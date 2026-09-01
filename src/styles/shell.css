@@ -46,11 +46,19 @@
 }
 
 .brand-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   color: var(--tech-ink);
   font-family: var(--sans);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+.brand-domain {
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .brand-sub {

@@ -39,12 +39,12 @@ import { detectCfopMilestones, detectF2lTargetEdgeSolved, isSolvedFacelets, type
 import {
   applyMoveToFacelets,
   applyMoveToFormulaFacelets,
-  applyMovesToFacelets,
   applyMovesToFormulaFacelets,
 } from "@/lib/facelets-pattern";
 import { fmtShort, fmtTime } from "@/lib/format";
-import { generateScramble, isSameSolveMoveCountGroup, solveMoveCountGroup } from "@/lib/scramble";
+import { isSameSolveMoveCountGroup, solveMoveCountGroup } from "@/lib/scramble";
 import { getArchiveScopedStorageKey } from "@/lib/solve-history";
+import { useClientReady } from "@/lib/client-ready";
 import {
   calculateAverageTime,
   describeAverageTimeSettings,
@@ -62,7 +62,6 @@ import {
 type TrainerState = "idle" | "loading" | "observe" | "solving" | "cancelled" | "done" | "error";
 type FormulaHintStepStatus = "pending" | "partial" | "correct";
 
-const SCRAMBLE_LABEL = "随机 Cross 打乱";
 const TRAINER_MOVE_ANIMATION_MS = 100;
 const DISPLAY_STATE_EPSILON = 0.001;
 const HISTORY_ROW_SIZE = 32;
@@ -101,6 +100,7 @@ type TrainerRoundResult = {
   observeMs: number;
   solveMs: number;
   moves: number;
+  dnf: boolean;
 };
 
 function loadPracticeGyroDisabled() {
@@ -140,14 +140,14 @@ function saveF2lFocusModeEnabled(enabled: boolean) {
 }
 
 function readStoredTrainerPhase() {
-  if (typeof window === "undefined") return "cross" as CfopTrainerPhase;
+  if (typeof window === "undefined") return "f2l" as CfopTrainerPhase;
   try {
     const stored = window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SELECTED_PHASE_KEY));
     return CFOP_TRAINER_PHASES.some((phase) => phase.key === stored)
       ? stored as CfopTrainerPhase
-      : "cross";
+      : "f2l";
   } catch {
-    return "cross";
+    return "f2l";
   }
 }
 
@@ -220,7 +220,6 @@ function phaseComplete(
   options: { f2lEdgeOnly?: boolean; f2lRotation?: number } = {},
 ) {
   const milestones = detectCfopMilestones(facelets);
-  if (phase === "cross") return milestones.cross;
   if (phase === "f2l") {
     return options.f2lEdgeOnly
       ? detectF2lTargetEdgeSolved(facelets, f2lTargetSlotForRotation(options.f2lRotation ?? 0))
@@ -337,12 +336,6 @@ function averageTime(values: number[]) {
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
-function formatMoveAverage(value: number | null | undefined) {
-  if (value == null || !Number.isFinite(value)) return "—步";
-  const rounded = Math.round(value * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}步`;
-}
-
 function trainerHistoryOptionBadges(options: CfopTrainerHistoryOptions) {
   return [
     options.rotationVariants ? "变体" : null,
@@ -357,7 +350,7 @@ function trainerHistoryOptionsTitle(options: CfopTrainerHistoryOptions) {
   return badges.length > 0 ? `设置：${badges.join("、")}` : "设置：标准";
 }
 
-export function CfopTrainerApp() {
+function CfopTrainerClient() {
   const { t } = useLanguage();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
@@ -372,7 +365,6 @@ export function CfopTrainerApp() {
   const solveStartRef = useRef(0);
   const solveMoveCountRef = useRef(0);
   const solveMoveGroupRef = useRef<ReturnType<typeof solveMoveCountGroup>>(null);
-  const scrambleRef = useRef<string[]>([]);
   const formulaHintMovesRef = useRef<string[]>([]);
   const formulaHintIndexRef = useRef(0);
   const formulaHintPendingMovesRef = useRef<string[]>([]);
@@ -418,6 +410,7 @@ export function CfopTrainerApp() {
   const [f2lFocusMode, setF2lFocusMode] = useState(readF2lFocusModeEnabled);
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
   const [sessionRoundLimit, setSessionRoundLimit] = useState(readStoredTrainerSessionRounds);
+  const [sessionInProgress, setSessionInProgress] = useState(false);
   const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
   const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
@@ -428,20 +421,22 @@ export function CfopTrainerApp() {
   const connecting = connectionState === "connecting";
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
   const activePhaseMeta = CFOP_TRAINER_PHASES.find((phase) => phase.key === selectedPhase) ?? CFOP_TRAINER_PHASES[0];
-  const trainingActive = state === "loading" || state === "observe" || state === "solving";
   const timerDisplayMs = timerKind === "observe" ? observeMs : solveMs;
   const canUseFocusMode = canUseFocusModeForPhase(selectedPhase);
-  const formulaHintVisible = formulaHintEnabled && selectedPhase !== "cross" && formulaHintMoves.length > 0;
+  const formulaHintVisible = formulaHintEnabled && formulaHintMoves.length > 0;
   const formulaHintCounter = formulaHintMoves.length > 0 ? Math.min(formulaHintIndex + 1, formulaHintMoves.length) : 0;
   const sessionRoundCount = sessionResults.length;
-  const autoNextPending = state === "done" && connected && sessionRoundCount > 0 && sessionRoundCount < sessionRoundLimit;
-  const canCancelTrainerAction = trainingActive || autoNextPending;
+  const sessionDnfCount = sessionResults.filter((entry) => entry.dnf).length;
+  const roundInProgress = state === "loading" || state === "observe" || state === "solving";
+  const autoNextPending = sessionInProgress && state === "done" && connected && sessionRoundCount > 0 && sessionRoundCount < sessionRoundLimit;
+  const canCancelTrainerAction = sessionInProgress;
+  const settingsLocked = sessionInProgress;
   const sessionAverageObserveMs = useMemo(
-    () => averageTime(sessionResults.map((entry) => entry.observeMs)),
+    () => averageTime(sessionResults.filter((entry) => !entry.dnf).map((entry) => entry.observeMs)),
     [sessionResults],
   );
   const sessionAverageSolveMs = useMemo(
-    () => averageTime(sessionResults.map((entry) => entry.solveMs)),
+    () => averageTime(sessionResults.filter((entry) => !entry.dnf).map((entry) => entry.solveMs)),
     [sessionResults],
   );
 
@@ -451,14 +446,6 @@ export function CfopTrainerApp() {
   }, []);
 
   const getCurrentHistoryOptions = useCallback((phase: CfopTrainerPhase): CfopTrainerHistoryOptions => {
-    if (phase === "cross") {
-      return {
-        rotationVariants: false,
-        formulaHint: false,
-        rotationArrow: false,
-        f2lEdgeOnly: false,
-      };
-    }
     return {
       rotationVariants: formulaRotationVariantsRef.current,
       formulaHint: formulaHintEnabledRef.current,
@@ -574,7 +561,7 @@ export function CfopTrainerApp() {
   );
   const filteredHistoryStats = useMemo(() => {
     const solveTimes = filteredHistory
-      .map((entry) => (entry.phase === "cross" ? entry.solveMs : entry.observeMs + entry.solveMs))
+      .map((entry) => entry.observeMs + entry.solveMs)
       .filter((time) => Number.isFinite(time) && time > 0);
     return {
       best: solveTimes.length > 0 ? Math.min(...solveTimes) : null,
@@ -589,8 +576,9 @@ export function CfopTrainerApp() {
       const trimmed = sorted.slice(1, -1);
       return trimmed.reduce((sum, value) => sum + value, 0) / trimmed.length;
     };
-    const stableScore = phaseHistory.length >= averageSettings.sampleSize
-      ? calculateAverageTime(phaseHistory.slice(0, averageSettings.sampleSize).toReversed().map((entry) => entry.solveMs), averageSettings)?.valueMs ?? null
+    const validHistory = phaseHistory.filter((entry) => entry.solveMs > 0);
+    const stableScore = validHistory.length >= averageSettings.sampleSize
+      ? calculateAverageTime(validHistory.slice(0, averageSettings.sampleSize).toReversed().map((entry) => entry.solveMs), averageSettings)?.valueMs ?? null
       : null;
     return {
       count: phaseHistory.length,
@@ -716,7 +704,7 @@ export function CfopTrainerApp() {
 
   const updateFormulaHintMove = useCallback((move: string) => {
     const moves = formulaHintMovesRef.current;
-    if (selectedPhaseRef.current === "cross" || moves.length === 0) return;
+    if (moves.length === 0) return;
     const actual = normalizeMoveCoordinate(normalizeMove(move), formulaHintCoordinateRef.current);
     const undoStack = formulaHintUndoStackRef.current;
 
@@ -786,7 +774,7 @@ export function CfopTrainerApp() {
   }, []);
 
   const getFormulaHintMove = useCallback(() => {
-    if (!formulaHintEnabled || !formulaArrowEnabled || selectedPhaseRef.current === "cross") return null;
+    if (!formulaHintEnabled || !formulaArrowEnabled) return null;
     const undoNext = formulaHintUndoStackRef.current[formulaHintUndoStackRef.current.length - 1];
     if (undoNext) return hintMoveForDoubleTurnProgress(formulaHintPendingUndoMovesRef.current, undoNext);
     const expected = formulaHintMovesRef.current[formulaHintIndexRef.current];
@@ -803,7 +791,6 @@ export function CfopTrainerApp() {
     resetSessionResults();
     clearVisualPendingTimer();
     visualPendingMoveRef.current = null;
-    scrambleRef.current = [];
     scenarioRef.current = null;
     currentFaceletsRef.current = SOLVED_FACELETS;
     focusFaceletsRef.current = focusSolvedFaceletsForPhase(selectedPhaseRef.current);
@@ -832,42 +819,69 @@ export function CfopTrainerApp() {
       setSolveMs(Math.max(0, now - solveStartRef.current));
     }
     updateTrainerState("cancelled");
+    setSessionInProgress(false);
     setNotice(t("本组训练已取消，当前魔方状态已保留。"));
   }, [clearAutoNextTimer, flushVisualPendingMove, resetSessionResults, updateTrainerState, t]);
 
-  const finishRun = useCallback((facelets: string) => {
+  const completeRound = useCallback((result: TrainerRoundResult, facelets = currentFaceletsRef.current) => {
     const phase = selectedPhaseRef.current;
-    const elapsed = Math.max(0, performance.now() - solveStartRef.current);
-    const observe = Math.max(0, solveStartRef.current - observeStartRef.current);
-    const nextResults = [
-      ...sessionResultsRef.current,
-      { observeMs: observe, solveMs: elapsed, moves: solveMoveCountRef.current },
-    ];
+    const nextResults = [...sessionResultsRef.current, result];
+    const completedResults = nextResults.filter((entry) => !entry.dnf);
+    const dnfCount = nextResults.length - completedResults.length;
     currentFaceletsRef.current = facelets;
     sessionResultsRef.current = nextResults;
     setSessionResults(nextResults);
-    setSolveMs(elapsed);
-    setObserveMs(observe);
+    setSolveMs(result.solveMs);
+    setObserveMs(result.observeMs);
     updateTrainerState("done");
     if (nextResults.length >= sessionRoundLimit) {
-      const averageObserve = averageTime(nextResults.map((entry) => entry.observeMs)) ?? observe;
-      const averageSolve = averageTime(nextResults.map((entry) => entry.solveMs)) ?? elapsed;
-      const averageMoves = phase === "cross" ? averageTime(nextResults.map((entry) => entry.moves)) : null;
+      const averageObserve = averageTime(completedResults.map((entry) => entry.observeMs)) ?? 0;
+      const averageSolve = averageTime(completedResults.map((entry) => entry.solveMs)) ?? 0;
       const entry: CfopTrainerHistoryEntry = {
         phase,
         observeMs: averageObserve,
         solveMs: averageSolve,
-        ...(averageMoves == null ? {} : { moves: averageMoves }),
+        ...(dnfCount > 0 ? { dnfCount } : {}),
         rounds: sessionRoundLimit,
         ts: Date.now(),
         options: getCurrentHistoryOptions(phase),
       };
       setHistory((prev) => prependCfopTrainerHistoryEntry(prev, entry));
+      setSessionInProgress(false);
       setNotice(t(`${trainerPhaseShort(phase)} 阶段训练完成，已记录平均成绩。`));
       return;
     }
-    setNotice(t(`${trainerPhaseShort(phase)} 阶段第 ${nextResults.length}/${sessionRoundLimit} 局完成，准备自动下一局。`));
+    setNotice(result.dnf
+      ? t("本局已记为 DNF，准备自动下一局。")
+      : t(`${trainerPhaseShort(phase)} 阶段第 ${nextResults.length}/${sessionRoundLimit} 局完成，准备自动下一局。`));
   }, [getCurrentHistoryOptions, sessionRoundLimit, t, updateTrainerState]);
+
+  const finishRun = useCallback((facelets: string) => {
+    completeRound({
+      observeMs: Math.max(0, solveStartRef.current - observeStartRef.current),
+      solveMs: Math.max(0, performance.now() - solveStartRef.current),
+      moves: stateRef.current === "solving" ? solveMoveCountRef.current : 0,
+      dnf: false,
+    }, facelets);
+  }, [completeRound]);
+
+  const abandonRound = useCallback(() => {
+    if (!sessionInProgress || !roundInProgress) return;
+    const now = performance.now();
+    runIdRef.current += 1;
+    clearVisualPendingTimer();
+    visualPendingMoveRef.current = null;
+    completeRound({
+      observeMs: stateRef.current === "solving"
+        ? Math.max(0, solveStartRef.current - observeStartRef.current)
+        : stateRef.current === "observe"
+          ? Math.max(0, now - observeStartRef.current)
+          : 0,
+      solveMs: stateRef.current === "solving" ? Math.max(0, now - solveStartRef.current) : 0,
+      moves: stateRef.current === "solving" ? solveMoveCountRef.current : 0,
+      dnf: true,
+    });
+  }, [clearVisualPendingTimer, completeRound, roundInProgress, sessionInProgress]);
 
   const recordSolveMove = useCallback((move: string) => {
     const nextGroup = solveMoveCountGroup(move);
@@ -925,34 +939,7 @@ export function CfopTrainerApp() {
     setNotice(message);
   }, [updateTrainerState]);
 
-  const beginCrossScenario = useCallback(async (runId: number) => {
-    updateTrainerState("loading");
-    setNotice(t("正在生成 Cross 随机打乱。"));
-    try {
-      let nextScramble = generateScramble();
-      let scrambledFacelets = await applyMovesToFacelets(SOLVED_FACELETS, nextScramble);
-      for (let attempt = 0; attempt < 8 && phaseComplete("cross", scrambledFacelets); attempt += 1) {
-        nextScramble = generateScramble();
-        scrambledFacelets = await applyMovesToFacelets(SOLVED_FACELETS, nextScramble);
-      }
-      if (!mountedRef.current || runIdRef.current !== runId || selectedPhaseRef.current !== "cross") return;
-      scrambleRef.current = nextScramble;
-      currentFaceletsRef.current = scrambledFacelets;
-      focusFaceletsRef.current = null;
-      resetFormulaHint();
-      setScenario(null);
-      setObserveMs(0);
-      setSolveMs(0);
-      renderTrainerCubeFacelets(scrambledFacelets);
-      enterObserve(t("Cross 随机打乱已生成，观察后转第一下开始计时。"));
-    } catch (error) {
-      if (runIdRef.current !== runId) return;
-      updateTrainerState("error");
-      setNotice(error instanceof Error ? error.message : t("Cross 打乱生成失败，请重试。"));
-    }
-  }, [enterObserve, renderTrainerCubeFacelets, resetFormulaHint, updateTrainerState, t]);
-
-  const beginFormulaScenario = useCallback(async (phase: Exclude<CfopTrainerPhase, "cross">, runId: number) => {
+  const beginFormulaScenario = useCallback(async (phase: CfopTrainerPhase, runId: number) => {
     updateTrainerState("loading");
     setNotice(t("正在生成专项场景。"));
     try {
@@ -978,20 +965,11 @@ export function CfopTrainerApp() {
   }, [enterObserve, formulaRotationVariants, renderTrainerCubeFacelets, resetFormulaHint, updateTrainerState, t]);
 
   const beginTrainerRound = useCallback(async (runId: number) => {
-    const phase = selectedPhaseRef.current;
-    if (phase === "cross") {
-      await beginCrossScenario(runId);
-      return;
-    }
-    await beginFormulaScenario(phase, runId);
-  }, [beginCrossScenario, beginFormulaScenario]);
+    await beginFormulaScenario(selectedPhaseRef.current, runId);
+  }, [beginFormulaScenario]);
 
   const startTraining = useCallback(async () => {
-    if (autoNextPending) {
-      cancelRun();
-      return;
-    }
-    if (trainingActive) {
+    if (sessionInProgress) {
       cancelRun();
       return;
     }
@@ -1000,8 +978,9 @@ export function CfopTrainerApp() {
       return;
     }
     resetRun(t("准备开始专项训练。"));
+    setSessionInProgress(true);
     await beginTrainerRound(runIdRef.current);
-  }, [autoNextPending, beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, trainingActive, t]);
+  }, [beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, sessionInProgress, t]);
 
   useEffect(() => {
     if (!autoNextPending) return;
@@ -1061,6 +1040,7 @@ export function CfopTrainerApp() {
   }, [hideGyroCostNotice, showGyroCostNotice]);
 
   const toggleF2lFocusMode = useCallback(() => {
+    if (settingsLocked) return;
     if (!canUseFocusModeForPhase(selectedPhaseRef.current)) return;
     const next = !f2lFocusModeRef.current;
     f2lFocusModeRef.current = next;
@@ -1070,7 +1050,7 @@ export function CfopTrainerApp() {
     }
     saveF2lFocusModeEnabled(next);
     renderTrainerCubeFacelets(currentFaceletsRef.current);
-  }, [renderTrainerCubeFacelets]);
+  }, [renderTrainerCubeFacelets, settingsLocked]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -1139,6 +1119,7 @@ export function CfopTrainerApp() {
   }, [canResetDisplayOrientation, resetDisplayOrientation, toggleF2lFocusMode, toggleGyroDisabled]);
 
   const selectPhase = (phase: CfopTrainerPhase) => {
+    if (settingsLocked) return;
     selectedPhaseRef.current = phase;
     saveStoredTrainerPhase(phase);
     setSelectedPhase(phase);
@@ -1146,6 +1127,7 @@ export function CfopTrainerApp() {
   };
 
   const updateSessionRoundLimit = (value: string) => {
+    if (settingsLocked) return;
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return;
     const next = normalizeTrainerSessionRounds(parsed);
@@ -1166,7 +1148,7 @@ export function CfopTrainerApp() {
                 <div className="practice-kicker">CASE</div>
               </div>
             </div>
-            <div className="trainer-case-name">{t(scenario?.caseName ?? (selectedPhase === "cross" ? SCRAMBLE_LABEL : "尚未生成"))}</div>
+            <div className="trainer-case-name">{t(scenario?.caseName ?? "尚未生成")}</div>
             <div className="trainer-case-meta">
               <span>{t(activePhaseMeta.title)}</span>
               <span>{t("旋转")}{" "}{rotationLabel(scenario?.rotation ?? 0)}</span>
@@ -1210,7 +1192,7 @@ export function CfopTrainerApp() {
                   <b>{fmtShort(sessionAverageSolveMs)}</b>
                 </div>
                 <div className="solve-phase-card">
-                  <span>{t("本组进度")}</span>
+                  <span>{t("本组进度")}{sessionDnfCount > 0 ? ` · DNF ${sessionDnfCount}` : ""}</span>
                   <b>{sessionRoundCount}/{sessionRoundLimit}</b>
                 </div>
                 <div className="solve-phase-card">
@@ -1298,7 +1280,7 @@ export function CfopTrainerApp() {
                 </div>
               </div>
 
-              <div className="timer-controls">
+              <div className="timer-controls trainer-timer-controls">
                 <button
                   className="practice-btn practice-btn-primary"
                   type="button"
@@ -1308,6 +1290,15 @@ export function CfopTrainerApp() {
                 >
                   <span>{canCancelTrainerAction ? t("取消 · 按 SPACE") : connected ? t("开始 · 按 SPACE") : t("连接智能魔方")}</span>
                 </button>
+                {roundInProgress && (
+                  <button
+                    className="practice-btn practice-btn-ghost trainer-abandon-btn"
+                    type="button"
+                    onClick={abandonRound}
+                  >
+                    <span>{t("放弃本局")}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1328,6 +1319,7 @@ export function CfopTrainerApp() {
                   type="button"
                   className={`trainer-phase-btn${selectedPhase === phase.key ? " active" : ""}`}
                   onClick={() => selectPhase(phase.key)}
+                  disabled={settingsLocked}
                 >
                   <b>{phase.short}</b>
                   <span>{phase.label}</span>
@@ -1348,17 +1340,17 @@ export function CfopTrainerApp() {
                 step={1}
                 inputMode="numeric"
                 value={sessionRoundLimit}
-                disabled={trainingActive || autoNextPending}
+                disabled={settingsLocked}
                 aria-label={t("每组测试轮数")}
                 onChange={(event) => updateSessionRoundLimit(event.target.value)}
               />
             </label>
-            {selectedPhase !== "cross" && (
-              <div className="trainer-option-list">
+            <div className="trainer-option-list">
                 <label className="trainer-variant-toggle">
                   <input
                     type="checkbox"
                     checked={formulaRotationVariants}
+                    disabled={settingsLocked}
                     onChange={(event) => {
                       const next = event.target.checked;
                       formulaRotationVariantsRef.current = next;
@@ -1380,6 +1372,7 @@ export function CfopTrainerApp() {
                     <input
                       type="checkbox"
                       checked={f2lEdgeOnly}
+                      disabled={settingsLocked}
                       onChange={(event) => {
                         const next = event.target.checked;
                         f2lEdgeOnlyRef.current = next;
@@ -1397,6 +1390,7 @@ export function CfopTrainerApp() {
                   <input
                     type="checkbox"
                     checked={formulaHintEnabled}
+                    disabled={settingsLocked}
                     onChange={(event) => {
                       const next = event.target.checked;
                       formulaHintEnabledRef.current = next;
@@ -1413,7 +1407,7 @@ export function CfopTrainerApp() {
                   <input
                     type="checkbox"
                     checked={formulaArrowEnabled}
-                    disabled={!formulaHintEnabled}
+                    disabled={settingsLocked || !formulaHintEnabled}
                     onChange={(event) => {
                       const next = event.target.checked;
                       formulaArrowEnabledRef.current = next;
@@ -1426,8 +1420,7 @@ export function CfopTrainerApp() {
                     <small>{formulaHintEnabled ? t("开启后在魔方上显示当前步骤的旋转箭头。") : t("开启公式提示后可操作。")}</small>
                   </span>
                 </label>
-              </div>
-            )}
+            </div>
 
             <div className="stage-tools trainer-stage-tools">
               {canUseFocusMode && (
@@ -1435,6 +1428,7 @@ export function CfopTrainerApp() {
                   className={`tag tag-btn${f2lFocusMode ? " active" : ""}`}
                   type="button"
                   onClick={toggleF2lFocusMode}
+                  disabled={settingsLocked}
                   aria-keyshortcuts="H"
                   aria-pressed={f2lFocusMode}
                 >
@@ -1484,22 +1478,21 @@ export function CfopTrainerApp() {
                 >
                   {filteredHistory.map((entry, index) => {
                     const historyNumber = filteredHistory.length - index;
-                    const isCrossRecord = entry.phase === "cross";
+                    const dnfCount = entry.dnfCount ?? 0;
                     const totalMs = entry.observeMs + entry.solveMs;
-                    const barMs = isCrossRecord ? entry.solveMs : totalMs;
                     const optionBadges = trainerHistoryOptionBadges(entry.options);
                     const optionTitle = trainerHistoryOptionsTitle(entry.options);
-                    const barWidth = filteredHistoryStats.slowest > 0
-                      ? `${Math.max(12, (barMs / filteredHistoryStats.slowest) * 100)}%`
+                    const barWidth = totalMs > 0 && filteredHistoryStats.slowest > 0
+                      ? `${Math.max(12, (totalMs / filteredHistoryStats.slowest) * 100)}%`
                       : "0%";
-                    const isBest = filteredHistoryStats.best === barMs;
-                    const historyTitle = isCrossRecord
-                      ? t(`${entry.rounds}局平均：观察 ${fmtShort(entry.observeMs)}，复原 ${fmtShort(entry.solveMs)}，${formatMoveAverage(entry.moves)}，${optionTitle}`)
+                    const isBest = totalMs > 0 && filteredHistoryStats.best === totalMs;
+                    const historyTitle = dnfCount > 0
+                      ? t(`${entry.rounds}局平均：总用时 ${fmtShort(totalMs)}，DNF ×${dnfCount}，${optionTitle}`)
                       : t(`${entry.rounds}局平均：总用时 ${fmtShort(totalMs)}，${optionTitle}`);
                     return (
                       <div
                         key={`${entry.ts}-${index}`}
-                        className={`hist-row trainer-history-row${isCrossRecord ? " trainer-history-row-cross" : " trainer-history-row-total"}${isBest ? " best" : ""}`}
+                        className={`hist-row trainer-history-row-total${isBest ? " best" : ""}`}
                         tabIndex={0}
                         title={historyTitle}
                         aria-label={t(`专项记录 ${trainerPhaseShort(entry.phase)} #${historyNumber}，${historyTitle}`)}
@@ -1508,15 +1501,9 @@ export function CfopTrainerApp() {
                         <span className="hr-track" aria-hidden="true">
                           <span className="hr-bar" style={{ width: barWidth }}></span>
                         </span>
-                        {isCrossRecord ? (
-                          <>
-                            <span className="trainer-history-value">{t("观察")}{" "}{fmtShort(entry.observeMs)}</span>
-                            <span className="trainer-history-value">{t("复原")}{" "}{fmtShort(entry.solveMs)}</span>
-                            <span className="trainer-history-value">{t("步数")}{" "}{formatMoveAverage(entry.moves)}</span>
-                          </>
-                        ) : (
-                          <span className="trainer-history-total">{t("总用时")}{" "}{fmtShort(totalMs)}</span>
-                        )}
+                        <span className="trainer-history-total">
+                          {dnfCount > 0 ? `${fmtShort(totalMs)} · DNF ×${dnfCount}` : `${t("总用时")} ${fmtShort(totalMs)}`}
+                        </span>
                         <span className="trainer-history-options" aria-label={optionTitle}>
                           {optionBadges.length > 0
                             ? optionBadges.map((badge) => <b key={badge}>{badge}</b>)
@@ -1534,4 +1521,16 @@ export function CfopTrainerApp() {
       <AppFooter />
     </div>
   );
+}
+
+export function CfopTrainerApp() {
+  const clientReady = useClientReady();
+  if (!clientReady) {
+    return (
+      <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
+        <AppTopbar />
+      </div>
+    );
+  }
+  return <CfopTrainerClient />;
 }

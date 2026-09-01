@@ -5,8 +5,8 @@ import { applyMovesToFacelets } from "@/lib/facelets-pattern";
 import { getArchiveScopedStorageKey } from "@/lib/solve-history";
 export { displayFaceletsToHardwareFacelets } from "@/lib/cube-appearance";
 
-export type CfopTrainerPhase = "cross" | "f2l" | "oll" | "pll";
-export type CfopTrainerPhaseShort = "C" | "F" | "O" | "P";
+export type CfopTrainerPhase = "f2l" | "oll" | "pll";
+export type CfopTrainerPhaseShort = "F" | "O" | "P";
 
 export type CfopTrainerScenario = {
   phase: CfopTrainerPhase;
@@ -31,6 +31,7 @@ export type CfopTrainerHistoryEntry = {
   observeMs: number;
   solveMs: number;
   moves?: number;
+  dnfCount?: number;
   rounds: number;
   ts: number;
   options: CfopTrainerHistoryOptions;
@@ -47,13 +48,10 @@ export const CFOP_TRAINER_PHASES: Array<{
   title: string;
   goal: string;
 }> = [
-  { key: "cross", short: "C", label: "Cross", title: "C 阶段", goal: "恢复底部十字小花" },
   { key: "f2l", short: "F", label: "F2L", title: "F 阶段", goal: "复原前两层" },
   { key: "oll", short: "O", label: "OLL", title: "O 阶段", goal: "复原顶面" },
   { key: "pll", short: "P", label: "PLL", title: "P 阶段", goal: "复原整个魔方" },
 ];
-
-const FORMULA_PHASES = ["f2l", "oll", "pll"] as const;
 
 function firstAlgo(item: FormulaItem) {
   return item.algos?.[0]?.algo ?? item.algo ?? null;
@@ -64,11 +62,11 @@ function randomItem<T>(items: T[]) {
 }
 
 export function trainerPhaseShort(phase: CfopTrainerPhase) {
-  return CFOP_TRAINER_PHASES.find((item) => item.key === phase)?.short ?? "C";
+  return CFOP_TRAINER_PHASES.find((item) => item.key === phase)?.short ?? "F";
 }
 
 export async function createFormulaTrainerScenario(
-  phase: Exclude<CfopTrainerPhase, "cross">,
+  phase: CfopTrainerPhase,
   options: { includeRotations?: boolean } = {},
 ): Promise<CfopTrainerScenario> {
   const category = FORMULAS[phase];
@@ -94,7 +92,6 @@ export async function createFormulaTrainerScenario(
 }
 
 export function formulaTrainerScenarioCount(phase: CfopTrainerPhase, options: { includeRotations?: boolean } = {}) {
-  if (!FORMULA_PHASES.includes(phase as (typeof FORMULA_PHASES)[number])) return 0;
   return FORMULAS[phase].items.filter((item) => Boolean(firstAlgo(item))).length * (options.includeRotations ? 4 : 1);
 }
 
@@ -124,6 +121,7 @@ function normalizeTrainerHistoryEntry(value: unknown): CfopTrainerHistoryEntry |
     typeof candidate.observeMs === "number" &&
     typeof candidate.solveMs === "number" &&
     (candidate.moves === undefined || typeof candidate.moves === "number") &&
+    (candidate.dnfCount === undefined || (typeof candidate.dnfCount === "number" && candidate.dnfCount >= 0)) &&
     typeof candidate.rounds === "number" &&
     typeof candidate.ts === "number"
   ) {
@@ -132,6 +130,7 @@ function normalizeTrainerHistoryEntry(value: unknown): CfopTrainerHistoryEntry |
       observeMs: candidate.observeMs,
       solveMs: candidate.solveMs,
       ...(candidate.moves === undefined ? {} : { moves: candidate.moves }),
+      ...(candidate.dnfCount === undefined ? {} : { dnfCount: Math.floor(candidate.dnfCount) }),
       rounds: candidate.rounds,
       ts: candidate.ts,
       options: normalizeTrainerHistoryOptions(candidate.options),

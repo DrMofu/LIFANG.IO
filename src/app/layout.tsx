@@ -5,6 +5,7 @@ import { CubeConnectionProvider } from "@/components/cube-connection-provider";
 import { LanguageProvider } from "@/components/language-provider";
 import { ScrollbarVisibilityProvider } from "@/components/scrollbar-visibility-provider";
 import { SystemNotificationProvider } from "@/components/system-notification-dialog";
+import { getSiteTitle } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/request-locale";
 import { ScreenWakeLockProvider } from "@/lib/screen-wake-lock";
 import "./globals.css";
@@ -12,7 +13,7 @@ import "./globals.css";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   return {
-    title: locale === "zh" ? "立方" : "Cube",
+    title: getSiteTitle(locale),
     description: locale === "zh" ? "魔方练习小站" : "Smart cube practice",
     icons: {
       icon: "/li-fang-logo.png",

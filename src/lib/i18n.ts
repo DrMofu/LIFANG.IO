@@ -5,6 +5,15 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 export const LANGUAGE_COOKIE_KEY = "cube-language";
 export const LANGUAGE_STORAGE_KEY = "cube-language";
 
+const SITE_TITLES: Record<Locale, string> = {
+  zh: "立方 - 魔方练习网站",
+  en: "Cube - Rubik's Cube Practice Website",
+};
+
+export function getSiteTitle(locale: Locale) {
+  return SITE_TITLES[locale];
+}
+
 export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && SUPPORTED_LOCALES.includes(value as Locale);
 }
@@ -15,4 +24,3 @@ export function detectLocale(language: string | null | undefined): Locale {
   if (normalized.startsWith("en")) return "en";
   return "en";
 }
-

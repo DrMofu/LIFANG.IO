@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
+import { getSiteTitle } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/request-locale";
 import { getTutorials } from "@/lib/tutorials";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   return {
-    title: locale === "en" ? "Cube Tutorials" : "立方",
+    title: getSiteTitle(locale),
     description: locale === "en"
       ? "Learn cube notation, algorithms, and solving methods."
       : "系统学习魔方符号、公式与复原方法。",

@@ -635,6 +635,14 @@ export function StatsApp() {
   }, [openTrendDropdown]);
 
   const records = useMemo(() => summarizeSolveRecords(history, averageSettings), [averageSettings, history]);
+  const sourceCounts = useMemo(() => history.reduce(
+    (counts, entry) => {
+      if (entry.source === "timer") counts.timer += 1;
+      else counts.smartCube += 1;
+      return counts;
+    },
+    { smartCube: 0, timer: 0 },
+  ), [history]);
   const stableScoreMeta = useMemo(() => formatStableScoreMeta(averageSettings), [averageSettings]);
   const trendRangeOptions = useMemo(
     () => [
@@ -660,6 +668,8 @@ export function StatsApp() {
     const { min, max } = trendDomain(domainPoints, trendMetric);
     return { entries, points, min, max, stableScore, best };
   }, [averageSettings, effectiveTrendRange, history, trendMetric, trendPhaseFilter]);
+  const trendNeedsSmartCubeData = trendMetric === "moves" || trendPhaseFilter !== "all";
+  const trendEligibleCount = trend.points.filter((point) => typeof point === "number").length;
   const showTrendPb = trendPhaseFilter === "all";
 
   useEffect(() => {
@@ -839,7 +849,9 @@ export function StatsApp() {
 
   const activeCfopBreakdown = useMemo(() => {
     const activeEntry = trendCfopTip?.entry;
-    if (!activeEntry) return { mode: "average" as const, ...cfopBreakdown };
+    if (!activeEntry || !activeEntry.cfop || !Object.values(activeEntry.cfop).some((value) => typeof value === "number")) {
+      return { mode: "average" as const, ...cfopBreakdown };
+    }
     const crossDuration = phaseDuration(activeEntry, "cross");
     const f2lDuration = phaseDuration(activeEntry, "f2l");
     const ollDuration = phaseDuration(activeEntry, "oll");
@@ -1441,7 +1453,10 @@ export function StatsApp() {
             <div className="st-rec st-rec-pb">
               <div className="strr-l">{t("最佳 · PB")}</div>
               <div className="strr-v">{fmtStatsTime(records.pb)}</div>
-              <div className="strr-meta">{records.count}{" "}{t("次记录")}</div>
+              <div className="strr-meta">
+                {records.count}{" "}{t("次记录")}
+                {records.count > 0 ? ` · ${t("智能")} ${sourceCounts.smartCube} · ${t("计时")} ${sourceCounts.timer}` : ""}
+              </div>
             </div>
             <div className="st-rec st-rec-ao">
               <div className="strr-l">{t("平均用时 · AVG")}</div>
@@ -1775,6 +1790,11 @@ export function StatsApp() {
                 })}
               </div>
             </div>
+            {trendNeedsSmartCubeData && (
+              <div className="trend-data-note">
+                {t(`当前指标仅显示有智能魔方数据的成绩 · ${trendEligibleCount}/${trend.entries.length} 次`)}
+              </div>
+            )}
             <div className="trend-chart-shell">
               <div className="st-chart">{renderTrendChart()}</div>
             </div>
@@ -1792,7 +1812,12 @@ export function StatsApp() {
                   <span>#{String(trendCfopTip.pointNumber).padStart(3, "0")}</span>
                   <b>{fmtSolveDate(trendCfopTip.entry.ts)}</b>
                 </div>
-                {CFOP_PHASES.map((phase, index) => (
+                {trendCfopTip.entry.source === "timer" ? (
+                  <div className="manual-history-tip">
+                    <strong>{t("纯计时器成绩")}</strong>
+                    <span>{t("本次仅记录总用时，没有步数和 CFOP 阶段数据。")}</span>
+                  </div>
+                ) : CFOP_PHASES.map((phase, index) => (
                   <Fragment key={phase.key}>
                     <div className={`hcf-row${index % 2 === 0 ? " hcf-row-alt" : ""}`}>
                       <span>{phase.name}</span>
@@ -1847,7 +1872,11 @@ export function StatsApp() {
               )}
             </div>
             {activeCfopBreakdown.mode === "average" && activeCfopBreakdown.count < activeCfopBreakdown.target ? (
-              <div className="chart-empty">{t("需要")}{" "}{activeCfopBreakdown.target}{" "}{t("次 CFOP 阶段数据后显示 AO")}{activeCfopBreakdown.target}。</div>
+              <div className="chart-empty">
+                {activeCfopBreakdown.count === 0
+                  ? t("暂无智能魔方分段数据。使用智能魔方完成练习后，即可查看 CFOP 阶段分析。")
+                  : t(`已有 ${activeCfopBreakdown.count}/${activeCfopBreakdown.target} 次包含 CFOP 阶段数据的成绩。`)}
+              </div>
             ) : (
               <>
                 <div className="cfop-overview-summary">

@@ -112,7 +112,10 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
         <Link href="/" className="brand-link" aria-label={t("nav.home")}>
           <BrandMark />
           <div className="brand-text">
-            <div className="brand-name">{t("brand.name")}</div>
+            <div className="brand-name">
+              {t("brand.name")}
+              <span className="brand-domain">LIFANG.IO</span>
+            </div>
             <div className="brand-sub">{t("brand.subtitle")} · {settings.version}</div>
           </div>
         </Link>
@@ -232,7 +235,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
 }
 
 export function AppFooter() {
-  return <footer className="footbar">© 2026 cube.mwhitelab.com</footer>;
+  return <footer className="footbar">© 2026 LiFang.io</footer>;
 }
 
 export function BrandMark() {

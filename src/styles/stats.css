@@ -418,6 +418,13 @@
   background: transparent;
 }
 
+.trend-data-note {
+  margin: -2px 4px 8px;
+  color: #7285a2;
+  font-size: 10px;
+  font-weight: 750;
+}
+
 .st-trend .st-chart {
   display: flex;
   min-height: 310px;

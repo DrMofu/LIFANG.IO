@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type CSSProperties, type MouseEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
@@ -57,6 +57,7 @@ import {
   getDailyTestDateKey,
   getArchiveScopedStorageKey,
   MISSING_HISTORY_VALUE,
+  addDailyPracticeDuration,
   calculateDailyLevelAverage,
   loadDailyLevels,
   loadSolveHistory,
@@ -70,6 +71,7 @@ import {
   type F2lSubphaseMetrics,
   type HistoryMetricValue,
   type SolveHistoryEntry,
+  type SolveSource,
 } from "@/lib/solve-history";
 import { isCubeSerialAfter, normalizeCubeSerial } from "@/lib/cube-serial";
 import {
@@ -115,9 +117,11 @@ const HISTORY_CFOP_TIP_MARGIN = 14;
 const INSPECTION_AUDIO_CUE_SECONDS = [5, 4, 3, 2, 1] as const;
 const INSPECTION_END_CUE_PRESERVE_MS = 320;
 const SMART_SOLVE_FACELETS_TIMEOUT_MS = 1300;
+const MANUAL_TIMER_ARM_MS = 350;
 const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
 const PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY = "cube-practice-formula-recognition-enabled";
 const PRACTICE_DISPLAY_STATE_KEY = "cube-practice-display-state";
+const PRACTICE_UI_PREFERENCES_KEY = "cube-practice-ui-preferences-v1";
 const PRACTICE_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.practice;
 const LEGACY_PRACTICE_CAMERA_DISTANCES = [6.4, 8] as const;
 
@@ -219,6 +223,13 @@ function savePracticeDisplayState(state: CubeDisplayState | null) {
 
 type Phase = "idle" | "scrambling" | "inspect" | "solving" | "done";
 type PracticeMode = "scramble" | "free";
+type TimingMode = SolveSource;
+type PracticeUiPreferences = {
+  version: 1;
+  practiceMode: PracticeMode;
+  timingMode: TimingMode;
+};
+type ManualTimerArmState = "idle" | "holding" | "ready";
 type FreePracticeState = "waitingSolved" | "ready" | "scrambling" | "armed";
 type ScrambleStepStatus = "pending" | "partial" | "correct";
 type SmartSolveStatus = "idle" | "loading" | "active" | "done" | "error";
@@ -231,6 +242,38 @@ type InspectionAudioVoice = {
   gain: GainNode;
   oscillators: OscillatorNode[];
 };
+
+function loadPracticeUiPreferences(): PracticeUiPreferences | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY)) || "null",
+    ) as Partial<PracticeUiPreferences> | null;
+    if (
+      parsed?.version !== 1 ||
+      (parsed.practiceMode !== "scramble" && parsed.practiceMode !== "free") ||
+      (parsed.timingMode !== "timer" && parsed.timingMode !== "smart-cube")
+    ) {
+      return null;
+    }
+    return parsed as PracticeUiPreferences;
+  } catch {
+    return null;
+  }
+}
+
+function savePracticeUiPreferences(practiceMode: PracticeMode, timingMode: TimingMode) {
+  if (typeof window === "undefined") return;
+  try {
+    const preferences: PracticeUiPreferences = { version: 1, practiceMode, timingMode };
+    window.localStorage.setItem(
+      getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY),
+      JSON.stringify(preferences),
+    );
+  } catch {
+    // localStorage can be unavailable in restricted browsing modes.
+  }
+}
 
 type MoveLogEntry = {
   m: string;
@@ -546,10 +589,18 @@ export function CubePracticeApp() {
   const freeIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const freeCountdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const freeFaceletsFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualTimerArmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef<Phase>("idle");
   const practiceModeRef = useRef<PracticeMode>("scramble");
+  const timingModeRef = useRef<TimingMode>("smart-cube");
+  const solveSourceRef = useRef<SolveSource>("timer");
+  const manualTimerArmStateRef = useRef<ManualTimerArmState>("idle");
+  const manualTimerOverrideRef = useRef(false);
+  const pendingSmartModeRef = useRef(false);
+  const wasConnectedRef = useRef(false);
   const freeStateRef = useRef<FreePracticeState>("waitingSolved");
   const solveStartRef = useRef(0);
+  const solveStartedAtEpochRef = useRef(0);
   const solveMsRef = useRef(0);
   const solveMoveCountRef = useRef(0);
   const solveMoveCountGroupRef = useRef<ReturnType<typeof solveMoveCountGroup>>(null);
@@ -604,6 +655,9 @@ export function CubePracticeApp() {
   const [moveLog, setMoveLog] = useState<MoveLogEntry[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [practiceMode, setPracticeMode] = useState<PracticeMode>("scramble");
+  const [timingMode, setTimingMode] = useState<TimingMode>("smart-cube");
+  const [manualTimerArmState, setManualTimerArmState] = useState<ManualTimerArmState>("idle");
+  const [manualFallbackNotice, setManualFallbackNotice] = useState(false);
   const [freeState, setFreeState] = useState<FreePracticeState>("waitingSolved");
   const [freeIdleMsLeft, setFreeIdleMsLeft] = useState(FREE_SCRAMBLE_IDLE_MS);
   const [, setFreeScrambleMoveCount] = useState(0);
@@ -704,6 +758,14 @@ export function CubePracticeApp() {
   }, [practiceMode]);
 
   useEffect(() => {
+    timingModeRef.current = timingMode;
+  }, [timingMode]);
+
+  useEffect(() => {
+    manualTimerArmStateRef.current = manualTimerArmState;
+  }, [manualTimerArmState]);
+
+  useEffect(() => {
     freeStateRef.current = freeState;
   }, [freeState]);
 
@@ -715,10 +777,18 @@ export function CubePracticeApp() {
     function refreshArchiveData() {
       const disabled = loadPracticeGyroDisabled();
       const recognitionEnabled = loadPracticeFormulaRecognitionEnabled();
+      const uiPreferences = loadPracticeUiPreferences();
       const nextHistory = loadSolveHistory();
       gyroDisabledRef.current = disabled;
       formulaRecognitionEnabledRef.current = recognitionEnabled;
       historyRef.current = nextHistory;
+      if (uiPreferences) {
+        practiceModeRef.current = uiPreferences.practiceMode;
+        timingModeRef.current = uiPreferences.timingMode;
+        manualTimerOverrideRef.current = uiPreferences.timingMode === "timer";
+        setPracticeMode(uiPreferences.practiceMode);
+        setTimingMode(uiPreferences.timingMode);
+      }
       setGyroDisabled(disabled);
       setFormulaRecognitionEnabled(recognitionEnabled);
       setFormulaLearningStatuses(readFormulaLearningStatuses());
@@ -854,6 +924,15 @@ export function CubePracticeApp() {
       clearInterval(tickRef.current);
       tickRef.current = null;
     }
+  }, []);
+
+  const clearManualTimerArm = useCallback(() => {
+    if (manualTimerArmRef.current) {
+      clearTimeout(manualTimerArmRef.current);
+      manualTimerArmRef.current = null;
+    }
+    manualTimerArmStateRef.current = "idle";
+    setManualTimerArmState("idle");
   }, []);
 
   const updateSolveMs = useCallback((value: number) => {
@@ -1178,10 +1257,12 @@ export function CubePracticeApp() {
 
   const beginSolveTimer = useCallback(
     (initialMove: string | null = null) => {
+      solveSourceRef.current = timingModeRef.current;
       const initialMoveGroup = initialMove ? solveMoveCountGroup(initialMove) : null;
       suppressSolvedTrailingMoveUntilRef.current = 0;
       const start = performance.now();
       solveStartRef.current = start;
+      solveStartedAtEpochRef.current = Date.now();
       solveMsRef.current = 0;
       solveMoveCountRef.current = initialMoveGroup ? 1 : 0;
       solveMoveCountGroupRef.current = initialMoveGroup;
@@ -1201,7 +1282,7 @@ export function CubePracticeApp() {
       }, 17);
       phaseRef.current = "solving";
       setPhase("solving");
-      requestFaceletsThrottled();
+      if (timingModeRef.current === "smart-cube") requestFaceletsThrottled();
     },
     [clearSolveTick, requestFaceletsThrottled, updateSolveMs],
   );
@@ -1287,6 +1368,7 @@ export function CubePracticeApp() {
     (source: "auto" | "manual") => {
       if (phaseRef.current !== "solving") return;
       const elapsed = solveMsRef.current || Math.max(0, performance.now() - solveStartRef.current);
+      const recordingSource = solveSourceRef.current;
       const activeDailyTest = dailyTestRef.current;
       const dailyIndex = activeDailyTest ? activeDailyTest.solves.length + 1 : null;
       const entryMode: PracticeMode = activeDailyTest ? "scramble" : practiceModeRef.current;
@@ -1295,9 +1377,11 @@ export function CubePracticeApp() {
       updateSolveMs(elapsed);
       phaseRef.current = "done";
       setPhase("done");
-      void requestBattery({ minIntervalMs: 60_000 });
-      const finalCfop = source === "auto" ? { ...cfopTimesRef.current, pll: cfopTimesRef.current.pll ?? elapsed } : cfopTimesRef.current;
-      const finalCfopMoves = source === "auto"
+      if (recordingSource === "smart-cube") void requestBattery({ minIntervalMs: 60_000 });
+      const finalCfop = source === "auto" && recordingSource === "smart-cube"
+        ? { ...cfopTimesRef.current, pll: cfopTimesRef.current.pll ?? elapsed }
+        : cfopTimesRef.current;
+      const finalCfopMoves = source === "auto" && recordingSource === "smart-cube"
         ? { ...cfopMovesRef.current, pll: cfopMovesRef.current.pll ?? solveMoveCountRef.current }
         : cfopMovesRef.current;
       cfopTimesRef.current = finalCfop;
@@ -1307,11 +1391,16 @@ export function CubePracticeApp() {
         ms: elapsed,
         ts: entryTs,
         mode: entryMode,
-        moves: solveMoveCountRef.current,
-        cfop: toHistoryCfopMetrics(finalCfop),
-        cfopMoves: toHistoryCfopMetrics(finalCfopMoves),
-        cfopF2l: toHistoryF2lSubphaseMetrics(f2lSubTimesRef.current),
-        cfopF2lMoves: toHistoryF2lSubphaseMetrics(f2lSubMovesRef.current),
+        source: recordingSource,
+        ...(recordingSource === "smart-cube"
+          ? {
+              moves: solveMoveCountRef.current,
+              cfop: toHistoryCfopMetrics(finalCfop),
+              cfopMoves: toHistoryCfopMetrics(finalCfopMoves),
+              cfopF2l: toHistoryF2lSubphaseMetrics(f2lSubTimesRef.current),
+              cfopF2lMoves: toHistoryF2lSubphaseMetrics(f2lSubMovesRef.current),
+            }
+          : {}),
         ...(activeDailyTest && dailyIndex
           ? {
               dailyTest: {
@@ -1329,13 +1418,17 @@ export function CubePracticeApp() {
             {
               ms: elapsed,
               ts: entryTs,
-              moves: solveMoveCountRef.current,
+              source: recordingSource,
+              ...(recordingSource === "smart-cube" ? { moves: solveMoveCountRef.current } : {}),
             },
           ]
         : [];
       const dailyTestComplete = Boolean(activeDailyTest && nextDailySolves.length >= DAILY_TEST_TARGET);
 
       appendAndCommitSolveHistory(historyEntry, dailyTestComplete && activeDailyTest ? activeDailyTest.id : null);
+      if (recordingSource === "timer" && solveStartedAtEpochRef.current > 0) {
+        addDailyPracticeDuration(solveStartedAtEpochRef.current, entryTs);
+      }
 
       if (entryMode === "free") {
         clearFreeTimers();
@@ -1346,14 +1439,14 @@ export function CubePracticeApp() {
         setFreeNotice(t("复原完成。保持复原态后可直接开始下一次自由打乱。"));
       }
 
-      if (source === "auto") {
+      if (source === "auto" && recordingSource === "smart-cube") {
         forceNextVisualFaceletsSyncRef.current = true;
         hasRealtimeMovesRef.current = false;
         void requestFacelets();
       }
 
       if (!activeDailyTest) {
-        if (entryMode === "scramble" && practiceModeRef.current === "scramble") {
+        if (recordingSource === "smart-cube" && entryMode === "scramble" && practiceModeRef.current === "scramble") {
           setScrambleNotice(t("复原完成，自动进入下一次打乱。"));
           clearAutoNextScrambleTimer();
           clearPendingAutoNextScrambleMoves();
@@ -1362,6 +1455,11 @@ export function CubePracticeApp() {
             if (dailyTestRef.current || practiceModeRef.current !== "scramble" || phaseRef.current !== "done") return;
             beginAutoNextScrambleRef.current();
           }, AUTO_NEXT_SCRAMBLE_DELAY_MS);
+        }
+        if (recordingSource === "timer" && entryMode === "scramble") {
+          const nextScramble = generateScramble(SCRAMBLE_LENGTH);
+          scrambleRef.current = nextScramble;
+          setScramble(nextScramble);
         }
         return;
       }
@@ -1391,21 +1489,27 @@ export function CubePracticeApp() {
         dailyTestRef.current = nextRun;
         setDailyTest(nextRun);
         setScrambleNotice(t(`第 ${nextDailySolves.length} 次完成，自动进入第 ${nextDailySolves.length + 1} 次打乱。`));
-        clearAutoNextScrambleTimer();
-        clearPendingAutoNextScrambleMoves();
-        autoNextScrambleTimerRef.current = setTimeout(() => {
-          autoNextScrambleTimerRef.current = null;
-          const currentDailyTest = dailyTestRef.current;
-          if (
-            !currentDailyTest ||
-            currentDailyTest.id !== activeDailyTest.id ||
-            currentDailyTest.solves.length !== nextDailySolves.length ||
-            phaseRef.current !== "done"
-          ) {
-            return;
-          }
-          beginAutoNextScrambleRef.current();
-        }, AUTO_NEXT_SCRAMBLE_DELAY_MS);
+        if (recordingSource === "smart-cube") {
+          clearAutoNextScrambleTimer();
+          clearPendingAutoNextScrambleMoves();
+          autoNextScrambleTimerRef.current = setTimeout(() => {
+            autoNextScrambleTimerRef.current = null;
+            const currentDailyTest = dailyTestRef.current;
+            if (
+              !currentDailyTest ||
+              currentDailyTest.id !== activeDailyTest.id ||
+              currentDailyTest.solves.length !== nextDailySolves.length ||
+              phaseRef.current !== "done"
+            ) {
+              return;
+            }
+            beginAutoNextScrambleRef.current();
+          }, AUTO_NEXT_SCRAMBLE_DELAY_MS);
+        } else {
+          const nextScramble = generateScramble(SCRAMBLE_LENGTH);
+          scrambleRef.current = nextScramble;
+          setScramble(nextScramble);
+        }
       }
     },
     [appendAndCommitSolveHistory, clearAutoNextScrambleTimer, clearFreeTimers, clearPendingAutoNextScrambleMoves, clearSolveTick, requestBattery, requestFacelets, setFreePracticeState, updateSolveMs, t],
@@ -1532,6 +1636,7 @@ export function CubePracticeApp() {
     options: { preservePostSolveMoveGate?: boolean; preserveAutoNextScrambleMoves?: boolean } = {},
   ) => {
     resetSmartSolveState();
+    clearManualTimerArm();
     cancelInspectionAudio();
     clearSolveTick();
     clearFreeTimers();
@@ -1551,6 +1656,8 @@ export function CubePracticeApp() {
     undoStackRef.current = [];
     setUndoDisplay([]);
     solveStartRef.current = 0;
+    solveStartedAtEpochRef.current = 0;
+    setManualFallbackNotice(false);
     setPhase("idle");
     setScramble(nextScramble);
     setScrambleIndex(0);
@@ -1563,6 +1670,7 @@ export function CubePracticeApp() {
     }
   }, [
     cancelInspectionAudio,
+    clearManualTimerArm,
     clearAutoNextScrambleTimer,
     clearFreeTimers,
     clearPendingAutoNextScrambleMoves,
@@ -1946,6 +2054,7 @@ export function CubePracticeApp() {
 
   const ingestMove = useCallback(
     (notation: string, signal?: CubeMoveSignal) => {
+      if (timingModeRef.current !== "smart-cube") return;
       const parsed = parseMoveNotation(notation);
       if (!parsed || !cubeApiRef.current) return;
 
@@ -2024,6 +2133,7 @@ export function CubePracticeApp() {
   const handleFacelets = useCallback(
     (nextFacelets: string, signal?: CubeFaceletsSignal) => {
       faceletsRef.current = nextFacelets;
+      if (timingModeRef.current !== "smart-cube") return;
       detectFormulaRecognition(nextFacelets);
       if (signal?.source !== "local") {
         clearSmartSolveFaceletsWait(nextFacelets);
@@ -2119,6 +2229,7 @@ export function CubePracticeApp() {
   }, []);
 
   useEffect(() => {
+    if (timingMode !== "smart-cube") return;
     if (!cubeMountRef.current) return;
     const initialDisplayState = loadPracticeDisplayState();
     setViewResetEnabled(initialDisplayState ? !isDefaultDisplayState(initialDisplayState) : false);
@@ -2157,7 +2268,7 @@ export function CubePracticeApp() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled, getInitialVisualCubeState, getLatestGyro]);
+  }, [faceColors, orientation, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance, getInitialVisualCubeState, getLatestGyro, timingMode]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -2175,14 +2286,49 @@ export function CubePracticeApp() {
   useEffect(() => subscribeMove(ingestMove), [ingestMove, subscribeMove]);
 
   useEffect(() => {
-    if (connectionState === "connected") return;
+    if (connectionState === "connected") {
+      const justConnected = !wasConnectedRef.current;
+      wasConnectedRef.current = true;
+      if (justConnected && timingModeRef.current === "timer" && !manualTimerOverrideRef.current) {
+        if (phaseRef.current === "solving" || manualTimerArmStateRef.current !== "idle") {
+          pendingSmartModeRef.current = true;
+        } else {
+          timingModeRef.current = "smart-cube";
+          setTimingMode("smart-cube");
+          setManualFallbackNotice(false);
+          resetAttempt();
+        }
+      }
+      return;
+    }
+    if (connectionState === "connecting") return;
+    const lostConnection = wasConnectedRef.current;
+    wasConnectedRef.current = false;
     if (smartSolveStatusRef.current === "loading" || smartSolveStatusRef.current === "active") {
       failSmartSolve(t("智能魔方连接已断开，智能求解已停止。"));
     }
-    if (practiceModeRef.current === "free") {
+    if (lostConnection && timingModeRef.current === "smart-cube") {
+      timingModeRef.current = "timer";
+      solveSourceRef.current = "timer";
+      setTimingMode("timer");
+      manualTimerOverrideRef.current = false;
+      if (phaseRef.current === "solving") {
+        setManualFallbackNotice(true);
+      } else {
+        resetAttempt();
+      }
+    } else if (practiceModeRef.current === "free" && timingModeRef.current === "smart-cube") {
       resetFreeReadiness(null);
     }
-  }, [connectionState, failSmartSolve, resetFreeReadiness, t]);
+  }, [connectionState, failSmartSolve, resetAttempt, resetFreeReadiness, t]);
+
+  useEffect(() => {
+    if (!pendingSmartModeRef.current || phase !== "done" || connectionState !== "connected") return;
+    pendingSmartModeRef.current = false;
+    timingModeRef.current = "smart-cube";
+    setTimingMode("smart-cube");
+    setManualFallbackNotice(false);
+  }, [connectionState, phase]);
 
   useEffect(() => {
     if (gyroDisabled) return;
@@ -2242,14 +2388,53 @@ export function CubePracticeApp() {
     cubeApiRef.current?.setHintMove(next);
   }, [phase, scrambleIndex, scrambleStatus, smartSolveIndex, smartSolveStatus, smartSolveStepStatus, smartSolveUndoDisplay, undoDisplay]);
 
+  const beginManualTimerHold = useCallback(() => {
+    if (timingModeRef.current !== "timer") return;
+    if (phaseRef.current === "solving") {
+      clearManualTimerArm();
+      finishSolve("manual");
+      return;
+    }
+    if (
+      (phaseRef.current !== "idle" && phaseRef.current !== "done") ||
+      manualTimerArmStateRef.current !== "idle"
+    ) {
+      return;
+    }
+    manualTimerArmStateRef.current = "holding";
+    setManualTimerArmState("holding");
+    manualTimerArmRef.current = setTimeout(() => {
+      manualTimerArmRef.current = null;
+      if (timingModeRef.current !== "timer" || manualTimerArmStateRef.current !== "holding") return;
+      manualTimerArmStateRef.current = "ready";
+      setManualTimerArmState("ready");
+    }, MANUAL_TIMER_ARM_MS);
+  }, [clearManualTimerArm, finishSolve]);
+
+  const releaseManualTimerHold = useCallback(() => {
+    if (timingModeRef.current !== "timer") return;
+    if (manualTimerArmStateRef.current === "ready") {
+      clearManualTimerArm();
+      setManualFallbackNotice(false);
+      beginSolveTimer();
+      return;
+    }
+    if (manualTimerArmStateRef.current === "holding") clearManualTimerArm();
+  }, [beginSolveTimer, clearManualTimerArm]);
+
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
       if (isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
+      if (key === " " && timingModeRef.current === "timer") {
+        beginManualTimerHold();
+        return;
+      }
+      if (timingModeRef.current !== "smart-cube") return;
       if (key === "r") {
         if (canResetDisplayOrientation) resetDisplayOrientation();
         return;
@@ -2280,13 +2465,23 @@ export function CubePracticeApp() {
         cancelCurrentAttempt();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
+      event.preventDefault();
+      releaseManualTimerHold();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
   });
 
   useEffect(() => {
     return () => {
       cancelInspectionAudio();
+      clearManualTimerArm();
       clearSolveTick();
       clearFreeTimers();
       clearVisualPendingTimer();
@@ -2299,6 +2494,7 @@ export function CubePracticeApp() {
     };
   }, [
     cancelInspectionAudio,
+    clearManualTimerArm,
     clearAutoNextScrambleTimer,
     clearPendingAutoNextScrambleMoves,
     clearFreeTimers,
@@ -2554,7 +2750,7 @@ export function CubePracticeApp() {
   });
 
   function startDailyLevelTest(localDate = getDailyTestDateKey()) {
-    if (!isConnected) {
+    if (timingModeRef.current === "smart-cube" && !isConnected) {
       setScrambleNotice(t("请先连接智能魔方。"));
       return;
     }
@@ -2577,7 +2773,13 @@ export function CubePracticeApp() {
     setPracticeMode("scramble");
     dailyTestRef.current = run;
     setDailyTest(run);
-    beginScramble();
+    if (timingModeRef.current === "smart-cube") {
+      beginScramble();
+    } else {
+      const nextScramble = generateScramble(SCRAMBLE_LENGTH);
+      resetAttempt(nextScramble);
+      setScrambleNotice(t("按照公式自行完成打乱，准备复原时长按空格键。"));
+    }
   }
 
   function changePracticeMode(nextMode: PracticeMode) {
@@ -2586,10 +2788,65 @@ export function CubePracticeApp() {
     clearFreeTimers();
     practiceModeRef.current = nextMode;
     setPracticeMode(nextMode);
+    savePracticeUiPreferences(nextMode, timingModeRef.current);
     resetAttempt();
-    if (nextMode === "free" && isConnected) {
+    if (nextMode === "free" && isConnected && timingModeRef.current === "smart-cube") {
       void requestFacelets();
     }
+  }
+
+  function changeTimingMode(nextMode: TimingMode) {
+    if (
+      timingModeRef.current === nextMode ||
+      phaseRef.current === "solving" ||
+      manualTimerArmStateRef.current !== "idle" ||
+      smartSolveBusy
+    ) {
+      return;
+    }
+
+    pendingSmartModeRef.current = false;
+    if (nextMode === "timer") {
+      manualTimerOverrideRef.current = true;
+      timingModeRef.current = "timer";
+      setTimingMode("timer");
+      savePracticeUiPreferences(practiceModeRef.current, "timer");
+      resetAttempt(practiceModeRef.current === "scramble" ? generateScramble(SCRAMBLE_LENGTH) : scrambleRef.current);
+      return;
+    }
+
+    manualTimerOverrideRef.current = false;
+    timingModeRef.current = "smart-cube";
+    setTimingMode("smart-cube");
+    savePracticeUiPreferences(practiceModeRef.current, "smart-cube");
+    resetAttempt();
+    if (practiceModeRef.current === "free" && isConnected) void requestFacelets();
+  }
+
+  function refreshManualScramble() {
+    if (timingModeRef.current !== "timer" || phaseRef.current === "solving" || manualTimerArmStateRef.current !== "idle") return;
+    const nextScramble = generateScramble(SCRAMBLE_LENGTH);
+    resetAttempt(nextScramble);
+  }
+
+  function handleManualTimerPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    beginManualTimerHold();
+  }
+
+  function handleManualTimerPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    releaseManualTimerHold();
+  }
+
+  function handleManualTimerPointerCancel(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    clearManualTimerArm();
   }
 
   function showHistoryCfopTip(
@@ -2646,6 +2903,7 @@ export function CubePracticeApp() {
     [recentHistory],
   );
   const isConnected = connectionState === "connected";
+  const isManualTimer = timingMode === "timer";
   const todayLocalDate = getDailyTestDateKey();
   const yesterdayLocalDate = getYesterdayDailyTestDateKey();
   const todayDailyLevel = useMemo(
@@ -2661,13 +2919,15 @@ export function CubePracticeApp() {
   const dailyTestDisplaySolves = dailyTest?.solves ?? todayDailyLevel?.solves ?? [];
   const smartSolveVisible = smartSolveStatus !== "idle";
   const smartSolveBusy = smartSolveStatus === "loading" || smartSolveStatus === "active";
-  const freePracticeVisible = practiceMode === "free" && isConnected && !smartSolveVisible && phase !== "solving";
-  const stageGuidanceVisible = smartSolveVisible || phase === "scrambling" || freePracticeVisible;
+  const freePracticeVisible = !isManualTimer && practiceMode === "free" && isConnected && !smartSolveVisible && phase !== "solving";
+  const stageGuidanceVisible = !isManualTimer && (smartSolveVisible || phase === "scrambling" || freePracticeVisible);
   const canInterruptScrambleAttempt = practiceMode === "scramble" && (phase === "scrambling" || phase === "inspect");
   const canStartDailyTestFromScramble = practiceMode === "scramble" && (phase === "idle" || phase === "done" || canInterruptScrambleAttempt);
   const canStartDailyTestFromFree = practiceMode === "free" && phase !== "solving";
   const canSwitchMode = !dailyTest && !smartSolveBusy && phase !== "solving";
-  const canStartDailyTestSession = isConnected && !dailyTest && !smartSolveBusy && (canStartDailyTestFromScramble || canStartDailyTestFromFree);
+  const canSwitchTimingMode = !smartSolveBusy && phase !== "solving" && manualTimerArmState === "idle";
+  const manualScrambleVisible = isManualTimer && practiceMode === "scramble" && phase !== "solving";
+  const canStartDailyTestSession = (isManualTimer || isConnected) && !dailyTest && !smartSolveBusy && (canStartDailyTestFromScramble || canStartDailyTestFromFree);
   const canStartTodayDailyTest = !todayDailyLevel && canStartDailyTestSession;
   const showYesterdayMakeupTest = !todayDailyLevel && !yesterdayDailyLevel;
   const canStartYesterdayMakeupTest = showYesterdayMakeupTest && canStartDailyTestSession;
@@ -2688,7 +2948,9 @@ export function CubePracticeApp() {
     scrambling: t("自由打乱中 · IDLE CHECK"),
     armed: t("等待第一步 · FREE ARMED"),
   };
-  const timerPhaseLabel = smartSolveBusy
+  const timerPhaseLabel = !isConnected && !isManualTimer
+    ? t("准备 · READY")
+    : smartSolveBusy
     ? t("智能求解 · SMART SOLVE")
     : practiceMode === "free"
     ? phase === "solving"
@@ -2705,6 +2967,18 @@ export function CubePracticeApp() {
           : phase === "solving"
             ? t("解算中 · SOLVING")
             : t("完成 · COMPLETE");
+  const manualTimerPhaseLabel = manualFallbackNotice && phase === "solving"
+    ? t("连接已断开 · 按空格结束并仅保存总用时")
+    : phase === "solving"
+      ? t("按空格键结束")
+      : manualTimerArmState === "ready"
+        ? t("松开开始")
+        : manualTimerArmState === "holding"
+          ? t("继续按住")
+          : phase === "done"
+            ? t("长按空格键或计时器以开始下一次")
+            : t("长按空格键或计时器以准备");
+  const manualTimerDisplayMs = manualTimerArmState === "idle" && (phase === "solving" || phase === "done") ? solveMs : 0;
 
   const undoExpected = undoStackRef.current[undoStackRef.current.length - 1];
   const smartSolveUndoExpected = smartSolveUndoDisplay[smartSolveUndoDisplay.length - 1];
@@ -2715,7 +2989,7 @@ export function CubePracticeApp() {
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
   return (
-    <div className="app lf-practice-app practice-focus-app">
+    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}`}>
       <AppTopbar />
 
       <main className="practice-layout">
@@ -2797,7 +3071,22 @@ export function CubePracticeApp() {
               >{t("自由练习")}</button>
             </div>
 
-            <div className="stage-tools">
+            <div className="practice-mode-switch timing-mode-switch" aria-label={t("计时方式")}>
+              <button
+                type="button"
+                className={!isManualTimer ? "active" : ""}
+                onClick={() => changeTimingMode("smart-cube")}
+                disabled={!canSwitchTimingMode}
+              >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
+              <button
+                type="button"
+                className={isManualTimer ? "active" : ""}
+                onClick={() => changeTimingMode("timer")}
+                disabled={!canSwitchTimingMode}
+              >{t("纯计时器")}</button>
+            </div>
+
+            {!isManualTimer && <div className="stage-tools">
               <button
                 className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
                 onClick={toggleGyroDisabled}
@@ -2823,10 +3112,10 @@ export function CubePracticeApp() {
               >
                 <span className="tag-key" aria-hidden="true">F</span><span>{t("公式识别")}</span>
               </button>
-            </div>
+            </div>}
           </div>
 
-          {formulaRecognitionEnabled ? (
+          {!isManualTimer && (formulaRecognitionEnabled ? (
             <div className="movelog formula-recognition-panel" aria-live="polite">
               <div className="practice-card-head ml-head">
                 <div className="practice-title-line">
@@ -2876,7 +3165,7 @@ export function CubePracticeApp() {
                   </div>
                 </div>
               ) : (
-                <div className="formula-recognition-empty">
+                <div className={`formula-recognition-empty${connectionState === "connected" ? "" : " disconnected"}`}>
                   {connectionState === "connected" ? t("等待 OLL 或 PLL 状态") : t("连接智能魔方后开始识别")}
                 </div>
               )}
@@ -2905,9 +3194,9 @@ export function CubePracticeApp() {
                 )}
               </div>
             </div>
-          )}
+          ))}
 
-          <div className="practice-card legend">
+          {!isManualTimer && <div className="practice-card legend">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("色彩对照")}</div>
@@ -2915,21 +3204,42 @@ export function CubePracticeApp() {
               </div>
             </div>
             <CubeColorLegend faceColors={faceColors} />
-          </div>
+          </div>}
+
         </section>
 
         <section className="practice-center">
           <div className="practice-stage">
-            {gyroCostNoticeVisible && (
+            {!isManualTimer && gyroCostNoticeVisible && (
               <div
                 className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
                 id="gyro-cost-notice"
                 role="status"
               >{t("开启陀螺仪功能会导致较大计算开销")}</div>
             )}
-            <div className="cube-mount" ref={cubeMountRef}></div>
+            {!isManualTimer && <div className="cube-mount" ref={cubeMountRef}></div>}
 
-            {!stageGuidanceVisible && (
+            {isManualTimer && (
+              <div className={`manual-timer-stage${manualScrambleVisible ? " with-scramble" : ""}`}>
+                <div
+                  className={`manual-timer-surface arm-${manualTimerArmState} phase-${phase}${manualFallbackNotice ? " fallback" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={manualTimerPhaseLabel}
+                  onPointerDown={handleManualTimerPointerDown}
+                  onPointerUp={handleManualTimerPointerUp}
+                  onPointerCancel={handleManualTimerPointerCancel}
+                  onContextMenu={(event) => event.preventDefault()}
+                >
+                  <div className="manual-timer-content">
+                    <div className="manual-timer-value">{fmtTime(manualTimerDisplayMs)}</div>
+                    <div className="manual-timer-status" aria-live="polite">{manualTimerPhaseLabel}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isManualTimer && !stageGuidanceVisible && (
               <div className="stage-timer-stack">
                 <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
                   {phase === "idle" && <div className="t-display">{fmtTime(0)}</div>}
@@ -2953,15 +3263,18 @@ export function CubePracticeApp() {
                 </div>
 
                 <div className="timer-controls">
-                  {practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
-                    <button className="practice-btn practice-btn-primary" onClick={isConnected ? beginScramble : startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
+                  {!isConnected && phase !== "solving" && (
+                    <button className="practice-btn practice-btn-primary" onClick={startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
+                      <span>
+                        {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接魔方")}
+                      </span>
+                    </button>
+                  )}
+                  {isConnected && practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
+                    <button className="practice-btn practice-btn-primary" onClick={beginScramble} disabled={smartSolveBusy}>
                       <span>
                         {smartSolveBusy
                           ? t("智能求解中")
-                          : !isConnected
-                          ? connectionState === "connecting"
-                            ? t("等待浏览器选择器")
-                            : t("连接魔方")
                           : dailyTest
                           ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
                           : phase === "done"
@@ -2980,17 +3293,45 @@ export function CubePracticeApp() {
                       <span>{t("取消 · 按 SPACE")}</span>
                     </button>
                   )}
-                  {practiceMode === "free" && phase !== "solving" && (
-                    <button className="practice-btn practice-btn-ghost" disabled>
-                      <span>{t("请先连接智能魔方")}</span>
-                    </button>
-                  )}
                 </div>
               </div>
             )}
 
-            {stageGuidanceVisible && (
+            {(stageGuidanceVisible || manualScrambleVisible) && (
               <div className="stage-bottom-stack">
+                {manualScrambleVisible && (
+                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
+                  <div className="sh-head sh-head-scramble">
+                    <div className="sh-kicker">{t("打乱公式")}</div>
+                    <div className="sh-actions">
+                      {dailyTest && (
+                        <div className="sh-counter">
+                          <span className="sh-counter-num">{dailyTestProgress + 1}</span>
+                          <span className="sh-counter-sep">/</span>
+                          <span className="sh-counter-total">{DAILY_TEST_TARGET}</span>
+                        </div>
+                      )}
+                      <button
+                        className="sh-cancel"
+                        onClick={refreshManualScramble}
+                        disabled={manualTimerArmState !== "idle"}
+                        aria-label={t("更换打乱公式")}
+                      >{t("换一条")}</button>
+                    </div>
+                  </div>
+                  <div className="sh-grid">
+                    {scramble.map((move, index) => (
+                      <AlgorithmStepToken
+                        key={`${move}-${index}`}
+                        move={move}
+                        index={index}
+                        status="pending"
+                        active={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+                )}
                 {smartSolveVisible && (
                 <div className="stage-hint solve-stage-hint" role="status" aria-label={t("智能求解")}>
                   <div className="sh-head">
@@ -3163,16 +3504,22 @@ export function CubePracticeApp() {
                 <div className="practice-kicker">SCORE</div>
               </div>
             </div>
-            <div className="solve-current-grid">
+            <div className={`solve-current-grid${isManualTimer ? " timer-only" : ""}`}>
               <div
                 className="solve-metric-main"
-                aria-label={`${fmtShort(solveMs)} / ${solveMoveCount} ${t("步")}`}
+                aria-label={isManualTimer ? fmtShort(solveMs) : `${fmtShort(solveMs)} / ${solveMoveCount} ${t("步")}`}
               >
                 <em>{fmtShort(solveMs)}</em>
-                <span className="solve-score-separator" aria-hidden="true">/</span>
-                <b>{solveMoveCount} {t("步")}</b>
+                {isManualTimer ? (
+                  <b className="solve-source-label">{t("纯计时器")}</b>
+                ) : (
+                  <>
+                    <span className="solve-score-separator" aria-hidden="true">/</span>
+                    <b>{solveMoveCount} {t("步")}</b>
+                  </>
+                )}
               </div>
-              <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
+              {!isManualTimer && <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
                 <div className={`solve-phase-card solve-phase-card-cross${cfopTimes.cross !== null ? " completed" : phase === "solving" ? " active" : ""}`}>
                   <span>Cross</span>
                   <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")}</b>
@@ -3207,7 +3554,7 @@ export function CubePracticeApp() {
                   <span>PLL</span>
                   <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")}</b>
                 </div>
-              </div>
+              </div>}
             </div>
           </div>
           </div>
@@ -3256,7 +3603,7 @@ export function CubePracticeApp() {
                       tabIndex={0}
                       aria-label={t(`历史记录 #${historyNumber}，${
                         fmtShort(entry.ms)
-                      }，${entry.moves == null ? t("步数未知") : t(`${entry.moves}步`)}`)}
+                      }，${entry.source === "timer" ? t("纯计时器") : entry.moves == null ? t("步数未知") : t(`${entry.moves}步`)}`)}
                       onBlur={(event) => {
                         if (!event.currentTarget.contains(event.relatedTarget)) setHistoryCfopTip(null);
                       }}
@@ -3271,7 +3618,9 @@ export function CubePracticeApp() {
                         <span className="hr-bar" style={{ width: barWidth }}></span>
                       </span>
                       <span className="hr-t">{fmtShort(entry.ms)}</span>
-                      <span className="hr-m">{entry.moves == null ? "—" : t(`${entry.moves}步`)}</span>
+                      <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
+                        {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
+                      </span>
                       {historyEditing && (
                         <button
                           className="hr-delete"
@@ -3304,26 +3653,31 @@ export function CubePracticeApp() {
                   <span>#{String(historyCfopTip.historyNumber).padStart(3, "0")}</span>
                   <b>{fmtSolveDate(historyCfopTip.entry.ts)}</b>
                 </div>
-                {CFOP_PHASES.map((phase, index) => (
-                  <Fragment key={phase.key}>
-                    <div className={`hcf-row${index % 2 === 0 ? " hcf-row-alt" : ""}`}>
-                      <span>{phase.name}</span>
-                      <em>{formatPhaseTimeDelta(historyCfopTip.entry.cfop, phase.key)}</em>
-                      <b>{formatPhaseMoveDelta(historyCfopTip.entry.cfopMoves, phase.key)}</b>
-                    </div>
-                    {phase.key === "f2l" && (
-                      <div className="hcf-f2l-subline" aria-label={t("F2L 子阶段用时和步数")}>
-                        {F2L_SUBPHASES.map((subphase, index) => (
-                          <span key={subphase.key}>
-                            <strong>{index + 1}/4</strong>
-                            <em>{formatF2lSubphaseTimeDelta(historyCfopTip.entry.cfop, historyCfopTip.entry.cfopF2l, subphase.key)}</em>
-                            <b>{formatF2lSubphaseMoveDelta(historyCfopTip.entry.cfopMoves, historyCfopTip.entry.cfopF2lMoves, subphase.key)}</b>
-                          </span>
-                        ))}
+                {historyCfopTip.entry.source === "timer" ? (
+                  <div className="manual-history-tip">
+                    <strong>{t("纯计时器成绩")}</strong>
+                    <span>{t("本次仅记录总用时，没有步数和 CFOP 阶段数据。")}</span>
+                  </div>
+                ) : CFOP_PHASES.map((phase, index) => (
+                    <Fragment key={phase.key}>
+                      <div className={`hcf-row${index % 2 === 0 ? " hcf-row-alt" : ""}`}>
+                        <span>{phase.name}</span>
+                        <em>{formatPhaseTimeDelta(historyCfopTip.entry.cfop, phase.key)}</em>
+                        <b>{formatPhaseMoveDelta(historyCfopTip.entry.cfopMoves, phase.key)}</b>
                       </div>
-                    )}
-                  </Fragment>
-                ))}
+                      {phase.key === "f2l" && (
+                        <div className="hcf-f2l-subline" aria-label={t("F2L 子阶段用时和步数")}>
+                          {F2L_SUBPHASES.map((subphase, index) => (
+                            <span key={subphase.key}>
+                              <strong>{index + 1}/4</strong>
+                              <em>{formatF2lSubphaseTimeDelta(historyCfopTip.entry.cfop, historyCfopTip.entry.cfopF2l, subphase.key)}</em>
+                              <b>{formatF2lSubphaseMoveDelta(historyCfopTip.entry.cfopMoves, historyCfopTip.entry.cfopF2lMoves, subphase.key)}</b>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Fragment>
+                  ))}
                 <div className="hcf-row hcf-total">
                   <span>{t("总计")}</span>
                   <em>{fmtShort(historyCfopTip.entry.ms)}</em>

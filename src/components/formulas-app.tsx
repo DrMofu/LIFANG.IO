@@ -2335,22 +2335,6 @@ export function FormulasApp() {
                 })
               )}
             </div>
-            {formulaTip && (
-              <div className="formula-floating-tip" role="tooltip" style={{ left: formulaTip.left, top: formulaTip.top }}>
-                <div className="fft-head">
-                  <span>{formulaTip.title}</span>
-                  <b>{formulaTip.sourceName}</b>
-                </div>
-                <div className="fft-list">
-                  {formulaTip.variants.map((variant) => (
-                    <div key={variant.key} className="fft-row">
-                      {formulaTip.variants.length > 1 && <div className="fft-name">{t(variant.name)}</div>}
-                      <div className="fft-algo">{renderAlgorithmWithGroups(variant.algo)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </section>
 
@@ -2377,6 +2361,23 @@ export function FormulasApp() {
             </div>
           )}
         </section>
+
+        {formulaTip && (
+          <div className="formula-floating-tip" role="tooltip" style={{ left: formulaTip.left, top: formulaTip.top }}>
+            <div className="fft-head">
+              <span>{formulaTip.title}</span>
+              <b>{formulaTip.sourceName}</b>
+            </div>
+            <div className="fft-list">
+              {formulaTip.variants.map((variant) => (
+                <div key={variant.key} className="fft-row">
+                  {formulaTip.variants.length > 1 && <div className="fft-name">{t(variant.name)}</div>}
+                  <div className="fft-algo">{renderAlgorithmWithGroups(variant.algo)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <AppFooter />

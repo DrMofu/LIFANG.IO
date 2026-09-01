@@ -14,7 +14,7 @@
 
 .trainer-focus-app .trainer-phase-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -58,6 +58,11 @@
 
 .trainer-focus-app .trainer-phase-btn.active b {
   color: #ffffff;
+}
+
+.trainer-focus-app .trainer-phase-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .trainer-focus-app .trainer-settings-panel > .dt-meta {
@@ -157,6 +162,20 @@
 .trainer-focus-app .trainer-stage-tools > :only-child,
 .trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
   grid-column: 1 / -1;
+}
+
+.trainer-focus-app .trainer-timer-controls {
+  position: relative;
+}
+
+.trainer-focus-app .trainer-abandon-btn {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  width: 82px;
+  border-color: rgba(229, 88, 88, 0.28);
+  box-shadow: none;
+  color: #c74343;
 }
 
 .trainer-focus-app .trainer-case-name {
@@ -264,15 +283,10 @@
   overscroll-behavior-x: none;
 }
 
-.trainer-focus-app .trainer-history-row-cross {
-  grid-template-columns: 34px minmax(28px, 0.5fr) repeat(3, minmax(0, 1fr)) minmax(36px, auto);
-}
-
 .trainer-focus-app .trainer-history-row-total {
-  grid-template-columns: 34px minmax(0, 1fr) 76px minmax(36px, auto);
+  grid-template-columns: 34px minmax(0, 1fr) 116px minmax(36px, auto);
 }
 
-.trainer-focus-app .trainer-history-value,
 .trainer-focus-app .trainer-history-total {
   min-width: 0;
   overflow: hidden;
@@ -315,7 +329,7 @@
 
 @media (max-width: 1280px) {
   .trainer-focus-app .trainer-phase-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .trainer-focus-app .trainer-stage-tools {
@@ -326,13 +340,6 @@
     grid-column: 1;
   }
 
-  .trainer-focus-app .trainer-history-row-cross {
-    grid-template-columns: 32px minmax(24px, 0.42fr) repeat(3, minmax(0, 1fr));
-  }
-
-  .trainer-focus-app .trainer-history-row-cross .trainer-history-options {
-    display: none;
-  }
 }
 
 @media (max-width: 1060px) {
@@ -342,7 +349,7 @@
   }
 
   .trainer-focus-app .trainer-phase-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .trainer-focus-app .trainer-stage-tools {
@@ -365,6 +372,15 @@
 }
 
 @media (max-width: 420px) {
+  .trainer-focus-app .trainer-timer-controls {
+    width: 176px;
+  }
+
+  .trainer-focus-app .trainer-abandon-btn {
+    left: calc(100% + 6px);
+    width: 64px;
+  }
+
   .trainer-focus-app .trainer-phase-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

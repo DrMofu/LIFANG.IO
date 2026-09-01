@@ -11,13 +11,13 @@
 </p>
 
 <p align="center">
-  <a href="https://cube.mwhitelab.com">在线体验</a>
+  <a href="https://lifang.io">LIFANG.IO（在线体验）</a>
   ·
   <a href="CHANGELOG.md">更新记录</a>
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.4-4b7bec" />
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.5-4b7bec" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178c6" />
   <img alt="GAN Smart Cube" src="https://img.shields.io/badge/GAN-Smart_Cube-55a86b" />
