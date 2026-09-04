@@ -7,6 +7,7 @@ type AlgorithmStepTokenProps = {
   index: number;
   status?: AlgorithmStepStatus;
   active?: boolean;
+  showIndex?: boolean;
   className?: string;
 };
 
@@ -15,6 +16,7 @@ export function AlgorithmStepToken({
   index,
   status = "pending",
   active = false,
+  showIndex = true,
   className,
 }: AlgorithmStepTokenProps) {
   return (
@@ -28,7 +30,7 @@ export function AlgorithmStepToken({
         className,
       ].filter(Boolean).join(" ")}
     >
-      <span className="algo-tok-index">{index + 1}</span>
+      {showIndex ? <span className="algo-tok-index">{index + 1}</span> : null}
       <MoveToken move={move} />
     </span>
   );

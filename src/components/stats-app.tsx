@@ -1525,7 +1525,7 @@ export function StatsApp() {
             </div>
             {dailyLevels.length === 0 ? (
               <div className="dl-empty">
-                <p>{t("在练习页完成每日水平测试后，这里会显示五次复原的平均水平。")}</p>
+                <p>{t("无数据")}</p>
                 <Link className="dl-start-link" href="/practice">{t("开始今日测试")}</Link>
               </div>
             ) : (
@@ -1874,7 +1874,7 @@ export function StatsApp() {
             {activeCfopBreakdown.mode === "average" && activeCfopBreakdown.count < activeCfopBreakdown.target ? (
               <div className="chart-empty">
                 {activeCfopBreakdown.count === 0
-                  ? t("暂无智能魔方分段数据。使用智能魔方完成练习后，即可查看 CFOP 阶段分析。")
+                  ? t("无数据")
                   : t(`已有 ${activeCfopBreakdown.count}/${activeCfopBreakdown.target} 次包含 CFOP 阶段数据的成绩。`)}
               </div>
             ) : (

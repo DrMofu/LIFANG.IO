@@ -108,6 +108,7 @@ const FORMULA_STATS_ROW_SIZE = 44;
 const FORMULA_STATS_ROW_GAP = 0;
 const FORMULA_STATS_FALLBACK_ROWS = 1;
 const FORMULA_STATS_MAX_VISIBLE_ROWS = FORMULA_STATS_LIMIT;
+const MAX_STRUCTURE_NOTATION_MOVE_COUNT = 6;
 const TRIGGER_NAME_BY_ALGORITHM = new Map(
   FORMULAS.triggers.items.flatMap((item) => {
     const triggers: Array<readonly [string, string]> = [
@@ -759,7 +760,10 @@ function groupAlgorithmRows(algo: string) {
     return {
       ...row,
       triggerName,
-      structureNotation: triggerName ? undefined : getCommutatorOrConjugateNotation(moves),
+      structureNotation:
+        triggerName || moves.length > MAX_STRUCTURE_NOTATION_MOVE_COUNT
+          ? undefined
+          : getCommutatorOrConjugateNotation(moves),
     };
   });
 }
@@ -793,7 +797,7 @@ function FormulaStage({
   const practiceStatusRef = useRef<PracticeStatus[]>([]);
   const pendingPracticeMovesRef = useRef<string[]>([]);
   const pendingPracticeAnimatedCountRef = useRef(0);
-  const pendingPracticeAnimatedSliceRef = useRef<string | null>(null);
+  const pendingPracticeAnimatedPartialRef = useRef<string | null>(null);
   const researchMovesRef = useRef<string[]>([]);
   const moveCoordinateRef = useRef<MoveCoordinateState>(createMoveCoordinateState());
   const wrongWaitRef = useRef(false);
@@ -1038,7 +1042,7 @@ function FormulaStage({
     wrongWaitRef.current = false;
     pendingPracticeMovesRef.current = [];
     pendingPracticeAnimatedCountRef.current = 0;
-    pendingPracticeAnimatedSliceRef.current = null;
+    pendingPracticeAnimatedPartialRef.current = null;
     moveCoordinateRef.current = createMoveCoordinateState();
     practiceIndexRef.current = 0;
     inRoundRef.current = false;
@@ -1343,11 +1347,11 @@ function FormulaStage({
       const shouldAnimateExpectedMove =
         shouldAnimateExpectedSliceMoveAfterMatch(pendingPracticeMovesRef.current, expected) ||
         shouldAnimateExpectedWideMoveAfterMatch(pendingPracticeMovesRef.current, expected);
-      const animatedPartialSlice = pendingPracticeAnimatedSliceRef.current;
-      if (shouldAnimateExpectedMove && animatedPartialSlice) {
-        // A face-pair emulating the first quarter of M2/E2/S2 was already rendered as a slice.
+      const animatedPartialMove = pendingPracticeAnimatedPartialRef.current;
+      if (shouldAnimateExpectedMove && animatedPartialMove) {
+        // The first quarter of an emulated slice or wide double turn was already rendered.
         // Render only the second quarter instead of replaying the whole double turn.
-        animatePracticeMoves([animatedPartialSlice]);
+        animatePracticeMoves([animatedPartialMove]);
         pendingPracticeAnimatedCountRef.current = 0;
       } else {
         animateUnplayedPracticeMoves(
@@ -1363,7 +1367,7 @@ function FormulaStage({
         expected,
       );
       pendingPracticeMovesRef.current = [];
-      pendingPracticeAnimatedSliceRef.current = null;
+      pendingPracticeAnimatedPartialRef.current = null;
       const markedStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
       markedStatus[currentIndex] = "correct";
       const advanced = advancePastVirtualRotations(currentIndex + 1, markedStatus, 180);
@@ -1397,15 +1401,22 @@ function FormulaStage({
         movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
           ? compressMoveSequence(pendingPracticeMovesRef.current)[0]
           : undefined;
-      const shouldDeferAnimation =
-        shouldDeferSliceAnimation ||
-        shouldDeferExpectedWideMoveAnimation(pendingPracticeMovesRef.current, expected);
-      if (partialSliceAnimationMove && !pendingPracticeAnimatedSliceRef.current) {
-        // Both outer-face events are now present, so one real middle-slice quarter turn is known.
-        // Show it immediately while keeping the formula step partial until the second turn arrives.
-        animatePracticeMoves([partialSliceAnimationMove]);
+      const shouldDeferWideAnimation = shouldDeferExpectedWideMoveAnimation(
+        pendingPracticeMovesRef.current,
+        expected,
+      );
+      const shouldDeferAnimation = shouldDeferSliceAnimation || shouldDeferWideAnimation;
+      const partialWideAnimationMove =
+        shouldDeferWideAnimation &&
+        movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
+          ? hintMoveForDoubleTurnProgress(pendingPracticeMovesRef.current, expected)
+          : undefined;
+      const partialAnimationMove = partialSliceAnimationMove ?? partialWideAnimationMove;
+      if (partialAnimationMove && !pendingPracticeAnimatedPartialRef.current) {
+        // Show the known first quarter immediately while keeping the formula step partial.
+        animatePracticeMoves([partialAnimationMove]);
         pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
-        pendingPracticeAnimatedSliceRef.current = partialSliceAnimationMove;
+        pendingPracticeAnimatedPartialRef.current = partialAnimationMove;
       } else if (!shouldDeferAnimation) {
         animatePracticeMoves([normalizedMove]);
         pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
@@ -1427,7 +1438,7 @@ function FormulaStage({
       animateUnplayedPracticeMoves(pendingPracticeMovesRef.current);
       pendingPracticeMovesRef.current = [];
       pendingPracticeAnimatedCountRef.current = 0;
-      pendingPracticeAnimatedSliceRef.current = null;
+      pendingPracticeAnimatedPartialRef.current = null;
       moveCoordinateRef.current = createMoveCoordinateState();
       const wrongStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
       wrongStatus[currentIndex] = "wrong";

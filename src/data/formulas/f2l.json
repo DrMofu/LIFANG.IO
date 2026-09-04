@@ -195,8 +195,13 @@
         },
         {
           "id": "f2l-12-03",
-          "name": "其他解法",
+          "name": "公式三",
           "algo": "(R U' R' U) (R U' R' U2) (R U' R')"
+        },
+        {
+          "id": "f2l-12-04",
+          "name": "公式四",
+          "algo": "R' U2 R2 U R2 U R"
         }
       ],
       "facelets": "XXXXXXXFRDXXXRRXRRXRFFFXFFXDDXDDDDDDXXXLLLLLLXXXBBBBBB"

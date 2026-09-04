@@ -27,6 +27,13 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.1.6",
+    changes: [
+      "重做专项练习界面",
+      "添加vercel数据统计",
+    ],
+  },
+  {
     version: "v0.1.5",
     changes: [
       "练习界面添加纯计时器模式",

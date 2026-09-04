@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.5-4b7bec" />
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.6-4b7bec" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178c6" />
   <img alt="GAN Smart Cube" src="https://img.shields.io/badge/GAN-Smart_Cube-55a86b" />
@@ -46,15 +46,6 @@
 
 > [!NOTE]
 > 当前仅支持 GAN 智能魔方，建议使用支持 Web Bluetooth 的 Chromium 浏览器访问。
-
-## 本地运行
-
-```bash
-npm install
-npm run dev
-```
-
-打开 [http://localhost:3000](http://localhost:3000)。
 
 ## 技术栈
 

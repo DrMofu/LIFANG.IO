@@ -1,76 +1,19 @@
-.trainer-focus-app .trainer-left,
-.trainer-focus-app .trainer-right {
-  gap: 14px;
+.trainer-focus-app .trainer-phase-list {
+  grid-template-columns: 1fr;
 }
 
-.trainer-focus-app .trainer-case-card,
-.trainer-focus-app .trainer-summary-card {
-  flex: 0 0 auto;
+.trainer-focus-app .trainer-phase-list .tag-btn {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  text-align: center;
 }
 
-.trainer-focus-app .trainer-settings-panel {
-  gap: 10px;
+.trainer-focus-app .trainer-phase-copy {
+  white-space: nowrap;
 }
 
-.trainer-focus-app .trainer-phase-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.trainer-focus-app .trainer-phase-btn {
-  display: grid;
-  min-width: 0;
-  min-height: 58px;
-  place-items: center;
-  border: 1px solid rgba(205, 220, 242, 0.78);
-  border-radius: 14px;
-  background: #ffffff;
-  color: #8495b1;
-  cursor: pointer;
-}
-
-.trainer-focus-app .trainer-phase-btn b {
-  color: #19386f;
-  font-family: var(--timer-number);
-  font-size: 18px;
+.trainer-focus-app .trainer-phase-copy strong {
   font-weight: 900;
-  line-height: 1;
-}
-
-.trainer-focus-app .trainer-phase-btn span {
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.trainer-focus-app .trainer-phase-btn:hover {
-  border-color: rgba(47, 111, 242, 0.28);
-  background: #f3f7ff;
-  color: #205fd8;
-}
-
-.trainer-focus-app .trainer-phase-btn.active,
-.trainer-focus-app .trainer-phase-btn.active:hover {
-  border-color: #2f6ff2;
-  background: #2f6ff2;
-  color: #ffffff;
-}
-
-.trainer-focus-app .trainer-phase-btn.active b {
-  color: #ffffff;
-}
-
-.trainer-focus-app .trainer-phase-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
-}
-
-.trainer-focus-app .trainer-settings-panel > .dt-meta {
-  margin: 0 4px;
-  color: #7e90ad;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.45;
 }
 
 .trainer-focus-app .trainer-round-setting,
@@ -134,6 +77,15 @@
   opacity: 0.62;
 }
 
+.trainer-focus-app .trainer-fixed-option {
+  cursor: default;
+  opacity: 1;
+}
+
+.trainer-focus-app .trainer-fixed-option input {
+  pointer-events: none;
+}
+
 .trainer-focus-app .trainer-round-setting input {
   width: 100%;
   min-width: 0;
@@ -178,64 +130,45 @@
   color: #c74343;
 }
 
-.trainer-focus-app .trainer-case-name {
-  overflow: hidden;
-  color: #19386f;
-  font-size: 20px;
-  font-weight: 900;
-  line-height: 1.18;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trainer-focus-app .trainer-case-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.trainer-focus-app .trainer-case-meta span {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  border: 1px solid rgba(205, 220, 242, 0.72);
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0 10px;
-  color: #8495b1;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.trainer-focus-app .trainer-summary-card .stat-grid {
-  gap: 7px;
-}
-
-.trainer-focus-app .trainer-summary-card .st {
-  min-height: 70px;
-  border-color: rgba(213, 226, 246, 0.72);
-  background: #ffffff;
-}
-
-.trainer-focus-app .trainer-summary-card .st-primary {
-  border-color: rgba(47, 111, 242, 0.22);
-  background: #eaf2ff;
-}
-
-.trainer-focus-app .trainer-stage .cube-mount {
-  inset: 8px 0 160px;
-}
-
 .trainer-focus-app .trainer-formula-stage {
   background: #ffffff;
 }
 
-.trainer-focus-app .trainer-score-panel {
+.trainer-focus-app .trainer-recognition-timer-stack {
+  width: min(720px, 96%);
+}
+
+.trainer-focus-app .trainer-recognition-sequence {
+  width: 100%;
+}
+
+.trainer-focus-app .trainer-recognition-viewport {
+  position: relative;
+  display: block;
+  height: 46px;
+  overflow: hidden;
+}
+
+.trainer-focus-app .trainer-recognition-track {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  width: max-content;
+  gap: 8px;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.trainer-focus-app .trainer-recognition-track .algo-tok {
+  flex: 0 0 48px;
+}
+
+.trainer-focus-app .trainer-results-panel {
   flex: 0 0 auto;
 }
 
-.trainer-focus-app .trainer-score-panel .practice-card-head {
+.trainer-focus-app .trainer-results-panel .practice-card-head {
   margin-bottom: 10px;
 }
 
@@ -272,66 +205,15 @@
   font-weight: 900;
 }
 
-.trainer-focus-app .trainer-history-panel {
-  min-height: 180px;
+.trainer-focus-app .trainer-metric-correct b {
+  color: var(--tech-green);
 }
 
-.trainer-focus-app .trainer-history-list {
-  display: grid;
-  grid-auto-rows: var(--history-row-size);
-  align-content: start;
-  overscroll-behavior-x: none;
-}
-
-.trainer-focus-app .trainer-history-row-total {
-  grid-template-columns: 34px minmax(0, 1fr) 116px minmax(36px, auto);
-}
-
-.trainer-focus-app .trainer-history-total {
-  min-width: 0;
-  overflow: hidden;
-  color: #19386f;
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 800;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trainer-focus-app .trainer-history-total {
-  justify-self: end;
-}
-
-.trainer-focus-app .trainer-history-options {
-  display: flex;
-  min-width: 0;
-  justify-content: flex-end;
-  gap: 3px;
-  overflow: hidden;
-}
-
-.trainer-focus-app .trainer-history-options b {
-  display: inline-flex;
-  min-width: 0;
-  height: 20px;
-  align-items: center;
-  border: 1px solid rgba(47, 111, 242, 0.16);
-  border-radius: 999px;
-  background: #ffffff;
-  padding: 0 5px;
-  color: #8495b1;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
+.trainer-focus-app .trainer-metric-wrong b {
+  color: #d43d31;
 }
 
 @media (max-width: 1280px) {
-  .trainer-focus-app .trainer-phase-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .trainer-focus-app .trainer-stage-tools {
     grid-template-columns: 1fr;
   }
@@ -339,35 +221,15 @@
   .trainer-focus-app .trainer-stage-tools > * {
     grid-column: 1;
   }
-
 }
 
 @media (max-width: 1060px) {
-  .trainer-focus-app .trainer-left,
-  .trainer-focus-app .trainer-right {
-    overflow: visible;
-  }
-
-  .trainer-focus-app .trainer-phase-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .trainer-focus-app .trainer-stage-tools {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 700px) {
-  .trainer-focus-app .trainer-stage .cube-mount {
-    inset: 18px 0 150px;
-  }
-
-  .trainer-focus-app .trainer-history-panel {
-    min-height: 340px;
   }
 }
 
@@ -379,10 +241,6 @@
   .trainer-focus-app .trainer-abandon-btn {
     left: calc(100% + 6px);
     width: 64px;
-  }
-
-  .trainer-focus-app .trainer-phase-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .trainer-focus-app .trainer-stage-tools {

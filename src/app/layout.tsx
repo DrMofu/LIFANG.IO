@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthProvider } from "@/components/auth-provider";
 import { CubeAppearanceProvider } from "@/components/cube-appearance-provider";
 import { CubeConnectionProvider } from "@/components/cube-connection-provider";
@@ -43,6 +45,8 @@ export default async function RootLayout({
             </AuthProvider>
           </SystemNotificationProvider>
         </LanguageProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
