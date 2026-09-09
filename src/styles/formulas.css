@@ -13,7 +13,6 @@
   box-shadow: 0 18px 50px rgba(39, 55, 86, 0.12);
 }
 
-.lf-tech-app .formula-mode-panel,
 .lf-tech-app .formula-primary-panel,
 .lf-tech-app .fm-side-bottom {
   border: 0;
@@ -759,11 +758,6 @@
   gap: 14px;
 }
 
-.lf-tech-app .formula-mode-panel {
-  flex: 0 0 auto;
-  padding: 10px;
-}
-
 .lf-tech-app .formula-primary-panel {
   width: 100%;
   min-width: 0;
@@ -773,9 +767,42 @@
 }
 
 .lf-tech-app .formula-mode-switch {
-  width: 100%;
-  flex: 0 0 auto;
-  margin: 0;
+  position: absolute;
+  z-index: 7;
+  top: 14px;
+  left: 50%;
+  display: flex;
+  gap: 24px;
+  transform: translateX(-50%);
+}
+
+.lf-tech-app .formula-mode-switch button {
+  min-height: 32px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 4px 8px;
+  background: transparent;
+  color: var(--tech-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: var(--ui-weight-support);
+  cursor: pointer;
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.lf-tech-app .formula-mode-switch button:hover,
+.lf-tech-app .formula-mode-switch button.active {
+  color: var(--tech-blue);
+}
+
+.lf-tech-app .formula-mode-switch button.active {
+  border-bottom-color: currentColor;
+}
+
+.lf-tech-app .formula-mode-switch button:focus-visible {
+  outline: 2px solid var(--tech-blue);
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 
 .lf-tech-app .formula-average-tag {
@@ -815,7 +842,7 @@
   --formula-toast-border: rgba(201, 53, 42, 0.34);
   position: absolute;
   z-index: 8;
-  top: 20px;
+  top: 60px;
   left: 50%;
   width: max-content;
   max-width: min(420px, calc(100% - 36px));
@@ -839,7 +866,7 @@
 }
 
 .lf-tech-app .formula-practice-toast.stacked {
-  top: 74px;
+  top: 114px;
 }
 
 .lf-tech-app .formula-practice-toast.fading {
@@ -1151,41 +1178,141 @@
   min-height: 0;
   flex: 1;
   flex-direction: column;
+  gap: 12px;
+}
+
+.lf-tech-app .fm-side-bottom-stats {
+  flex: 1 0 auto;
+}
+
+.lf-tech-app .formula-stats-section {
+  padding: 16px;
+}
+
+.lf-tech-app .fm-stats-head {
+  margin: 0;
+}
+
+.lf-tech-app .fm-chart-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--tech-muted);
+  font-size: 11px;
+}
+
+.lf-tech-app .fm-distribution,
+.lf-tech-app .fm-stats-recent {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.lf-tech-app .fm-distribution-chart {
+  --result-color: #c78012;
+  display: block;
+  width: 100%;
+  overflow: visible;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.lf-tech-app .fm-distribution-chart.is-best {
+  --result-color: var(--tech-green);
+}
+
+.lf-tech-app .fm-chart-label {
+  fill: var(--tech-muted);
+  font-size: 10px;
+}
+
+.lf-tech-app .fm-chart-grid {
+  stroke: var(--tech-line-2);
+  stroke-dasharray: 3 3;
+}
+
+.lf-tech-app .fm-chart-axis {
+  stroke: #a4b4ce;
+}
+
+.lf-tech-app .fm-chart-area {
+  fill: var(--tech-blue);
+  opacity: 0.1;
+}
+
+.lf-tech-app .fm-chart-line {
+  fill: none;
+  stroke: var(--tech-blue);
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.lf-tech-app .fm-chart-bin-target {
+  fill: transparent;
+}
+
+.lf-tech-app .fm-chart-latest {
+  fill: var(--result-color);
+}
+
+.lf-tech-app .fm-chart-latest line {
+  stroke: var(--result-color);
+  stroke-width: 1.5;
+}
+
+.lf-tech-app .fm-chart-latest circle {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.lf-tech-app .fm-chart-latest text {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .lf-tech-app .fm-stats-recent {
-  width: 100%;
-  flex: 0 0 auto;
-  overflow-y: scroll;
-  scrollbar-color: transparent transparent;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
+  border-top: 1px solid var(--tech-line-2);
+  padding-top: 12px;
 }
 
-.lf-tech-app .fm-stats-recent.scrolling {
-  scrollbar-color: rgba(124, 145, 180, 0.46) transparent;
+.lf-tech-app .fm-stats-recent:has(.fm-stats-empty) {
+  border-top: 0;
+  padding-top: 0;
 }
 
-.lf-tech-app .fm-stats-recent::-webkit-scrollbar {
-  width: 5px;
-}
-
-.lf-tech-app .fm-stats-recent::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.lf-tech-app .fm-stats-recent::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: transparent;
-  transition: background 0.24s ease;
-}
-
-.lf-tech-app .fm-stats-recent.scrolling::-webkit-scrollbar-thumb {
-  background: rgba(124, 145, 180, 0.46);
+.lf-tech-app .fm-stats-recent ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .lf-tech-app .fm-stat-row {
-  grid-template-columns: 30px minmax(0, 1fr) 62px;
+  --history-row-size: 36px;
+  grid-template-columns: minmax(40px, auto) minmax(0, 1fr) auto;
+  column-gap: 12px;
+  padding: 7px 8px;
+}
+
+.lf-tech-app .fm-stat-row .hr-t {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lf-tech-app .fm-stat-row .hr-t small {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.lf-tech-app .fm-stat-row.best {
+  background: var(--tech-green-soft);
+}
+
+.lf-tech-app .fm-stat-row.best :is(.hr-i, .hr-t) {
+  color: var(--tech-green);
 }
 
 .lf-tech-app .formula-keypad-section {
@@ -1290,7 +1417,8 @@
     height: 590px;
     min-height: 590px;
     gap: 14px;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .lf-tech-app .stage-controls {
@@ -1396,7 +1524,4 @@
     margin-left: 9px;
   }
 
-  .lf-tech-app .formula-mode-panel {
-    padding: 8px;
-  }
 }

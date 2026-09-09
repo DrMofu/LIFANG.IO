@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { AlgorithmStepToken } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
@@ -8,6 +8,8 @@ import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 import { FormulaCubeImage, FormulaTopViewImage } from "@/components/formula-cube-image";
 import { FormulaKeypad } from "@/components/formula-keypad";
+import { FormulaPracticeStats } from "@/components/formula-practice-stats";
+import { FORMULA_STATS_LIMIT } from "@/lib/formula-time-distribution";
 import { MoveToken } from "@/components/move-token";
 import {
   appendNormalizedMoveLogMove,
@@ -98,17 +100,12 @@ const FAV_KEY = "formula-favs";
 const STATE_KEY = "formula-state";
 const STATS_KEY = "formula-practice-stats";
 const FOCUS_MODE_KEY = "formula-focus-mode";
-const FORMULA_STATS_LIMIT = 20;
 const FORMULA_PLAY_START_DELAY_MS = 0;
 const FORMULA_PLAY_STEP_INTERVAL_MS = 1000;
 const FORMULA_PLAY_MOVE_DURATION_MS = 600;
 const FORMULA_PLAY_FINISH_DELAY_MS = 2000;
 const FORMULA_TOAST_FADE_MS = 260;
-const FORMULA_STATS_ROW_SIZE = 44;
-const FORMULA_STATS_ROW_GAP = 0;
-const FORMULA_STATS_FALLBACK_ROWS = 1;
-const FORMULA_STATS_MAX_VISIBLE_ROWS = FORMULA_STATS_LIMIT;
-const MAX_STRUCTURE_NOTATION_MOVE_COUNT = 6;
+const MAX_STRUCTURE_NOTATION_MOVE_COUNT = 5;
 const TRIGGER_NAME_BY_ALGORITHM = new Map(
   FORMULAS.triggers.items.flatMap((item) => {
     const triggers: Array<readonly [string, string]> = [
@@ -806,8 +803,6 @@ function FormulaStage({
   const practiceTimerRef = useRef<number | null>(null);
   const practiceToastTimerRef = useRef<number | null>(null);
   const pbToastTimerRef = useRef<number | null>(null);
-  const statsScrollTimerRef = useRef<number | null>(null);
-  const formulaStatsListRef = useRef<HTMLDivElement | null>(null);
   const playTimerRefs = useRef<number[]>([]);
   const [rotationOffset, setRotationOffset] = useState<FormulaRotationOffset>(0);
   const canRotateF2lVariant = active.sourceCat === "f2l";
@@ -846,9 +841,7 @@ function FormulaStage({
   const [researchMoves, setResearchMoves] = useState<string[]>([]);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [learningMenuOpen, setLearningMenuOpen] = useState(false);
-  const [statsScrolling, setStatsScrolling] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
-  const [formulaStatsRows, setFormulaStatsRows] = useState(FORMULA_STATS_FALLBACK_ROWS);
 
   const {
     connectionState,
@@ -938,22 +931,6 @@ function FormulaStage({
       window.clearTimeout(pbToastTimerRef.current);
       pbToastTimerRef.current = null;
     }
-  }
-
-  function clearStatsScrollTimer() {
-    if (statsScrollTimerRef.current !== null) {
-      window.clearTimeout(statsScrollTimerRef.current);
-      statsScrollTimerRef.current = null;
-    }
-  }
-
-  function handleStatsScroll() {
-    setStatsScrolling(true);
-    clearStatsScrollTimer();
-    statsScrollTimerRef.current = window.setTimeout(() => {
-      statsScrollTimerRef.current = null;
-      setStatsScrolling(false);
-    }, 900);
   }
 
   function showPracticeToast(message: string) {
@@ -1243,6 +1220,7 @@ function FormulaStage({
       faceColors,
       orientation,
       maxFps: renderMaxFps,
+      compactGestureRegion: true,
       transparentFormulaFacelets: transparentDisplayRef.current,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
@@ -1265,7 +1243,6 @@ function FormulaStage({
       clearPracticeTimer();
       clearPracticeToastTimer();
       clearPbToastTimer();
-      clearStatsScrollTimer();
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
@@ -1467,59 +1444,6 @@ function FormulaStage({
 
   useEffect(() => subscribeMove(handlePracticeMoveEffect), [subscribeMove]);
 
-  useLayoutEffect(() => {
-    const list = formulaStatsListRef.current;
-    if (!list) return;
-
-    const updateRows = () => {
-      const dashboard = list.parentElement;
-      const section = dashboard?.parentElement;
-      const sideBottom = section?.parentElement;
-      const side = sideBottom?.parentElement;
-      const head = section?.querySelector<HTMLElement>(".formula-stats-head") ?? null;
-      const sideStyle = side ? window.getComputedStyle(side) : null;
-      const sectionStyle = section ? window.getComputedStyle(section) : null;
-      const headStyle = head ? window.getComputedStyle(head) : null;
-      const listStyle = window.getComputedStyle(list);
-      const sidePaddingY = sideStyle ? parseFloat(sideStyle.paddingTop) + parseFloat(sideStyle.paddingBottom) : 0;
-      const sideBorderY = sideStyle ? parseFloat(sideStyle.borderTopWidth) + parseFloat(sideStyle.borderBottomWidth) : 0;
-      const sideBottomHeight = side
-        ? side.clientHeight -
-          sidePaddingY -
-          sideBorderY -
-          [...side.children].reduce((height, child) => child === sideBottom ? height : height + child.getBoundingClientRect().height, 0) -
-          Math.max(0, side.children.length - 1) * (sideStyle ? parseFloat(sideStyle.rowGap) || parseFloat(sideStyle.gap) || 0 : 0)
-        : sideBottom?.clientHeight ?? 0;
-      const sectionPaddingY = sectionStyle ? parseFloat(sectionStyle.paddingTop) + parseFloat(sectionStyle.paddingBottom) : 0;
-      const sectionBorderY = sectionStyle ? parseFloat(sectionStyle.borderTopWidth) + parseFloat(sectionStyle.borderBottomWidth) : 0;
-      const headHeight = head ? head.getBoundingClientRect().height : 0;
-      const headMarginBottom = headStyle ? parseFloat(headStyle.marginBottom) : 0;
-      const listBorderY = parseFloat(listStyle.borderTopWidth) + parseFloat(listStyle.borderBottomWidth);
-      const availableHeight = sideBottomHeight - sectionPaddingY - sectionBorderY - headHeight - headMarginBottom;
-      const rowSpace = Math.max(0, availableHeight - listBorderY);
-      const rowCapacity = Math.max(
-        FORMULA_STATS_FALLBACK_ROWS,
-        Math.floor((rowSpace + FORMULA_STATS_ROW_GAP) / (FORMULA_STATS_ROW_SIZE + FORMULA_STATS_ROW_GAP)),
-      );
-      const rows = Math.min(
-        FORMULA_STATS_MAX_VISIBLE_ROWS,
-        Math.max(FORMULA_STATS_FALLBACK_ROWS, practiceStats.times.length),
-        rowCapacity,
-      );
-      setFormulaStatsRows(rows);
-    };
-
-    updateRows();
-    const observer = new ResizeObserver(updateRows);
-    observer.observe(list);
-    if (list.parentElement) observer.observe(list.parentElement);
-    if (list.parentElement?.parentElement) observer.observe(list.parentElement.parentElement);
-    if (list.parentElement?.parentElement?.parentElement?.parentElement) {
-      observer.observe(list.parentElement.parentElement.parentElement.parentElement);
-    }
-    return () => observer.disconnect();
-  }, [practiceStats.count, practiceStats.times.length, researchMode]);
-
   useEffect(() => {
     const cube = cubeApiRef.current;
     if (!cube) return;
@@ -1574,6 +1498,28 @@ function FormulaStage({
   return (
     <>
       <div className="fm-stage">
+        <div className="formula-mode-switch" role="group" aria-label={t("公式模式")}>
+          <button
+            type="button"
+            className={!researchMode ? "active" : ""}
+            aria-pressed={!researchMode}
+            onClick={() => {
+              if (researchMode) exitResearchMode();
+            }}
+          >
+            {t("练习")}
+          </button>
+          <button
+            type="button"
+            className={researchMode ? "active" : ""}
+            aria-pressed={researchMode}
+            onClick={() => {
+              if (!researchMode) enterResearchMode();
+            }}
+          >
+            {t("研究")}
+          </button>
+        </div>
         <div className="crosshair ch-tl"></div>
         <div className="crosshair ch-tr"></div>
         <div className="crosshair ch-bl"></div>
@@ -1624,31 +1570,6 @@ function FormulaStage({
       </div>
       <div className={`fm-side${researchMode ? " is-research" : " is-practice"}`}>
         <div className="formula-info-stack">
-          <div className="formula-mode-panel practice-card">
-            <div className="practice-mode-switch formula-mode-switch" role="group" aria-label={t("公式模式")}>
-              <button
-                type="button"
-                className={!researchMode ? "active" : ""}
-                aria-pressed={!researchMode}
-                onClick={() => {
-                  if (researchMode) exitResearchMode();
-                }}
-              >
-                {t("练习")}
-              </button>
-              <button
-                type="button"
-                className={researchMode ? "active" : ""}
-                aria-pressed={researchMode}
-                onClick={() => {
-                  if (!researchMode) enterResearchMode();
-                }}
-              >
-                {t("研究")}
-              </button>
-            </div>
-          </div>
-
           <div className="formula-primary-panel practice-card">
             <div className="tr-section formula-main-section">
           <div className="formula-hero">
@@ -1821,50 +1742,15 @@ function FormulaStage({
             </div>
           ) : (
             <div className="tr-section formula-stats-section">
-              <div className="formula-stats-head">
-                <div className="practice-title-line formula-title-line">
-                  <div className="practice-card-title formula-card-title">{t("练习统计")}</div>
-                  <div className="practice-kicker formula-card-kicker">STATS</div>
-                </div>
-                <span className={`formula-hero-tag formula-today-stat tone-${todayPracticeTone}`}>{t("今日")}{" "}{todayPracticeCount}{" "}{t("次")}</span>
-              </div>
-              {practiceStats.count === 0 || practiceStats.times.length === 0 ? (
-                <div className="hist-empty fm-stats-empty">{t("暂无记录，开始练习后自动统计。")}</div>
-              ) : (
-                (() => {
-                  const recentTimes = practiceStats.times;
-                  const newestFirstTimes = recentTimes.toReversed();
-                  const slowest = Math.max(...recentTimes);
-
-                  return (
-                    <div className="fm-stats-dashboard">
-                      <div
-                        className={`hist-list fm-stats-recent${statsScrolling ? " scrolling" : ""}`}
-                        ref={formulaStatsListRef}
-                        style={{ "--history-rows": formulaStatsRows } as CSSProperties}
-                        aria-label={t("最近二十次练习成绩")}
-                        onScroll={handleStatsScroll}
-                        onPointerLeave={() => setStatsScrolling(false)}
-                      >
-                        {newestFirstTimes.map((time, i) => {
-                          const n = practiceStats.count - i;
-                          const barWidth = `${Math.max(12, (time / slowest) * 100)}%`;
-                          const isBest = practiceStats.bestMs === time;
-                          return (
-                            <div key={`${n}-${time}`} className={`hist-row fm-stat-row${isBest ? " best" : ""}`}>
-                              <span className="hr-i">#{String(n).padStart(3, "0")}</span>
-                              <span className="hr-track" aria-hidden="true">
-                                <span className="hr-bar" style={{ width: barWidth }}></span>
-                              </span>
-                              <span className="hr-t">{fmtShort(time)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()
-              )}
+              <FormulaPracticeStats
+                key={displayStatsKey}
+                times={practiceStats.times}
+                count={practiceStats.count}
+                bestMs={practiceStats.bestMs}
+                todayPracticeCount={todayPracticeCount}
+                todayPracticeTone={todayPracticeTone}
+                t={t}
+              />
             </div>
           )}
 
@@ -1904,11 +1790,16 @@ export function FormulasApp() {
   const favoriteCases = useMemo(
     () =>
       formulaCases
-        .map((item) => ({
-          ...item,
-          variants: item.variants.filter((variant) => favs.includes(variant.key)),
-        }))
-        .filter((item) => item.variants.length > 0),
+        .flatMap((item) => item.variants
+          .filter((variant) => favs.includes(variant.key))
+          .map((variant) => ({
+            ...item,
+            id: variant.key,
+            algo: variant.algo,
+            algos: undefined,
+            facelets: variant.caseFacelets,
+            variants: [variant],
+          }))),
     [favs, formulaCases],
   );
   const isFavoritesView = cat === "favorites";
@@ -2238,9 +2129,15 @@ export function FormulasApp() {
                       )}
                       <div className="fmr-l">
                         <div className="fmr-name">
-                          <span>{t(item.name)}</span>
+                          <span>
+                            {t(item.name)}
+                            {isFavoritesView && item.variants[0].id !== "main" && item.variants[0].name !== item.name
+                              ? ` · ${t(item.variants[0].name)}`
+                              : ""}
+                          </span>
                           <FormulaDescription description={item.variants.length === 1 ? item.variants[0]?.description : item.description} />
                         </div>
+                        {isFavoritesView && <div className="fvr-algo">{item.variants[0].algo}</div>}
                         <div className="fmr-meta">
                           {usesVariantList ? (
                             <>
@@ -2317,7 +2214,6 @@ export function FormulasApp() {
                                 <div className="fvr-name">
                                   <span>{t(variant.name)}</span>
                                   <FormulaDescription description={variant.description} />
-                                  {isFavoritesView && <b>{variant.caseName}</b>}
                                 </div>
                                 <div className="fvr-algo">{variant.algo}</div>
                                 <div className="fmr-meta">

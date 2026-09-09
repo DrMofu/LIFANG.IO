@@ -601,6 +601,8 @@ export type SmartCubeOptions = {
   compensateInitialGyroOffset?: boolean;
   interactionLocked?: boolean;
   wheelZoomEnabled?: boolean;
+  /** Reserve the canvas edges for page scrolling. */
+  compactGestureRegion?: boolean;
   preserveDrawingBuffer?: boolean;
   animateHintArrow?: boolean;
   initialHintMove?: string | null;
@@ -835,7 +837,41 @@ export function mountSmartCube(
   const projectionCameraOffset = new THREE.Vector3();
   const projectionCubieQuaternion = new THREE.Quaternion();
 
-  renderer.domElement.style.touchAction = "none";
+  const gestureRegion = options.compactGestureRegion ? document.createElement("div") : null;
+  const originalPosition = container.style.position;
+  const needsPosition = !!gestureRegion && getComputedStyle(container).position === "static";
+  const gestureCenter = new THREE.Vector3();
+  if (gestureRegion) {
+    if (needsPosition) container.style.position = "relative";
+    gestureRegion.className = "cube-gesture-region";
+    gestureRegion.setAttribute("aria-hidden", "true");
+    Object.assign(gestureRegion.style, {
+      position: "absolute", touchAction: "none",
+      transform: "translate(-50%, -50%)", borderRadius: "50%",
+    });
+    container.appendChild(gestureRegion);
+  }
+  renderer.domElement.style.touchAction = gestureRegion ? "pan-y pinch-zoom" : "none";
+
+  function updateGestureRegion() {
+    if (!gestureRegion) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const size = Math.min(width * 0.6, height * 0.6, 360);
+    cubeRoot.getWorldPosition(gestureCenter).project(camera);
+    const x = THREE.MathUtils.clamp((gestureCenter.x + 1) * width / 2, size / 2, width - size / 2);
+    const y = THREE.MathUtils.clamp((1 - gestureCenter.y) * height / 2, size / 2, height - size / 2);
+    Object.assign(gestureRegion.style, {
+      left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`,
+    });
+  }
+
+  function isInsideGestureRegion(clientX: number, clientY: number) {
+    if (!gestureRegion) return true;
+    const rect = gestureRegion.getBoundingClientRect();
+    const radius = rect.width / 2;
+    return radius > 0 && Math.hypot(clientX - rect.left - radius, clientY - rect.top - radius) <= radius;
+  }
 
   const displayFaceByHardwareColor = Object.fromEntries(
     (Object.entries(displayFaceColors) as Array<[CubeFace, CubeColor]>).map(([face, color]) => [color, face]),
@@ -1250,6 +1286,7 @@ export function mountSmartCube(
   function onPointerDown(event: PointerEvent) {
     if (interactionLocked) return;
     if (event.button !== 0) return;
+    if (event.pointerType !== "mouse" && !isInsideGestureRegion(event.clientX, event.clientY)) return;
     pointerPositions.set(event.pointerId, { x: event.clientX, y: event.clientY });
     renderer.domElement.setPointerCapture(event.pointerId);
 
@@ -1317,7 +1354,7 @@ export function mountSmartCube(
   }
 
   function onWheel(event: WheelEvent) {
-    if (interactionLocked) return;
+    if (interactionLocked || !isInsideGestureRegion(event.clientX, event.clientY)) return;
     event.preventDefault();
     const nextDistance = cameraDistance * (1 + event.deltaY * CAMERA_ZOOM_SPEED);
     if (applyCameraDistance(nextDistance)) onDisplayOrientationChange?.();
@@ -1365,6 +1402,7 @@ export function mountSmartCube(
     }
     updateProjectionBorderVisibility();
     renderer.render(scene, camera);
+    updateGestureRegion();
     if (firstRenderPending) {
       firstRenderPending = false;
       options.onFirstRender?.(renderer.domElement);
@@ -1378,6 +1416,7 @@ export function mountSmartCube(
     lastFrameTime = performance.now();
     updateProjectionBorderVisibility();
     renderer.render(scene, camera);
+    updateGestureRegion();
     requestRender();
   }
 
@@ -1398,12 +1437,13 @@ export function mountSmartCube(
   }
   applyHintMove(options.initialHintMove ?? null);
   resizeObserver.observe(container);
-  renderer.domElement.addEventListener("pointerdown", onPointerDown);
-  renderer.domElement.addEventListener("pointermove", onPointerMove);
-  renderer.domElement.addEventListener("pointerup", onPointerUp);
-  renderer.domElement.addEventListener("pointercancel", onPointerUp);
-  if (wheelZoomEnabled) {
-    renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+  const interactionSurfaces: HTMLElement[] = gestureRegion ? [renderer.domElement, gestureRegion] : [renderer.domElement];
+  for (const surface of interactionSurfaces) {
+    surface.addEventListener("pointerdown", onPointerDown);
+    surface.addEventListener("pointermove", onPointerMove);
+    surface.addEventListener("pointerup", onPointerUp);
+    surface.addEventListener("pointercancel", onPointerUp);
+    if (wheelZoomEnabled) surface.addEventListener("wheel", onWheel, { passive: false });
   }
   document.addEventListener("visibilitychange", handleVisibilityChange);
   requestRender();
@@ -1532,11 +1572,14 @@ export function mountSmartCube(
       cancelAnimationFrame(frameId);
       if (frameTimeoutId) window.clearTimeout(frameTimeoutId);
       resizeObserver.disconnect();
-      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
-      renderer.domElement.removeEventListener("pointermove", onPointerMove);
-      renderer.domElement.removeEventListener("pointerup", onPointerUp);
-      renderer.domElement.removeEventListener("pointercancel", onPointerUp);
-      renderer.domElement.removeEventListener("wheel", onWheel);
+      for (const surface of interactionSurfaces) {
+        surface.removeEventListener("pointerdown", onPointerDown);
+        surface.removeEventListener("pointermove", onPointerMove);
+        surface.removeEventListener("pointerup", onPointerUp);
+        surface.removeEventListener("pointercancel", onPointerUp);
+        surface.removeEventListener("wheel", onWheel);
+      }
+      if (needsPosition) container.style.position = originalPosition;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       cubies.forEach((cubie) => disposeCubie(cubie));
       cubies.length = 0;

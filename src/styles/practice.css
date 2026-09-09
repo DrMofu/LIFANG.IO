@@ -54,13 +54,6 @@
 .lf-practice-app .hist {
   padding: 18px;
 }
-.practice-card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
 .practice-btn {
   display: inline-flex;
   min-height: 42px;
@@ -663,9 +656,6 @@
 .lf-practice-app .stats:has(.st-stable-score:focus-visible) {
   z-index: 2;
 }
-.lf-practice-app .stats .practice-card-head {
-  margin-bottom: 10px;
-}
 .lf-practice-app .stats .st {
   padding: 8px 9px;
 }
@@ -1171,23 +1161,7 @@
   padding: 16px;
 }
 
-.practice-focus-app .practice-card-head {
-  align-items: center;
-  margin-bottom: 12px;
-}
 
-.practice-focus-app .practice-card-title {
-  color: #19386f;
-}
-
-.practice-focus-app .practice-kicker {
-  color: #91a2bd;
-  letter-spacing: 0.12em;
-}
-
-html[lang="en"] .practice-focus-app .practice-kicker {
-  display: none;
-}
 
 .practice-focus-app .daily-test-card {
   padding: 4px 6px 14px;
@@ -1311,12 +1285,12 @@ html[lang="en"] .practice-focus-app .practice-kicker {
 .practice-focus-app .practice-control-panel {
   display: grid;
   flex: 0 0 auto;
-  gap: 10px;
-  padding: 14px 10px 10px;
+  gap: 12px;
+  padding: 16px;
 }
 
 .practice-focus-app .practice-control-head {
-  margin: 0 4px 2px;
+  margin: 0;
 }
 
 .practice-focus-app .stats {
@@ -1345,8 +1319,8 @@ html[lang="en"] .practice-focus-app .practice-kicker {
 }
 
 .practice-focus-app .stats .st-l {
-  color: #7e90ad;
-  font-size: 10px;
+  color: #000;
+  font-size: 12px;
 }
 
 .practice-focus-app .stats .st-v {
@@ -1693,13 +1667,7 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  padding: 20px;
-}
-
-.practice-focus-app .practice-score-panel,
-.practice-focus-app .practice-history-panel {
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding: 16px;
 }
 
 .practice-focus-app .practice-score-panel {
@@ -1708,10 +1676,6 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   position: relative;
   z-index: 2;
   overflow: visible;
-}
-
-.practice-focus-app .practice-score-panel .practice-card-head {
-  margin-bottom: 4px;
 }
 
 .practice-focus-app .practice-history-panel {
@@ -1807,12 +1771,19 @@ html[lang="en"] .practice-focus-app .practice-kicker {
   font-weight: 800;
 }
 
-.practice-focus-app .solve-phase-card b {
-  margin-top: 3px;
+.practice-focus-app .solve-phase-card > b {
+  margin-top: 4px;
   color: #1c5fd8;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 800;
+  font-family: var(--timer-number);
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.practice-focus-app .solve-phase-moves {
+  color: #8292aa;
+  font-size: 16px;
 }
 
 .practice-focus-app .solve-metric-main {
@@ -2052,9 +2023,6 @@ html[lang="en"] .practice-focus-app .practice-kicker {
     min-height: 46px;
   }
 
-  .practice-focus-app .practice-live-panel {
-    padding: 14px 16px;
-  }
 }
 
 @media (max-width: 1060px) {

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 import { useLanguage } from "@/components/language-provider";
+import { ConnectionEnvironment } from "@/components/connection-environment";
 import type { MessageKey } from "@/lib/i18n-messages";
 import { isSmartCubeBrandId } from "@/lib/smart-cube-connection";
 import { useClientReady } from "@/lib/client-ready";
@@ -350,7 +351,6 @@ export function CompactConnectButton() {
         >
           <span className={connecting ? "dot dot-pulse" : "dot"}></span>
           {label}
-          <BatteryIndicator level={null} />
         </button>
       )}
       {connectionPromptVisible && typeof document !== "undefined" && createPortal(
@@ -390,9 +390,7 @@ export function CompactConnectButton() {
               <li>{t("connection.pairingStepSelect")}</li>
               <li>{t("connection.pairingStepWait")}</li>
             </ol>
-            <div className="top-connect-platform-note">
-              {t("connection.platformSupport")}
-            </div>
+            <ConnectionEnvironment />
             <div className="top-connect-brand-field">
               <label htmlFor="top-connect-brand">{t("connection.cubeBrand")}</label>
               <div className="top-connect-brand-select-wrap">

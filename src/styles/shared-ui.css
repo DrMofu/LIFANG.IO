@@ -1,26 +1,49 @@
+.practice-card-head,
+.ui-section-head {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
 .practice-title-line,
 .ui-section-title-line {
   display: flex;
   min-width: 0;
+  min-height: 24px;
+  align-self: flex-start;
   align-items: baseline;
   gap: 8px;
 }
 
 .practice-kicker,
 .ui-section-kicker {
-  color: var(--tech-muted);
+  margin: 0;
+  color: #91a2bd;
   font-family: var(--mono);
   font-size: var(--ui-type-xs);
   font-weight: var(--ui-weight-support);
-  letter-spacing: 0.14em;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
 }
 
 .practice-card-title,
 .ui-section-title {
-  color: var(--tech-ink);
+  margin: 0;
+  color: #19386f;
+  font-family: var(--sans);
   font-size: var(--ui-type-lg);
   font-weight: var(--ui-weight-emphasis);
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: normal;
+}
+
+html[lang="en"] .practice-kicker,
+html[lang="en"] .ui-section-kicker {
+  display: none;
 }
 
 .dot {
@@ -396,6 +419,15 @@
   font-size: 24px;
   line-height: 1;
   transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.system-notice-language {
+  width: 190px;
+  margin-top: 16px;
+}
+
+.system-notice-language .settings-segment {
+  min-height: 40px;
 }
 
 .system-notice-close:hover,

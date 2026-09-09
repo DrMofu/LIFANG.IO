@@ -786,11 +786,6 @@
           "id": "oll-54-1",
           "name": "公式一",
           "algo": "(r U R' U) (R U' R' U) (R U2 r')"
-        },
-        {
-          "id": "oll-54-2",
-          "name": "公式二",
-          "algo": "(r U R' U) (R U' R' U) R U2' r'"
         }
       ],
       "facelets": "XUXXUUXXXUXURRRRRRXUXFFFFFFDDDDDDDDDUUULLLLLLXXXBBBBBB"

@@ -1,0 +1,848 @@
+{
+  "encoding": {
+    "order": "F 面顶行从左到右，再读 R 面顶行从左到右；角、棱、角｜角、棱、角。",
+    "normalization": "沿 F→R→B→L 循环统一替换颜色，使首字符为 F，保留相邻色、相对色与方向关系。",
+    "oppositePairs": [
+      "FB",
+      "RL"
+    ],
+    "views": "从公式库的贴纸状态读取 U 层四个方向，每个 PLL 内按归一化编码去重。",
+    "tagPolicy": "记录所有满足的标签。色块限同一面；2×1 色块要求第三格颜色不同，三格同色内部的两格不计入。车灯要求同一面两端角贴同色且中间棱贴颜色不同，三格同色那一面不计入；另一面若有独立的两格块或车灯，仍保留对应标签。棋盘检查六格中的连续子串，只保留最长棋盘对应的标签。角块归位允许整体 AUF。",
+    "source": "src/data/formulas/pll.json",
+    "reference": "https://sarah.cubing.net/3x3x3/pll-recognition-guide"
+  },
+  "tags": [
+    {
+      "id": "headlight",
+      "label": "车灯",
+      "description": "同一面两端角贴同色，中间棱贴颜色不同；三格同色那一面不计入车灯。",
+      "group": "pattern"
+    },
+    {
+      "id": "bookend",
+      "label": "书挡",
+      "description": "六格最左与最右的角贴同色。",
+      "group": "pattern"
+    },
+    {
+      "id": "block-2",
+      "label": "2×1 色块",
+      "description": "同一面恰有连续两格同色，第三格颜色不同；三格同色内部的两格不计入。",
+      "group": "pattern"
+    },
+    {
+      "id": "block-3",
+      "label": "3×1 色块",
+      "description": "同一面的三格全部同色。",
+      "group": "pattern"
+    },
+    {
+      "id": "checker-4",
+      "label": "4 格棋盘",
+      "description": "最长的连续双色交替片段为四格，可跨越两面接缝。",
+      "group": "pattern"
+    },
+    {
+      "id": "checker-5",
+      "label": "5 格棋盘",
+      "description": "最长的连续双色交替片段为五格，不再标注 4 格棋盘。",
+      "group": "pattern"
+    },
+    {
+      "id": "checker-6",
+      "label": "6 格棋盘",
+      "description": "六格由两种不同颜色连续交替组成，不再标注 4 格和 5 格棋盘。",
+      "group": "pattern"
+    },
+    {
+      "id": "colors-2",
+      "label": "2 种颜色",
+      "description": "全部六格恰好有两种颜色。",
+      "group": "colors"
+    },
+    {
+      "id": "colors-3",
+      "label": "3 种颜色",
+      "description": "全部六格恰好有三种颜色。",
+      "group": "colors"
+    },
+    {
+      "id": "colors-4",
+      "label": "4 种颜色",
+      "description": "全部六格恰好有四种颜色。",
+      "group": "colors"
+    },
+    {
+      "id": "epll",
+      "label": "EPLL · 角块归位",
+      "description": "四个角块的相对位置正确，允许整体差一个 U 层调整；包含 PLL skip。",
+      "group": "corners"
+    },
+    {
+      "id": "diag-cp",
+      "label": "Diag CP · 对角换角",
+      "description": "调整 U 层后，需要交换一对对角的角块。",
+      "group": "corners"
+    },
+    {
+      "id": "adj-cp",
+      "label": "Adj CP · 邻角换角",
+      "description": "调整 U 层后，需要交换一对相邻的角块。",
+      "group": "corners"
+    }
+  ],
+  "cases": [
+    {
+      "id": "pll-h",
+      "name": "H",
+      "scenarios": [
+        {
+          "code": "FBFRLR",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "epll"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-z",
+      "name": "Z",
+      "scenarios": [
+        {
+          "code": "FLFRBR",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "epll"
+          ]
+        },
+        {
+          "code": "FRFRFR",
+          "tags": [
+            "headlight",
+            "checker-6",
+            "colors-2",
+            "epll"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ua",
+      "name": "Ua",
+      "scenarios": [
+        {
+          "code": "FRFRLR",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FBFRRR",
+          "tags": [
+            "headlight",
+            "block-3",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FFFRBR",
+          "tags": [
+            "headlight",
+            "block-3",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FRFRBR",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-3",
+            "epll"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ub",
+      "name": "Ub",
+      "scenarios": [
+        {
+          "code": "FLFRFR",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FLFRRR",
+          "tags": [
+            "headlight",
+            "block-3",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FFFRLR",
+          "tags": [
+            "headlight",
+            "block-3",
+            "colors-3",
+            "epll"
+          ]
+        },
+        {
+          "code": "FBFRFR",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-3",
+            "epll"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-aa",
+      "name": "Aa",
+      "scenarios": [
+        {
+          "code": "FBRBLB",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRFRBB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "checker-4",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRRBBF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFBLRF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ab",
+      "name": "Ab",
+      "scenarios": [
+        {
+          "code": "FLFRFB",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLRBFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBBLLF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFRBRB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "checker-4",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-e",
+      "name": "E",
+      "scenarios": [
+        {
+          "code": "FRBLBR",
+          "tags": [
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FLBLFR",
+          "tags": [
+            "colors-4",
+            "diag-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-t",
+      "name": "T",
+      "scenarios": [
+        {
+          "code": "FFRBLF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRBLFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRRBFB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBFRRB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-y",
+      "name": "Y",
+      "scenarios": [
+        {
+          "code": "FFBLRR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FBBLFR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FRBLFR",
+          "tags": [
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FRBLLR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-f",
+      "name": "F",
+      "scenarios": [
+        {
+          "code": "FBRBRF",
+          "tags": [
+            "bookend",
+            "checker-4",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLBLBF",
+          "tags": [
+            "bookend",
+            "checker-4",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLRBBB",
+          "tags": [
+            "block-3",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFFRLB",
+          "tags": [
+            "block-3",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-v",
+      "name": "V",
+      "scenarios": [
+        {
+          "code": "FFBLBR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FLBLBR",
+          "tags": [
+            "checker-4",
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FLBLRR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        },
+        {
+          "code": "FBBLLR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ja",
+      "name": "Ja",
+      "scenarios": [
+        {
+          "code": "FFRBBB",
+          "tags": [
+            "block-2",
+            "block-3",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFFRRB",
+          "tags": [
+            "block-2",
+            "block-3",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFRBBF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFBLLF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-jb",
+      "name": "Jb",
+      "scenarios": [
+        {
+          "code": "FRRBFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBBLFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRRBBB",
+          "tags": [
+            "block-2",
+            "block-3",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFFRBB",
+          "tags": [
+            "block-2",
+            "block-3",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ra",
+      "name": "Ra",
+      "scenarios": [
+        {
+          "code": "FLFRRB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFRBRF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLBLRF",
+          "tags": [
+            "bookend",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBRBRB",
+          "tags": [
+            "headlight",
+            "checker-5",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-rb",
+      "name": "Rb",
+      "scenarios": [
+        {
+          "code": "FRFRFB",
+          "tags": [
+            "headlight",
+            "checker-5",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLRBRF",
+          "tags": [
+            "bookend",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLBLFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRRBLB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-na",
+      "name": "Na",
+      "scenarios": [
+        {
+          "code": "FBBLRR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-nb",
+      "name": "Nb",
+      "scenarios": [
+        {
+          "code": "FFBLLR",
+          "tags": [
+            "block-2",
+            "colors-4",
+            "diag-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-ga",
+      "name": "Ga",
+      "scenarios": [
+        {
+          "code": "FRRBLF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRBLBF",
+          "tags": [
+            "bookend",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLRBRB",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLFRBB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-gb",
+      "name": "Gb",
+      "scenarios": [
+        {
+          "code": "FBRBFF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBBLRF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBRBFB",
+          "tags": [
+            "headlight",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBFRLB",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-gc",
+      "name": "Gc",
+      "scenarios": [
+        {
+          "code": "FBRBLF",
+          "tags": [
+            "bookend",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRBLLF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFRBLB",
+          "tags": [
+            "headlight",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FRFRLB",
+          "tags": [
+            "headlight",
+            "checker-4",
+            "colors-4",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-gd",
+      "name": "Gd",
+      "scenarios": [
+        {
+          "code": "FLRBBF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FFBLBF",
+          "tags": [
+            "bookend",
+            "block-2",
+            "colors-3",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FLRBFB",
+          "tags": [
+            "headlight",
+            "colors-4",
+            "adj-cp"
+          ]
+        },
+        {
+          "code": "FBFRFB",
+          "tags": [
+            "headlight",
+            "colors-3",
+            "adj-cp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pll-skip",
+      "name": "PLL skip",
+      "scenarios": [
+        {
+          "code": "FFFRRR",
+          "tags": [
+            "block-3",
+            "colors-2",
+            "epll"
+          ]
+        }
+      ]
+    }
+  ]
+}

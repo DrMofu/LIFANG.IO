@@ -59,7 +59,7 @@ export function HomeLandingApp() {
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
       initialDisplayState: {
-        cameraDistance: 6.1,
+        cameraDistance: 9,
         cameraLatitude: 23,
         cameraLongitude: 35,
       },

@@ -400,22 +400,16 @@
 }
 
 .tutorial-pll-feature-grid,
-.tutorial-pll-family-grid,
-.tutorial-pll-case-grid {
+.tutorial-pll-family-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin: 24px 0 34px;
 }
 
-.tutorial-pll-case-grid {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 1400px;
-}
-
 .tutorial-pll-feature-card,
 .tutorial-pll-family-card,
-.tutorial-pll-case-card {
+.tutorial-pll-scenario-card {
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -477,12 +471,7 @@
   min-height: 166px;
   place-items: center;
   padding: 16px 18px;
-  background:
-    radial-gradient(circle at 50% 46%, rgba(90, 148, 255, 0.18), transparent 46%),
-    linear-gradient(to right, rgba(47, 111, 242, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(47, 111, 242, 0.045) 1px, transparent 1px),
-    rgba(239, 246, 255, 0.84);
-  background-size: auto, 22px 22px, 22px 22px, auto;
+  background: radial-gradient(ellipse at center, rgba(90, 148, 255, 0.12), transparent 70%);
 }
 
 .tutorial-pll-cube-image {
@@ -493,12 +482,22 @@
   filter: drop-shadow(0 10px 9px rgba(31, 52, 90, 0.16));
 }
 
-.tutorial-pll-case-card {
-  padding: 16px;
+.tutorial-pll-scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 220px);
+  gap: 14px;
+  margin: 16px 0 34px;
 }
 
-.tutorial-pll-case-card > figcaption {
-  margin-bottom: 12px;
+.tutorial-pll-scenario-card {
+  box-sizing: border-box;
+  width: 220px;
+  height: 280px;
+  padding: 12px;
+}
+
+.tutorial-pll-scenario-card > figcaption {
+  margin: 0 0 6px;
   color: var(--tech-ink);
   font-size: 17px;
   font-weight: 840;
@@ -506,24 +505,9 @@
   line-height: 1.3;
 }
 
-.tutorial-pll-angle-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-}
-
-.tutorial-pll-angle {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid rgba(205, 219, 239, 0.86);
-  border-radius: 11px;
-  background: rgba(241, 247, 255, 0.8);
-}
-
 .tutorial-pll-cube.is-compact {
   min-height: 0;
   padding: 8px 9px 4px;
-  background-size: auto, 16px 16px, 16px 16px, auto;
 }
 
 .tutorial-pll-cube.is-compact .tutorial-pll-cube-image {
@@ -531,15 +515,148 @@
   filter: drop-shadow(0 6px 6px rgba(31, 52, 90, 0.14));
 }
 
-.tutorial-pll-angle > small {
-  display: block;
-  padding: 4px 6px 6px;
+.tutorial-pll-filters,
+.tutorial-pll-empty {
+  padding: 20px;
+  border: 1px solid rgba(199, 214, 237, 0.94);
+  border-radius: 17px;
+  background: rgba(249, 252, 255, 0.72);
+  box-shadow: 0 12px 28px rgba(39, 72, 121, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.tutorial-pll-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tutorial-pll-catalog button,
+.tutorial-pll-filter-option {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid rgba(181, 202, 230, 0.8);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--tech-ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tutorial-pll-catalog button:hover:not(:disabled),
+.tutorial-pll-filter-option:hover {
+  border-color: var(--tech-blue);
+}
+
+.tutorial-pll-filter-option:has(input:checked) {
+  border-color: var(--tech-blue);
+  background: var(--tech-blue);
+  color: white;
+}
+
+.tutorial-pll-catalog button:focus-visible,
+.tutorial-pll-filter-option:has(input:focus-visible) {
+  outline: 2px solid var(--tech-blue);
+  outline-offset: 3px;
+}
+
+.tutorial-pll-filter-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tutorial-pll-filter-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.tutorial-pll-catalog button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tutorial-pll-filters > p,
+.tutorial-pll-catalog .tutorial-pll-result-count {
+  margin: 12px 0;
   color: var(--tech-muted);
+  font-size: 13px;
+}
+
+.tutorial-pll-filters fieldset {
+  min-width: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.tutorial-pll-filters legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--tech-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.tutorial-pll-tag-options,
+.tutorial-pll-scenario-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.tutorial-pll-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 3px;
+  margin: 8px;
+}
+
+.tutorial-pll-strip > span {
+  display: grid;
+  height: 26px;
+  place-items: center;
+  border-radius: 4px;
+  color: #fff;
   font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 760;
-  line-height: 1;
-  text-align: center;
+  font-size: 12px;
+  font-weight: 750;
+  text-shadow: 0 1px 3px #000, 0 0 2px #000;
+}
+
+.tutorial-pll-strip > span:nth-child(3) {
+  margin-right: 3px;
+}
+
+.tutorial-pll-strip > span:nth-child(4) {
+  margin-left: 3px;
+}
+
+.tutorial-pll-catalog .tutorial-pll-scenario-tags {
+  margin: 0;
+  padding: 4px 8px 12px;
+  list-style: none;
+  gap: 4px;
+}
+
+.tutorial-pll-catalog .tutorial-pll-scenario-tags > li {
+  margin: 0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: rgba(220, 230, 244, 0.6);
+  color: var(--tech-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tutorial-pll-catalog .tutorial-pll-scenario-tags > li[data-selected="true"] {
+  background: rgba(47, 111, 242, 0.12);
+  color: var(--tech-blue);
 }
 
 .tutorial-cube-widget {
@@ -1140,8 +1257,7 @@
   }
 
   .tutorial-pll-feature-grid,
-  .tutorial-pll-family-grid,
-  .tutorial-pll-case-grid {
+  .tutorial-pll-family-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1233,8 +1349,7 @@
   }
 
   .tutorial-pll-feature-grid,
-  .tutorial-pll-family-grid,
-  .tutorial-pll-case-grid {
+  .tutorial-pll-family-grid {
     gap: 10px;
     margin-right: -5px;
     margin-left: -5px;
@@ -1258,10 +1373,6 @@
   .tutorial-pll-feature-card figcaption,
   .tutorial-pll-family-card figcaption {
     padding: 14px;
-  }
-
-  .tutorial-pll-case-card {
-    padding: 12px;
   }
 
   .tutorial-cube-widget {

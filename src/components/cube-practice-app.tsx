@@ -2239,6 +2239,7 @@ export function CubePracticeApp() {
       faceColors,
       orientation,
       maxFps: renderMaxFps,
+      compactGestureRegion: true,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
       cameraDistanceRange: PRACTICE_CUBE_CAMERA_PRESET.distanceRange,
@@ -3464,7 +3465,7 @@ export function CubePracticeApp() {
                   </div>
                   <div className="sh-notice">
                     {freeState === "scrambling" && !freeAwaitingIdleFaceletsRef.current
-                      ? t("自由打乱中。停手后静止进度会从左到右推进。")
+                      ? t("自由打乱中。停手后静止5秒以开始复原。")
                       : freeNotice}
                   </div>
                 </div>
@@ -3522,7 +3523,10 @@ export function CubePracticeApp() {
               {!isManualTimer && <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
                 <div className={`solve-phase-card solve-phase-card-cross${cfopTimes.cross !== null ? " completed" : phase === "solving" ? " active" : ""}`}>
                   <span>Cross</span>
-                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")}</b>
+                  <b>
+                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")}
+                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")}</small>
+                  </b>
                 </div>
                 <div
                   className={`solve-phase-card solve-phase-card-f2l${cfopTimes.f2l !== null ? " completed" : phase === "solving" && cfopTimes.cross !== null ? " active" : ""}`}
@@ -3530,7 +3534,10 @@ export function CubePracticeApp() {
                   aria-describedby="current-f2l-subphase-tooltip"
                 >
                   <span>F2L</span>
-                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "f2l")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "f2l")}</b>
+                  <b>
+                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "f2l")}
+                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "f2l")}</small>
+                  </b>
                   <div
                     id="current-f2l-subphase-tooltip"
                     className="f2l-subphase-popover"
@@ -3548,11 +3555,17 @@ export function CubePracticeApp() {
                 </div>
                 <div className={`solve-phase-card solve-phase-card-oll${cfopTimes.oll !== null ? " completed" : phase === "solving" && cfopTimes.f2l !== null ? " active" : ""}`}>
                   <span>OLL</span>
-                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "oll")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "oll")}</b>
+                  <b>
+                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "oll")}
+                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "oll")}</small>
+                  </b>
                 </div>
                 <div className={`solve-phase-card solve-phase-card-pll${cfopTimes.pll !== null ? " completed" : phase === "solving" && cfopTimes.oll !== null ? " active" : ""}`}>
                   <span>PLL</span>
-                  <b>{formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")} / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")}</b>
+                  <b>
+                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")}
+                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")}</small>
+                  </b>
                 </div>
               </div>}
             </div>

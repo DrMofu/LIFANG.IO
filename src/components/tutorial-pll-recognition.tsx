@@ -1,24 +1,13 @@
-import pllData from "@/data/formulas/pll.json";
+"use client";
+
+import { useState } from "react";
+import recognitionData from "@/data/tutorials/pll-six-sticker-recognition.json";
 import { FormulaCubeImage } from "@/components/formula-cube-image";
 import {
   DEFAULT_COLOR_PALETTE_ID,
   DEFAULT_ORIENTATION,
   getFaceHexColors,
 } from "@/lib/cube-appearance";
-
-type PllRecognitionGroup =
-  | "features"
-  | "corner-families"
-  | "epll-cases"
-  | "diagonal-cases"
-  | "adjacent-cases";
-
-type PllItem = {
-  id: string;
-  name: string;
-  facelets?: string;
-  algos?: Array<{ facelets?: string }>;
-};
 
 type PllCubeDiagramProps = {
   facelets: string;
@@ -30,67 +19,41 @@ type PllCubeDiagramProps = {
 const TUTORIAL_FACE_COLORS = getFaceHexColors(DEFAULT_ORIENTATION, DEFAULT_COLOR_PALETTE_ID);
 const VISIBLE_SIDE_FACELETS = [18, 19, 20, 9, 10, 11] as const;
 
-const TOP_RING_GROUPS = [
-  [47, 46, 45],
-  [11, 10, 9],
-  [20, 19, 18],
-  [38, 37, 36],
-] as const;
-
-const CASE_IDS: Record<Exclude<PllRecognitionGroup, "features" | "corner-families">, string[]> = {
-  "epll-cases": ["pll-h", "pll-z", "pll-ua", "pll-ub"],
-  "diagonal-cases": ["pll-e", "pll-na", "pll-nb", "pll-v", "pll-y"],
-  "adjacent-cases": [
-    "pll-aa",
-    "pll-ab",
-    "pll-f",
-    "pll-ga",
-    "pll-gb",
-    "pll-gc",
-    "pll-gd",
-    "pll-ja",
-    "pll-jb",
-    "pll-ra",
-    "pll-rb",
-    "pll-t",
-  ],
-};
-
 const FEATURE_CARDS = [
   {
     title: "车灯",
-    note: "同一面两颗角贴同色，中间的棱贴可以是别的颜色。车灯只描述两端角，不等于三格条。",
-    stickers: ["F", "R", "F", "R", "B", "L"],
+    note: "同一面两端角贴同色，中间棱贴颜色不同。三格同色那一面不计入车灯。",
+    stickers: ["F", "B", "F", "R", "L", "R"],
     marked: [0, 2],
   },
   {
-    title: "3 格条",
-    note: "同一面的角、棱、角连续三格同色。它是最强线索，所以总是最先检查。",
-    stickers: ["F", "F", "F", "R", "B", "L"],
+    title: "3×1 色块",
+    note: "同一面的角、棱、角三格同色，该面只记 3×1 色块。图中右面另有独立车灯，仍保留车灯标签。",
+    stickers: ["F", "F", "F", "R", "B", "R"],
     marked: [0, 1, 2],
   },
   {
-    title: "内侧 2 格块",
+    title: "内侧 2×1 色块",
     note: "相邻同色格贴着两面接缝；图中正面右两格组成内侧块。",
-    stickers: ["B", "F", "F", "R", "B", "L"],
+    stickers: ["F", "R", "R", "B", "B", "F"],
     marked: [1, 2],
   },
   {
-    title: "外侧 2 格块",
+    title: "外侧 2×1 色块",
     note: "相邻同色格远离两面接缝；图中正面左两格组成外侧块。",
-    stickers: ["F", "F", "B", "R", "B", "L"],
+    stickers: ["F", "F", "R", "B", "L", "F"],
     marked: [0, 1],
   },
   {
     title: "书挡",
-    note: "六格最外侧两颗角贴同色，像从两端夹住中间四格。书挡常在没有色块时负责收尾判断。",
-    stickers: ["F", "B", "F", "B", "F", "F"],
+    note: "六格最左和最右的角贴同色，中间四格的颜色不限。",
+    stickers: ["F", "B", "R", "B", "R", "F"],
     marked: [0, 5],
   },
   {
     title: "棋盘",
-    note: "两种颜色在六格中交替出现，从左到右呈 A—B—A—B—A—B。",
-    stickers: ["F", "B", "F", "B", "F", "B"],
+    note: "两种不同颜色连续交替，只记录最长的棋盘。图中仅标注 6 格棋盘。",
+    stickers: ["F", "R", "F", "R", "F", "R"],
     marked: [0, 1, 2, 3, 4, 5],
   },
 ] as const;
@@ -98,31 +61,31 @@ const FEATURE_CARDS = [
 const CORNER_FAMILY_CARDS = [
   {
     title: "角块全部归位",
-    cases: "H、Ua、Ub、Z",
-    note: "两个可见面都有车灯。此时只剩棱块需要置换，也叫 EPLL。",
+    cases: "H、Ua、Ub、Z、PLL skip",
+    note: "两个可见面各自的两端角贴同色。角块的相对位置已正确，可能还差一个 U 层调整。",
     stickers: ["F", "R", "F", "R", "B", "R"],
     marked: [0, 2, 3, 5],
   },
   {
     title: "对角换角",
     cases: "E、Na、Nb、V、Y",
-    note: "两个可见面上，每一对角贴都是相对色。先把这五个案例单独学会，判断会很稳定。",
-    stickers: ["F", "R", "B", "R", "B", "L"],
+    note: "两个可见面上，两端角贴分别互为相对色。",
+    stickers: ["F", "R", "B", "L", "B", "R"],
     marked: [0, 2, 3, 5],
   },
   {
     title: "相邻换角：车灯视角",
     cases: "A、F、G、J、R、T",
     note: "只有一个可见面出现车灯，另一个面的两颗角不是同色。",
-    stickers: ["F", "R", "F", "R", "B", "L"],
+    stickers: ["F", "B", "F", "R", "R", "B"],
     marked: [0, 2],
   },
   {
     title: "相邻换角：相对色视角",
     cases: "同一组 12 个案例",
-    note: "换一个观察方向后，常表现为只有一个面的两颗角是相对色。两种现象都归入相邻换角。",
-    stickers: ["F", "R", "B", "R", "F", "B"],
-    marked: [0, 2],
+    note: "两面各自的角贴都不同色时，其中只有一个面的两端角贴互为相对色，归入相邻换角。",
+    stickers: ["F", "F", "R", "B", "L", "F"],
+    marked: [3, 5],
   },
 ] as const;
 
@@ -137,28 +100,6 @@ function faceletsFromVisibleStickers(stickers: readonly string[]) {
 
 function highlightedVisibleFacelets(marked: readonly number[] | undefined) {
   return marked?.map((index) => VISIBLE_SIDE_FACELETS[index]).filter((index) => index !== undefined) ?? [];
-}
-
-function rotateTopLayerClockwise(facelets: string) {
-  const next = facelets.split("");
-  const top = facelets.slice(0, 9);
-  const rotatedTop = [top[6], top[3], top[0], top[7], top[4], top[1], top[8], top[5], top[2]];
-  rotatedTop.forEach((facelet, index) => {
-    next[index] = facelet;
-  });
-
-  const ringGroups = TOP_RING_GROUPS.map((group) => group.map((index) => facelets[index]));
-  TOP_RING_GROUPS.forEach((group, index) => {
-    const source = ringGroups[(index + TOP_RING_GROUPS.length - 1) % TOP_RING_GROUPS.length];
-    group.forEach((faceletIndex, stickerIndex) => {
-      next[faceletIndex] = source[stickerIndex];
-    });
-  });
-  return next.join("");
-}
-
-function caseFacelets(item: PllItem) {
-  return item.facelets ?? item.algos?.find((variant) => variant.facelets)?.facelets ?? null;
 }
 
 function PllCubeDiagram({
@@ -222,44 +163,129 @@ function CornerFamilyGallery() {
   );
 }
 
-function CaseGallery({ group }: { group: keyof typeof CASE_IDS }) {
-  const items = (pllData.items as PllItem[]).filter((item) => CASE_IDS[group].includes(item.id));
+const TAGS_BY_ID = new Map(recognitionData.tags.map((tag) => [tag.id, tag]));
+const SCENARIOS = recognitionData.cases.flatMap((item) =>
+  item.scenarios.map((scenario) => ({ ...scenario, caseId: item.id, name: item.name })),
+);
+const FILTER_GROUPS = [
+  { id: "corners", label: "角块置换" },
+  { id: "colors", label: "颜色数量" },
+  { id: "pattern", label: "可见特征" },
+];
+
+function StickerStrip({ code }: { code: string }) {
+  return (
+    <div className="tutorial-pll-strip" role="img" aria-label={`六格编码 ${code}`}>
+      {[...code].map((face, index) => (
+        <span
+          key={index}
+          style={{ backgroundColor: TUTORIAL_FACE_COLORS[face as keyof typeof TUTORIAL_FACE_COLORS] }}
+          aria-hidden="true"
+        >
+          {face}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CaseCatalog() {
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const filteredScenarios = SCENARIOS.filter((scenario) => selectedTags.every((tag) => scenario.tags.includes(tag)));
+  const caseCount = new Set(filteredScenarios.map((scenario) => scenario.caseId)).size;
+
+  function toggleTag(tag: string) {
+    setSelectedTags((current) => current.includes(tag)
+      ? current.filter((value) => value !== tag)
+      : [...current, tag]);
+  }
+
+  function selectGroupTag(group: string, tag: string) {
+    setSelectedTags((current) => {
+      const otherTags = current.filter((value) => TAGS_BY_ID.get(value)?.group !== group);
+      return tag ? [...otherTags, tag] : otherTags;
+    });
+  }
 
   return (
-    <div className="tutorial-pll-case-grid">
-      {items.map((item) => {
-        const initialFacelets = caseFacelets(item);
-        if (!initialFacelets) return null;
-        const angles = [initialFacelets];
-        for (let index = 1; index < 4; index += 1) {
-          angles.push(rotateTopLayerClockwise(angles[index - 1]));
-        }
-
-        return (
-          <figure className="tutorial-pll-case-card" key={item.id}>
-            <figcaption>{item.name.replace("-Perm", "")}</figcaption>
-            <div className="tutorial-pll-angle-grid">
-              {angles.map((facelets, index) => (
-                <div className="tutorial-pll-angle" key={`${item.id}-${index}`}>
-                  <PllCubeDiagram
-                    facelets={facelets}
-                    label={`${item.name} 的${["起始", "U", "U2", "U'"][index]}观察方向`}
-                    compact
-                  />
-                  <small>{["起始", "U", "U2", "U'"][index]}</small>
-                </div>
-              ))}
-            </div>
-          </figure>
-        );
-      })}
-    </div>
+    <section className="tutorial-pll-catalog" aria-label="PLL 情景目录">
+      <div className="tutorial-pll-filters">
+        <div className="tutorial-pll-filter-header">
+          <strong>标签筛选</strong>
+          <button type="button" onClick={() => setSelectedTags([])} disabled={selectedTags.length === 0}>
+            清除筛选
+          </button>
+        </div>
+        <p id="pll-filter-help">角块置换、颜色数量各选一项；可见特征可多选，结果需同时满足已选条件。</p>
+        {FILTER_GROUPS.map((group) => {
+          const multiple = group.id === "pattern";
+          const tags = recognitionData.tags.filter((tag) => tag.group === group.id);
+          const options = multiple ? tags : [{ id: "", label: "全部", description: "" }, ...tags];
+          return (
+            <fieldset key={group.id} aria-describedby="pll-filter-help">
+              <legend>{group.label}</legend>
+              <div className="tutorial-pll-tag-options">
+                {options.map((tag) => (
+                  <label
+                    className="tutorial-pll-filter-option"
+                    key={tag.id}
+                    title={tag.description || undefined}
+                  >
+                    <input
+                      type={multiple ? "checkbox" : "radio"}
+                      name={`pll-filter-${group.id}`}
+                      value={tag.id}
+                      checked={tag.id ? selectedTags.includes(tag.id) : !tags.some((option) => selectedTags.includes(option.id))}
+                      aria-controls="pll-catalog-results"
+                      onChange={() => multiple ? toggleTag(tag.id) : selectGroupTag(group.id, tag.id)}
+                    />
+                    {tag.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          );
+        })}
+      </div>
+      <p className="tutorial-pll-result-count" role="status" aria-live="polite" aria-atomic="true">
+        {caseCount} 个 PLL 类别 · {filteredScenarios.length} 种情景
+      </p>
+      <div id="pll-catalog-results">
+        {filteredScenarios.length > 0 ? (
+          <div className="tutorial-pll-scenario-grid">
+            {filteredScenarios.map((scenario) => (
+              <figure className="tutorial-pll-scenario-card" key={scenario.code}>
+                <figcaption>{scenario.name}</figcaption>
+                <PllCubeDiagram
+                  facelets={faceletsFromVisibleStickers([...scenario.code])}
+                  label={`${scenario.name} · ${scenario.code}`}
+                  compact
+                />
+                <StickerStrip code={scenario.code} />
+                <ul className="tutorial-pll-scenario-tags" aria-label={`${scenario.code} 的全部标签`}>
+                  {scenario.tags.map((id) => (
+                    <li key={id} title={TAGS_BY_ID.get(id)?.description} data-selected={selectedTags.includes(id)}>
+                      {TAGS_BY_ID.get(id)?.label}
+                    </li>
+                  ))}
+                </ul>
+              </figure>
+            ))}
+          </div>
+        ) : (
+          <div className="tutorial-pll-empty">
+            <p>没有同时满足这些标签的情景，试着取消其中一个标签。</p>
+            <button type="button" onClick={() => setSelectedTags([])}>显示全部情景</button>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
 export function TutorialPllRecognition({ group }: { group: string }) {
   if (group === "features") return <FeatureGallery />;
   if (group === "corner-families") return <CornerFamilyGallery />;
-  if (group in CASE_IDS) return <CaseGallery group={group as keyof typeof CASE_IDS} />;
+  if (group === "catalog") return <CaseCatalog />;
   throw new Error(`Unknown PLL recognition group: ${group}`);
 }

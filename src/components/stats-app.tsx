@@ -635,14 +635,6 @@ export function StatsApp() {
   }, [openTrendDropdown]);
 
   const records = useMemo(() => summarizeSolveRecords(history, averageSettings), [averageSettings, history]);
-  const sourceCounts = useMemo(() => history.reduce(
-    (counts, entry) => {
-      if (entry.source === "timer") counts.timer += 1;
-      else counts.smartCube += 1;
-      return counts;
-    },
-    { smartCube: 0, timer: 0 },
-  ), [history]);
   const stableScoreMeta = useMemo(() => formatStableScoreMeta(averageSettings), [averageSettings]);
   const trendRangeOptions = useMemo(
     () => [
@@ -745,7 +737,7 @@ export function StatsApp() {
     const practiceSecondsByDate = new Map(dailyPractice.map((entry) => [entry.localDate, entry.seconds]));
     history.forEach((entry) => {
       const date = new Date(entry.ts);
-      const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      const key = getDailyTestDateKey(date);
       days.set(key, (days.get(key) || 0) + 1);
     });
     const today = new Date();
@@ -758,19 +750,20 @@ export function StatsApp() {
       return Array.from({ length: 7 }, (_, dayIndex) => {
         const date = new Date(weekStart);
         date.setDate(weekStart.getDate() + dayIndex);
-        const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-        const practiceKey = getDailyTestDateKey(date);
+        const key = getDailyTestDateKey(date);
         const isFuture = date > today;
         const count = isFuture ? 0 : days.get(key) || 0;
-        const practiceSeconds = isFuture ? undefined : practiceSecondsByDate.get(practiceKey);
+        const practiceSeconds = isFuture ? undefined : practiceSecondsByDate.get(key);
         const heatSeconds = practiceSeconds ?? count * HEATMAP_ESTIMATED_SECONDS_PER_SOLVE;
         return { date, count, practiceSeconds: practiceSeconds ?? null, heatSeconds, isFuture };
       });
     });
-    const cells = grid.flat();
-    const total = cells.reduce((sum, cell) => sum + cell.count, 0);
-    const totalPracticeSeconds = cells.reduce((sum, cell) => sum + cell.heatSeconds, 0);
-    const activeDays = cells.filter((cell) => cell.count > 0).length;
+    const total = history.length;
+    const practiceDates = new Set([...days.keys(), ...practiceSecondsByDate.keys()]);
+    const totalPracticeSeconds = Array.from(practiceDates).reduce((sum, key) => (
+      sum + (practiceSecondsByDate.get(key) ?? (days.get(key) || 0) * HEATMAP_ESTIMATED_SECONDS_PER_SOLVE)
+    ), 0);
+    const activeDays = days.size;
     const todayPracticeSeconds = practiceSecondsByDate.get(getDailyTestDateKey(today)) ?? 0;
     const monthLabels = grid.map((col, index) => {
       const month = col[0]?.date.getMonth();
@@ -1449,38 +1442,29 @@ export function StatsApp() {
 
       <main className="st-main">
         <section className="st-activity-row">
-          <div className="st-records st-records-compact">
-            <div className="st-rec st-rec-pb">
-              <div className="strr-l">{t("最佳 · PB")}</div>
-              <div className="strr-v">{fmtStatsTime(records.pb)}</div>
-              <div className="strr-meta">
-                {records.count}{" "}{t("次记录")}
-                {records.count > 0 ? ` · ${t("智能")} ${sourceCounts.smartCube} · ${t("计时")} ${sourceCounts.timer}` : ""}
+          <dl className="st-records">
+            {[
+              { key: "pb", label: t("最佳 · PB"), value: records.pb },
+              { key: "ao5", label: "AO5", value: records.ao5, hint: t("最近 5 次去掉首尾") },
+              { key: "stable", label: t("稳定成绩"), value: records.stableScore, hint: t(stableScoreMeta) },
+              { key: "ao100", label: "AO100", value: records.ao100, hint: t("最近 100 次去掉 10 次") },
+            ].map(({ key, label, value, hint }) => (
+              <div key={key} className={`st-record${key === "pb" ? " st-record-pb" : ""}`}>
+                <dt className="st-record-label">
+                  {hint ? (
+                    <span className="st-record-help" tabIndex={0} aria-describedby={`st-record-hint-${key}`}>
+                      {label}
+                      <span className="st-record-hint" role="tooltip" id={`st-record-hint-${key}`}>{hint}</span>
+                    </span>
+                  ) : label}
+                </dt>
+                <dd className="st-record-value">
+                  {fmtStatsTime(value)}
+                  {value != null && Number.isFinite(value) && value < 60000 && <span className="st-record-unit">s</span>}
+                </dd>
               </div>
-            </div>
-            <div className="st-rec st-rec-ao">
-              <div className="strr-l">{t("平均用时 · AVG")}</div>
-              <div className="st-ao-grid">
-                <div className="st-ao-item">
-                  <div className="st-ao-key">AO5</div>
-                  <div className="st-ao-value">{fmtStatsTime(records.ao5)}</div>
-                  <div className="st-ao-meta">{t("最近 5 次去掉首尾")}</div>
-                </div>
-                <div className="st-ao-divider" aria-hidden="true" />
-                <div className="st-ao-item">
-                  <div className="st-ao-key">{t("稳定成绩")}</div>
-                  <div className="st-ao-value">{fmtStatsTime(records.stableScore)}</div>
-                  <div className="st-ao-meta">{t(stableScoreMeta)}</div>
-                </div>
-                <div className="st-ao-divider" aria-hidden="true" />
-                <div className="st-ao-item">
-                  <div className="st-ao-key">AO100</div>
-                  <div className="st-ao-value">{fmtStatsTime(records.ao100)}</div>
-                  <div className="st-ao-meta">{t("最近 100 次去掉 10 次")}</div>
-                </div>
-              </div>
-            </div>
-          </div>
+            ))}
+          </dl>
           <div
             className="st-card st-daily-level"
             onPointerLeave={() => setDailyLevelTip(null)}
@@ -1492,36 +1476,45 @@ export function StatsApp() {
                   <div className="ui-section-title">{t("每日能力水平")}</div>
                   <div className="ui-section-kicker">DAILY LEVEL</div>
                 </div>
+                {todayDailyLevel && (
+                  <div className="dl-today-result">
+                    <span>{t("今日成绩")}</span>
+                    <b>{fmtStatsTime(todayDailyLevel.averageMs)}</b>
+                  </div>
+                )}
               </div>
-              {todayDailyLevel ? (
-                <div className="dl-today-result">
-                  <span>{t("今日成绩")}</span>
-                  <b>{fmtStatsTime(todayDailyLevel.averageMs)}</b>
-                </div>
-              ) : (
-                <Link className="dl-start-link dl-title-start-link" href="/practice">
-                  {t("开始今日测试")}
-                </Link>
-              )}
               <div className="dl-head-summary">
-                <div className="dl-head-metric">
-                  <span>{t("历史最佳")}</span>
-                  <b>{fmtStatsTime(bestDailyLevel)}</b>
+                <div className="st-record dl-head-metric">
+                  <span className="st-record-label">{t("历史最佳")}</span>
+                  <b className="st-record-value">
+                    {fmtStatsTime(bestDailyLevel)}
+                    {bestDailyLevel != null && Number.isFinite(bestDailyLevel) && bestDailyLevel < 60000 && <span className="st-record-unit">s</span>}
+                  </b>
                 </div>
-                <div className="dl-head-metric">
-                  <span>{t("近 7 次平均")}</span>
-                  <b>{fmtStatsTime(recentSevenDailyAverage)}</b>
+                <div className="st-record dl-head-metric">
+                  <span className="st-record-label">{t("近 7 次平均")}</span>
+                  <b className="st-record-value">
+                    {fmtStatsTime(recentSevenDailyAverage)}
+                    {recentSevenDailyAverage != null && Number.isFinite(recentSevenDailyAverage) && recentSevenDailyAverage < 60000 && <span className="st-record-unit">s</span>}
+                  </b>
                 </div>
               </div>
-              <button
-                type="button"
-                className="dl-history-open"
-                aria-haspopup="dialog"
-                aria-expanded={isDailyHistoryOpen}
-                onClick={() => setIsDailyHistoryOpen(true)}
-              >
-                {t("查看全部成绩")}
-              </button>
+              <div className="dl-head-actions">
+                {!todayDailyLevel && (
+                  <Link className="dl-start-link dl-title-start-link" href="/practice">
+                    {t("开始今日测试")}
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  className="dl-history-open"
+                  aria-haspopup="dialog"
+                  aria-expanded={isDailyHistoryOpen}
+                  onClick={() => setIsDailyHistoryOpen(true)}
+                >
+                  {t("查看全部成绩")}
+                </button>
+              </div>
             </div>
             {dailyLevels.length === 0 ? (
               <div className="dl-empty">
@@ -1664,12 +1657,12 @@ export function StatsApp() {
 
         <section className="st-heatmap-row">
           <div className="st-card st-heatmap">
-            <div className="st-card-head">
+            <div className="ui-section-head st-card-head">
               <div className="ui-section-title-line">
-                <div className="ui-section-title">{t("练习热力图 · 最近 16 周")}</div>
+                <div className="ui-section-title">{t("练习热力图")}</div>
                 <div className="ui-section-kicker">ACTIVITY</div>
               </div>
-              <div className="st-heat-summary" aria-label={t("最近 16 周练习摘要")}>
+              <div className="st-heat-summary" aria-label={t("全部历史练习摘要")}>
                 <span>{t("活跃天数")}{" "}<b>{heatmap.activeDays}</b></span>
                 <span>{t("练习次数")}{" "}<b>{heatmap.total}</b></span>
                 <span>{t("训练总时长")}{" "}<b>{t(fmtPracticeDuration(heatmap.totalPracticeSeconds))}</b></span>
@@ -1751,7 +1744,7 @@ export function StatsApp() {
             onPointerLeave={clearTrendHover}
             onMouseLeave={clearTrendHover}
           >
-            <div className="st-card-head st-trend-head">
+            <div className="ui-section-head st-card-head st-trend-head">
               <div className="trend-heading">
                 <div className="ui-section-title-line">
                   <div className="ui-section-title">{t("成绩趋势")}</div>
@@ -1847,7 +1840,7 @@ export function StatsApp() {
           </div>
 
           <div className="st-card st-cfop">
-            <div className="st-card-head">
+            <div className="ui-section-head st-card-head">
               <div className="ui-section-title-line">
                 <div className="ui-section-title">{t("近期成绩概览")}</div>
                 <div className="ui-section-kicker">PERFORMANCE</div>

@@ -515,6 +515,7 @@ function CfopTrainerClient() {
       orientation,
       faceColors,
       maxFps: renderMaxFps,
+      compactGestureRegion: true,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
       cameraDistanceRange: TRAINER_CUBE_CAMERA_PRESET.distanceRange,
@@ -1549,7 +1550,7 @@ function CfopTrainerClient() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
-                <div className="practice-kicker">RESULTS</div>
+                <div className="practice-kicker">SCORE</div>
               </div>
             </div>
             <div className="solve-metrics">

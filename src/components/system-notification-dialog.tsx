@@ -141,7 +141,7 @@ type SystemNotificationDialogProps = {
 };
 
 export function SystemNotificationDialog({ open, onClose }: SystemNotificationDialogProps) {
-  const { t } = useLanguage();
+  const { locale, setLocale, t } = useLanguage();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const [showAllChangelogEntries, setShowAllChangelogEntries] = useState(false);
   const visibleChangelogEntries = showAllChangelogEntries
@@ -186,6 +186,24 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
           <div>
             <div className="st-ch-kicker">— SYSTEM NOTICE</div>
             <h2 id="system-notice-title">{t("系统通知")}</h2>
+            <div
+              className="settings-segmented settings-segmented-two system-notice-language"
+              role="group"
+              aria-label={t("settings.language.aria")}
+            >
+              {(["zh", "en"] as const).map((language) => (
+                <button
+                  key={language}
+                  type="button"
+                  className={`settings-segment${locale === language ? " active" : ""}`}
+                  lang={language === "zh" ? "zh-CN" : "en"}
+                  aria-pressed={locale === language}
+                  onClick={() => setLocale(language)}
+                >
+                  {t(`settings.language.${language}`)}
+                </button>
+              ))}
+            </div>
           </div>
           <button
             ref={closeButtonRef}

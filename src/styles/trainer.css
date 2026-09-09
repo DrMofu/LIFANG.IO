@@ -168,10 +168,6 @@
   flex: 0 0 auto;
 }
 
-.trainer-focus-app .trainer-results-panel .practice-card-head {
-  margin-bottom: 10px;
-}
-
 .trainer-focus-app .trainer-metric-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
