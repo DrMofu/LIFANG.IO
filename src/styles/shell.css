@@ -284,6 +284,18 @@
   color: var(--tech-blue);
 }
 
+.ghost-link.language-toggle {
+  width: 42px;
+  flex: 0 0 42px;
+  justify-content: center;
+  padding: 0;
+}
+
+.language-toggle:focus-visible {
+  outline: 2px solid var(--tech-blue);
+  outline-offset: 2px;
+}
+
 .ghost-link:disabled {
   cursor: default;
   opacity: 0.6;
@@ -1044,6 +1056,15 @@
 @media (max-width: 560px) {
   .topbar {
     padding: 9px 12px;
+  }
+
+  .brand-domain,
+  .brand-sub {
+    display: none;
+  }
+
+  .topright {
+    gap: 8px;
   }
 
   .topnav {

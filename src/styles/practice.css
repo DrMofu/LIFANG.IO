@@ -1346,9 +1346,6 @@
 
 .practice-focus-app .formula-recognition-empty {
   min-height: 78px;
-  border: 1px solid rgba(213, 226, 246, 0.7);
-  border-radius: 14px;
-  background: #ffffff;
 }
 
 .practice-focus-app .formula-recognition-summary {
@@ -1389,9 +1386,6 @@
 .practice-focus-app .formula-recognition-empty.disconnected {
   display: block;
   min-height: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
   padding: 0;
 }
 

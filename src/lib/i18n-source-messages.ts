@@ -77,6 +77,22 @@ export const englishSourceMessages: Record<string, string> = {
   "总计": "Total",
   "CFOP 阶段耗时": "CFOP stage times",
   "CFOP 平均样本": "CFOP average sample",
+  "近期成绩概览": "Recent performance",
+  "单次成绩": "Single solve",
+  "近期平均": "Recent average",
+  "有效记录": "Valid solves",
+  "近期区间": "Recent range",
+  "暂无上周期数据": "No previous period data",
+  "较上一周期": "vs. previous period",
+  "近期成绩区间": "Recent solve time range",
+  "CFOP 阶段构成": "CFOP breakdown",
+  "占比最高": "largest share",
+  "CFOP 阶段耗时占比": "Share of solve time by CFOP stage",
+  "智能魔方": "Smart cube",
+  "纯计时器": "Timer only",
+  "纯计时器成绩": "Timer-only solve",
+  "连接中": "Connecting",
+  "计时模式": "Timing mode",
   "需要": "Needs",
   "次 CFOP 阶段数据后显示 AO": "CFOP stage records to show AO",
   "底层十字": "Cross",
@@ -577,6 +593,10 @@ const sortedDynamicFragments = Object.entries(englishDynamicFragments).sort(([le
 export function translateEnglishSource(source: string) {
   const exact = englishSourceMessages[source];
   if (exact) return exact;
+  const cfopSampleCount = source.match(/^已有 (\d+)\/(\d+) 次包含 CFOP 阶段数据的成绩。$/);
+  if (cfopSampleCount) {
+    return `${cfopSampleCount[1]}/${cfopSampleCount[2]} solves with CFOP stage data available.`;
+  }
   return sortedDynamicFragments.reduce(
     (translated, [fragment, replacement]) => translated.split(fragment).join(replacement),
     source,

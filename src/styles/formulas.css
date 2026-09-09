@@ -1004,7 +1004,9 @@
   top: calc(100% + 6px);
   right: 0;
   display: grid;
-  width: 120px;
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
   overflow: hidden;
   padding: 5px;
 }
@@ -1015,17 +1017,25 @@
   border-radius: 8px;
   background: transparent;
   padding: 7px 9px;
-  color: var(--tech-ink-2);
+  color: var(--tech-muted);
   font-size: var(--ui-type-sm);
-  font-weight: var(--ui-weight-support);
+  font-weight: var(--ui-weight-emphasis);
   text-align: left;
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.lf-tech-app .formula-status-menu-option.status-learning {
+  color: var(--tech-orange);
+}
+
+.lf-tech-app .formula-status-menu-option.status-mastered {
+  color: var(--tech-green);
 }
 
 .lf-tech-app .formula-status-menu-option:hover,
 .lf-tech-app .formula-status-menu-option.active {
   background: var(--tech-blue-soft);
-  color: var(--tech-blue);
 }
 
 .lf-tech-app .algo-display {
