@@ -86,7 +86,7 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
       <div className="fm-stats-dashboard">
         {recentHeader}
         <section className="fm-stats-recent" aria-label={t("最近记录")}>
-          <div className="hist-empty fm-stats-empty">{t("暂无记录，开始练习后自动统计。")}</div>
+          <div className="fm-stats-empty">{t("暂无记录，开始练习后自动统计。")}</div>
         </section>
       </div>
     );

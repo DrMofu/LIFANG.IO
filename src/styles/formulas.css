@@ -1291,6 +1291,11 @@
   padding-top: 0;
 }
 
+.lf-tech-app .fm-stats-empty {
+  color: var(--tech-muted);
+  font-size: 13px;
+}
+
 .lf-tech-app .fm-stats-recent ol {
   margin: 0;
   padding: 0;

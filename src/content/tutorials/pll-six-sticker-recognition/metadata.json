@@ -7,8 +7,13 @@
   "locales": {
     "zh-CN": {
       "title": "PLL 六格观察法",
-      "description": "只看两个相邻侧面的六枚贴纸，利用角块置换、车灯、色块与相对色识别全部 21 个 PLL",
+      "description": "通过观察正面与右面顶行的六格，推断当前 PLL 情景",
       "contentFile": "article.zh-CN.md"
+    },
+    "en": {
+      "title": "Six-Sticker PLL Recognition",
+      "description": "Identify PLL cases using the six stickers in the top rows of the front and right faces",
+      "contentFile": "article.en.md"
     }
   },
   "cover": "cover.png"

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   LANGUAGE_COOKIE_KEY,
@@ -33,6 +33,7 @@ function readStoredLocale(fallback: Locale) {
 
 export function LanguageProvider({ children, initialLocale }: { children: ReactNode; initialLocale: Locale }) {
   const pathname = usePathname();
+  const router = useRouter();
   const subscribeLocale = useCallback((onStoreChange: () => void) => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === LANGUAGE_STORAGE_KEY) onStoreChange();
@@ -64,13 +65,14 @@ export function LanguageProvider({ children, initialLocale }: { children: ReactN
       }
       window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
       document.cookie = `${LANGUAGE_COOKIE_KEY}=${nextLocale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      router.refresh();
     },
     t(key) {
       if (key in messages[locale]) return messages[locale][key as MessageKey];
       if (locale === "en") return translateEnglishSource(key);
       return key;
     },
-  }), [locale]);
+  }), [locale, router]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }

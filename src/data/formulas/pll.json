@@ -7,13 +7,13 @@
       "name": "H-Perm",
       "algos": [
         {
-          "id": "pll-h-mu",
-          "name": "MU版",
+          "id": "pll-h-1",
+          "name": "公式一",
           "algo": "(M2 U M2) U2 (M2 U M2)"
         },
         {
-          "id": "pll-h-ru",
-          "name": "RU版",
+          "id": "pll-h-2",
+          "name": "公式二",
           "algo": "(R2 U2 R) (U2 R2 U2 R2 U2) (R U2 R2)"
         }
       ],
@@ -34,14 +34,14 @@
       "name": "Z-Perm",
       "algos": [
         {
-          "id": "pll-z-mu",
-          "name": "MU版",
-          "algo": "M' U (M2 U M2 U) M' U2 M2 U'",
-          "facelets": "UUUUUUUUURBRRRRRRRFLFFFFFFFDDDDDDDDDLFLLLLLLLBRBBBBBBB"
+          "id": "pll-z-1",
+          "name": "公式一",
+          "algo": "M' U (M2 U M2 U) M' U2 M2",
+          "facelets": "UUUUUUUUUFRFRRRRRRLBLFFFFFFDDDDDDDDDBLBLLLLLLRFRBBBBBB"
         },
         {
-          "id": "pll-z-ru",
-          "name": "RU版",
+          "id": "pll-z-2",
+          "name": "公式二",
           "algo": "R' U' R2 U (R U R' U') R U R U' R U' R' U2",
           "facelets": "UUUUUUUUURFRRRRRRRFRFFFFFFFDDDDDDDDDLBLLLLLLLBLBBBBBBB"
         }
@@ -62,17 +62,24 @@
       "name": "Ua-Perm",
       "algos": [
         {
-          "id": "pll-ua-mu",
-          "name": "MU版",
-          "algo": "(M2 U M) U2 (M' U M2)"
+          "id": "pll-ua-1",
+          "name": "公式一",
+          "algo": "(M2 U M) U2 (M' U M2)",
+          "facelets": "UUUUUUUUURLRRRRRRRFRFFFFFFFDDDDDDDDDLFLLLLLLLBBBBBBBBB"
         },
         {
-          "id": "pll-ua-ru",
-          "name": "RU版",
-          "algo": "(R U' R) (U R U R) (U' R' U' R'2)"
+          "id": "pll-ua-2",
+          "name": "公式二",
+          "algo": "(R U' R) (U R U R) (U' R' U' R2)",
+          "facelets": "UUUUUUUUURLRRRRRRRFRFFFFFFFDDDDDDDDDLFLLLLLLLBBBBBBBBB"
+        },
+        {
+          "id": "pll-ua-3",
+          "name": "公式三",
+          "algo": "(R U R' U R' U') R2 (U' R' U R' U R)",
+          "facelets": "UUUUUUUUULFLRRRRRRBBBFFFFFFDDDDDDDDDRLRLLLLLLFRFBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUURLRRRRRRRFRFFFFFFFDDDDDDDDDLFLLLLLLLBBBBBBBBB",
       "arrows": [
         {
           "from": 5,
@@ -93,17 +100,24 @@
       "name": "Ub-Perm",
       "algos": [
         {
-          "id": "pll-ub-mu",
-          "name": "MU版",
-          "algo": "(M2 U' M) U2 (M' U' M2)"
+          "id": "pll-ub-1",
+          "name": "公式一",
+          "algo": "(M2 U' M) U2 (M' U' M2)",
+          "facelets": "UUUUUUUUURFRRRRRRRFLFFFFFFFDDDDDDDDDLRLLLLLLLBBBBBBBBB"
         },
         {
-          "id": "pll-ub-ru",
-          "name": "RU版",
-          "algo": "(R2 U) (R U) (R' U' R' U') (R' U R')"
+          "id": "pll-ub-2",
+          "name": "公式二",
+          "algo": "(R2 U) (R U) (R' U' R' U') (R' U R')",
+          "facelets": "UUUUUUUUURFRRRRRRRFLFFFFFFFDDDDDDDDDLRLLLLLLLBBBBBBBBB"
+        },
+        {
+          "id": "pll-ub-3",
+          "name": "公式三",
+          "algo": "R' U R' U' R' U' R' U R U R2",
+          "facelets": "UUUUUUUUURLRRRRRRRFFFFFFFFFDDDDDDDDDLBLLLLLLLBRBBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUURFRRRRRRRFLFFFFFFFDDDDDDDDDLRLLLLLLLBBBBBBBBB",
       "arrows": [
         {
           "from": 3,
@@ -126,15 +140,16 @@
         {
           "id": "pll-aa-1",
           "name": "公式一",
-          "algo": "x' R2 D2 (R' U' R) D2 (R' U R') x"
+          "algo": "x' R2 D2 (R' U' R) D2 (R' U R') x",
+          "facelets": "UUUUUUUUUFRFRRRRRRBFLFFFFFFDDDDDDDDDLLRLLLLLLRBBBBBBBB"
         },
         {
           "id": "pll-aa-2",
           "name": "公式二",
-          "algo": "x z' R2 U2 (R' D' R) U2 (R' D R') z x'"
+          "algo": "x z' R2 U2 (R' D' R) U2 (R' D R') z x'",
+          "facelets": "UUUUUUUUULRFRRRRRRFFBFFFFFFDDDDDDDDDBLLLLLLLLRBRBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUUFRFRRRRRRBFLFFFFFFDDDDDDDDDLLRLLLLLLRBBBBBBBB",
       "arrows": [
         {
           "from": 6,
@@ -157,15 +172,16 @@
         {
           "id": "pll-ab-1",
           "name": "公式一",
-          "algo": "x' (R U' R) D2 (R' U R) D2 R'2 x"
+          "algo": "x' (R U' R) D2 (R' U R) D2 R'2 x",
+          "facelets": "UUUUUUUUUBRLRRRRRRRFRFFFFFFDDDDDDDDDLLFLLLLLLFBBBBBBBB"
         },
         {
           "id": "pll-ab-2",
           "name": "公式二",
-          "algo": "x R2 D2 (R U R') D2 (R U' R) x'"
+          "algo": "x R2 D2 (R U R') D2 (R U' R) x'",
+          "facelets": "UUUUUUUUUBRBRRRRRRFFRFFFFFFDDDDDDDDDRLLLLLLLLLBFBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUUBRLRRRRRRRFRFFFFFFDDDDDDDDDLLFLLLLLLFBBBBBBBB",
       "arrows": [
         {
           "from": 2,
@@ -188,15 +204,16 @@
         {
           "id": "pll-e-1",
           "name": "公式一",
-          "algo": "x' (R U' R' D) (R U R' D') (R U R' D) (R U' R' D') x"
+          "algo": "x' (R U' R' D) (R U R' D') (R U R' D) (R U' R' D') x",
+          "facelets": "UUUUUUUUUBRFRRRRRRLFRFFFFFFDDDDDDDDDFLBLLLLLLRBLBBBBBB"
         },
         {
           "id": "pll-e-2",
           "name": "公式二",
-          "algo": "R2 U R' U' y (R U R' U') (R U R' U') (R U R') y' (R U' R2')"
+          "algo": "R2 U R' U' y (R U R' U') (R U R' U') (R U R') y' (R U' R2')",
+          "facelets": "UUUUUUUUUFRBRRRRRRRFLFFFFFFDDDDDDDDDBLFLLLLLLLBRBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUUBRFRRRRRRLFRFFFFFFDDDDDDDDDFLBLLLLLLRBLBBBBBB",
       "arrows": [
         [
           0,
@@ -450,15 +467,16 @@
         {
           "id": "pll-ga-1",
           "name": "公式一",
-          "algo": "R2 (U R' U R') (U' R U') R2 D (U' R' U R) D'"
+          "algo": "R2 (U R' U R') (U' R U') R2 D (U' R' U R) D'",
+          "facelets": "UUUUUUUUUBLFRRRRRRFRRFFFFFFDDDDDDDDDLBLLLLLLLRFBBBBBBB"
         },
         {
           "id": "pll-ga-2",
           "name": "公式二",
-          "algo": "R2 U R' U R' U' R U' R2 (U' D) R' U R (D' U)"
+          "algo": "R2 U R' U R' U' R U' R2 (U' D) R' U R (D' U)",
+          "facelets": "UUUUUUUUURBLRRRRRRLFFFFFFFFDDDDDDDDDBRBLLLLLLFLRBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUUBLFRRRRRRFRRFFFFFFDDDDDDDDDLBLLLLLLLRFBBBBBBB",
       "arrows": [
         {
           "from": 6,
@@ -485,15 +503,16 @@
         {
           "id": "pll-gb-1",
           "name": "公式一",
-          "algo": "(R' U' R U) D' R2 (U R' U) (R U' R U') R2 D"
+          "algo": "(R' U' R U) D' R2 (U R' U) (R U' R U') R2 D",
+          "facelets": "UUUUUUUUUBFFRRRRRRFBRFFFFFFDDDDDDDDDLRLLLLLLLRLBBBBBBB"
         },
         {
           "id": "pll-gb-2",
           "name": "公式二",
-          "algo": "(R' d' F) (R2 u) (R' U) (R U' R u' R'2)"
+          "algo": "(R' d' F) (R2 u) (R' U) (R U' R u' R'2)",
+          "facelets": "UUUUUUUUUBFFFFFFFFFBRLLLLLLDDDDDDDDDLRLBBBBBBRLBRRRRRR"
         }
       ],
-      "facelets": "UUUUUUUUUBFFRRRRRRFBRFFFFFFDDDDDDDDDLRLLLLLLLRLBBBBBBB",
       "arrows": [
         {
           "from": 0,
@@ -520,15 +539,16 @@
         {
           "id": "pll-gc-1",
           "name": "公式一",
-          "algo": "R2 (U' R U' R) (U R' U) R2 D' (U R U' R') D"
+          "algo": "R2 (U' R U' R) (U R' U) R2 D' (U R U' R') D",
+          "facelets": "UUUUUUUUUBLFRRRRRRFBRFFFFFFDDDDDDDDDLFLLLLLLLRRBBBBBBB"
         },
         {
           "id": "pll-gc-2",
           "name": "公式二",
-          "algo": "(R'2 u' R U' R) (U R' u) (R2 f R' f')"
+          "algo": "(R'2 u' R U' R) (U R' u) (R2 f R' f')",
+          "facelets": "UUUUUUUUULFRRRRRRRRLBFFFFFFDDDDDDDDDFRFLLLLLLBBLBBBBBB"
         }
       ],
-      "facelets": "UUUUUUUUUBLFRRRRRRFBRFFFFFFDDDDDDDDDLFLLLLLLLRRBBBBBBB",
       "arrows": [
         {
           "from": 8,
@@ -555,15 +575,16 @@
         {
           "id": "pll-gd-1",
           "name": "公式一",
-          "algo": "(R U R' U') D R2 (U' R U') (R' U R' U) R2 D'"
+          "algo": "(R U R' U') D R2 (U' R U') (R' U R' U) R2 D'",
+          "facelets": "UUUUUUUUUBBFRRRRRRFLRFFFFFFDDDDDDDDDLRLLLLLLLRFBBBBBBB"
         },
         {
           "id": "pll-gd-2",
           "name": "公式二",
-          "algo": "(R U R') y' (R2 u' R U') (R' U R' u R2)"
+          "algo": "(R U R') y' (R2 u' R U') (R' U R' u R2)",
+          "facelets": "UUUUUUUUUBBFBBBBBBFLRRRRRRRDDDDDDDDDLRLFFFFFFRFBLLLLLL"
         }
       ],
-      "facelets": "UUUUUUUUUBBFRRRRRRFLRFFFFFFDDDDDDDDDLRLLLLLLLRFBBBBBBB",
       "arrows": [
         {
           "from": 2,

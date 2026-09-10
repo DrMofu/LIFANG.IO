@@ -391,10 +391,16 @@
         {
           "id": "oll-28-1",
           "name": "公式一",
-          "algo": "(M' U' M) U2' (M' U' M)"
+          "algo": "(M' U' M) U2' (M' U' M)",
+          "facelets": "UXUUUXUUUXUXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXUXBBBBBB"
+        },
+        {
+          "id": "oll-28-2",
+          "name": "公式二",
+          "algo": "(r U R' U') M (U R U' R')",
+          "facelets": "UUUUUXUXUXUXRRRRRRXUXFFFFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"
         }
-      ],
-      "facelets": "UXUUUXUUUXUXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXUXBBBBBB"
+      ]
     },
     {
       "id": "oll-29",

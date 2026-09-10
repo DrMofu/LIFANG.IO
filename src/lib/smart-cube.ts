@@ -857,7 +857,7 @@ export function mountSmartCube(
     if (!gestureRegion) return;
     const width = container.clientWidth;
     const height = container.clientHeight;
-    const size = Math.min(width * 0.6, height * 0.6, 360);
+    const size = Math.min(width * 0.5, height * 0.5, 640);
     cubeRoot.getWorldPosition(gestureCenter).project(camera);
     const x = THREE.MathUtils.clamp((gestureCenter.x + 1) * width / 2, size / 2, width - size / 2);
     const y = THREE.MathUtils.clamp((1 - gestureCenter.y) * height / 2, size / 2, height - size / 2);

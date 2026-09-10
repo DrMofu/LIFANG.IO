@@ -399,8 +399,7 @@
   border-bottom: 0;
 }
 
-.tutorial-pll-feature-grid,
-.tutorial-pll-family-grid {
+.tutorial-pll-feature-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
@@ -408,7 +407,6 @@
 }
 
 .tutorial-pll-feature-card,
-.tutorial-pll-family-card,
 .tutorial-pll-scenario-card {
   min-width: 0;
   margin: 0;
@@ -419,21 +417,18 @@
   box-shadow: 0 12px 28px rgba(39, 72, 121, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 
-.tutorial-pll-feature-card,
-.tutorial-pll-family-card {
+.tutorial-pll-feature-card {
   display: grid;
   grid-template-columns: minmax(185px, 0.86fr) minmax(0, 1.14fr);
   align-items: center;
 }
 
-.tutorial-pll-feature-card > .tutorial-pll-cube,
-.tutorial-pll-family-card > .tutorial-pll-cube {
+.tutorial-pll-feature-card > .tutorial-pll-cube {
   align-self: stretch;
   border-right: 1px solid rgba(205, 219, 239, 0.86);
 }
 
-.tutorial-pll-feature-card figcaption,
-.tutorial-pll-family-card figcaption {
+.tutorial-pll-feature-card figcaption {
   display: flex;
   min-width: 0;
   flex-direction: column;
@@ -441,8 +436,7 @@
   padding: 18px;
 }
 
-.tutorial-pll-feature-card figcaption strong,
-.tutorial-pll-family-card figcaption strong {
+.tutorial-pll-feature-card figcaption strong {
   color: var(--tech-ink);
   font-size: 16px;
   font-weight: 820;
@@ -450,16 +444,7 @@
   line-height: 1.35;
 }
 
-.tutorial-pll-family-card figcaption em {
-  color: var(--tech-blue);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 780;
-  line-height: 1.45;
-}
-
-.tutorial-pll-feature-card figcaption span,
-.tutorial-pll-family-card figcaption span {
+.tutorial-pll-feature-card figcaption span {
   color: var(--tech-muted);
   font-size: 13px;
   font-weight: 560;
@@ -1256,8 +1241,7 @@
     overflow-wrap: anywhere;
   }
 
-  .tutorial-pll-feature-grid,
-  .tutorial-pll-family-grid {
+  .tutorial-pll-feature-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1348,20 +1332,17 @@
     padding: 9px 11px;
   }
 
-  .tutorial-pll-feature-grid,
-  .tutorial-pll-family-grid {
+  .tutorial-pll-feature-grid {
     gap: 10px;
     margin-right: -5px;
     margin-left: -5px;
   }
 
-  .tutorial-pll-feature-card,
-  .tutorial-pll-family-card {
+  .tutorial-pll-feature-card {
     grid-template-columns: 1fr;
   }
 
-  .tutorial-pll-feature-card > .tutorial-pll-cube,
-  .tutorial-pll-family-card > .tutorial-pll-cube {
+  .tutorial-pll-feature-card > .tutorial-pll-cube {
     border-right: 0;
     border-bottom: 1px solid rgba(205, 219, 239, 0.86);
   }
@@ -1370,8 +1351,7 @@
     min-height: 150px;
   }
 
-  .tutorial-pll-feature-card figcaption,
-  .tutorial-pll-family-card figcaption {
+  .tutorial-pll-feature-card figcaption {
     padding: 14px;
   }
 
