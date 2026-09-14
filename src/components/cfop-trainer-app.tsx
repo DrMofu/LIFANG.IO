@@ -69,16 +69,14 @@ const TRAINER_SPECIALTIES: Array<{
 
 const TRAINER_MOVE_ANIMATION_MS = 100;
 const DISPLAY_STATE_EPSILON = 0.001;
-const DEFAULT_TRAINER_SESSION_ROUNDS = 10;
+const DEFAULT_TRAINER_SESSION_ROUNDS = 20;
 const MIN_TRAINER_SESSION_ROUNDS = 1;
 const MAX_TRAINER_SESSION_ROUNDS = 100;
-const RECOGNITION_INITIAL_SEQUENCE_SIZE = 36;
-const RECOGNITION_SEQUENCE_APPEND_SIZE = 18;
-const RECOGNITION_SEQUENCE_BUFFER_SIZE = 12;
 const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
 const F2L_FOCUS_MODE_KEY = "cfop-trainer-f2l-focus-mode";
 const TRAINER_SELECTED_PHASE_KEY = "cfop-trainer-selected-phase";
-const TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds";
+const TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds-v2";
+const LEGACY_TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds";
 const TRAINER_ROTATION_VARIANTS_KEY = "cfop-trainer-rotation-variants";
 const TRAINER_FORMULA_HINT_KEY = "cfop-trainer-formula-hint";
 const TRAINER_ROTATION_ARROW_KEY = "cfop-trainer-rotation-arrow";
@@ -197,10 +195,13 @@ function normalizeTrainerSessionRounds(value: number) {
 function readStoredTrainerSessionRounds() {
   if (typeof window === "undefined") return DEFAULT_TRAINER_SESSION_ROUNDS;
   try {
+    const current = window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY));
     const stored = Number.parseInt(
-      window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY)) ?? "",
+      current ?? window.localStorage.getItem(getArchiveScopedStorageKey(LEGACY_TRAINER_SESSION_ROUNDS_KEY)) ?? "",
       10,
     );
+    // Migrate the previous default while allowing newly saved custom values of 10.
+    if (current === null && stored === 10) return DEFAULT_TRAINER_SESSION_ROUNDS;
     return Number.isFinite(stored) ? normalizeTrainerSessionRounds(stored) : DEFAULT_TRAINER_SESSION_ROUNDS;
   } catch {
     return DEFAULT_TRAINER_SESSION_ROUNDS;
@@ -435,7 +436,9 @@ function CfopTrainerClient() {
     ? Math.round((recognitionCorrect / recognitionAttemptCount) * 100)
     : 0;
   const sessionDnfCount = sessionResults.filter((entry) => entry.dnf).length;
-  const latestSessionResult = sessionResults.at(-1) ?? null;
+  const sessionSuccessRate = sessionRoundCount > 0
+    ? Math.round(((sessionRoundCount - sessionDnfCount) / sessionRoundCount) * 100)
+    : null;
   const roundInProgress = state === "loading" || state === "observe" || state === "solving";
   const autoNextPending = !isRecognitionSpecialty && sessionInProgress && state === "done" && connected && sessionRoundCount > 0 && sessionRoundCount < sessionRoundLimit;
   const canCancelTrainerAction = sessionInProgress;
@@ -863,7 +866,7 @@ function CfopTrainerClient() {
   }, [recognitionIncludeSlices, recognitionIncludeWideMoves]);
 
   const prepareRecognitionSequence = useCallback(() => {
-    const moves = buildRecognitionMoves(RECOGNITION_INITIAL_SEQUENCE_SIZE);
+    const moves = buildRecognitionMoves(sessionRoundLimit);
     const statuses = moves.map(() => "pending" as AlgorithmStepStatus);
     recognitionMovesRef.current = moves;
     recognitionStatusesRef.current = statuses;
@@ -875,7 +878,7 @@ function CfopTrainerClient() {
     setRecognitionStatuses(statuses);
     setRecognitionIndex(0);
     setRecognitionExpectedMove(moves[0] ?? null);
-  }, [buildRecognitionMoves]);
+  }, [buildRecognitionMoves, sessionRoundLimit]);
 
   const completeRecognitionPrompt = useCallback((expected: string, pendingMoves: string[], correct: boolean) => {
     const now = performance.now();
@@ -906,18 +909,10 @@ function CfopTrainerClient() {
 
     const currentIndex = recognitionIndexRef.current;
     const nextIndex = currentIndex + 1;
-    let moves = recognitionMovesRef.current;
+    const moves = recognitionMovesRef.current;
     const statuses = [...recognitionStatusesRef.current];
     statuses[currentIndex] = correct ? "correct" : "wrong";
-    if (moves.length - nextIndex <= RECOGNITION_SEQUENCE_BUFFER_SIZE) {
-      moves = [
-        ...moves,
-        ...buildRecognitionMoves(RECOGNITION_SEQUENCE_APPEND_SIZE, moves.at(-1) ?? expected),
-      ];
-      statuses.push(...Array.from({ length: RECOGNITION_SEQUENCE_APPEND_SIZE }, () => "pending" as AlgorithmStepStatus));
-    }
 
-    recognitionMovesRef.current = moves;
     recognitionStatusesRef.current = statuses;
     recognitionIndexRef.current = nextIndex;
     recognitionExpectedMoveRef.current = moves[nextIndex] ?? null;
@@ -927,7 +922,12 @@ function CfopTrainerClient() {
     setRecognitionStatuses(statuses);
     setRecognitionIndex(nextIndex);
     setRecognitionExpectedMove(moves[nextIndex] ?? null);
-  }, [buildRecognitionMoves]);
+    if (nextAttemptCount >= sessionRoundLimit) {
+      setSolveMs(Math.max(0, now - solveStartRef.current));
+      updateTrainerState("done");
+      setSessionInProgress(false);
+    }
+  }, [sessionRoundLimit, updateTrainerState]);
 
   const processRecognitionMove = useCallback(async (move: string) => {
     const nextFacelets = await applyMoveToFacelets(currentFaceletsRef.current, move);
@@ -1354,6 +1354,23 @@ function CfopTrainerClient() {
                   <div className="practice-kicker">SETTINGS</div>
                 </div>
               </div>
+              <label className="trainer-round-setting">
+                <span>
+                  <b>{t("每组测试轮数")}</b>
+                </span>
+                <input
+                  data-testid="trainer-round-limit"
+                  type="number"
+                  min={MIN_TRAINER_SESSION_ROUNDS}
+                  max={MAX_TRAINER_SESSION_ROUNDS}
+                  step={1}
+                  inputMode="numeric"
+                  value={sessionRoundLimit}
+                  disabled={settingsLocked}
+                  aria-label={t("每组测试轮数")}
+                  onChange={(event) => updateSessionRoundLimit(event.target.value)}
+                />
+              </label>
               {isRecognitionSpecialty ? (
                 <div className="trainer-option-list">
                   <div className="trainer-variant-toggle trainer-fixed-option">
@@ -1414,24 +1431,6 @@ function CfopTrainerClient() {
                 </div>
               ) : (
                 <>
-                  <label className="trainer-round-setting">
-                    <span>
-                      <b>{t("每组测试轮数")}</b>
-                      <small>{t("每组可进行 1–100 轮，默认为 10。")}</small>
-                    </span>
-                    <input
-                      data-testid="trainer-round-limit"
-                      type="number"
-                      min={MIN_TRAINER_SESSION_ROUNDS}
-                      max={MAX_TRAINER_SESSION_ROUNDS}
-                      step={1}
-                      inputMode="numeric"
-                      value={sessionRoundLimit}
-                      disabled={settingsLocked}
-                      aria-label={t("每组测试轮数")}
-                      onChange={(event) => updateSessionRoundLimit(event.target.value)}
-                    />
-                  </label>
                   <div className="trainer-option-list">
                     <label className="trainer-variant-toggle">
                       <input
@@ -1584,8 +1583,8 @@ function CfopTrainerClient() {
                     <b>{fmtShort(sessionAverageSolveMs)}</b>
                   </div>
                   <div className="solve-phase-card">
-                    <span>{t("步数")}</span>
-                    <b>{latestSessionResult?.dnf ? "DNF" : latestSessionResult?.moves ?? "—"}</b>
+                    <span>{t("复原成功率")}</span>
+                    <b>{sessionSuccessRate === null ? "—" : `${sessionSuccessRate}%`}</b>
                   </div>
                   <div className="solve-phase-card">
                     <span>{t("本组进度")}{sessionDnfCount > 0 ? ` · DNF ${sessionDnfCount}` : ""}</span>

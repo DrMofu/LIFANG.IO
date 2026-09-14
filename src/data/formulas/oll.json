@@ -753,7 +753,7 @@
         {
           "id": "oll-52-1",
           "name": "公式一",
-          "algo": "(R' F' U' F) U' R U R' U R",
+          "algo": "(R' F' U' F U') (R U R' U R)",
           "facelets": "XUXXUXXUXXUXRRRRRRXXUFFFFFFDDDDDDDDDUUULLLLLLUXXBBBBBB"
         },
         {
@@ -804,7 +804,7 @@
         {
           "id": "oll-55-1",
           "name": "公式一",
-          "algo": "R' F (U R U' R2) F' R2 (U R' U' R)",
+          "algo": "(R' F U R) (U' R2 F' R2) (U R' U' R)",
           "facelets": "XXXUUUXXXXXXRRRRRRUUUFFFFFFDDDDDDDDDXXXLLLLLLUUUBBBBBB"
         },
         {

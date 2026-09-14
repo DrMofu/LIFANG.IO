@@ -626,6 +626,8 @@ export function CubePracticeApp() {
   const smartSolveUndoStackRef = useRef<string[]>([]);
   const smartSolveFaceletsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const smartSolveFaceletsResolverRef = useRef<((facelets: string | null) => void) | null>(null);
+  const solveFormulasRef = useRef<Partial<Record<"oll" | "pll", FormulaRecognitionResult>>>({});
+  const [solveFormulas, setSolveFormulas] = useState<Partial<Record<"oll" | "pll", FormulaRecognitionResult>>>({});
   const cfopTimesRef = useRef<LiveCfopMetrics>(EMPTY_CFOP);
   const cfopMovesRef = useRef<LiveCfopMetrics>(EMPTY_CFOP);
   const f2lSubTimesRef = useRef<LiveF2lSubphaseMetrics>(EMPTY_F2L_SUBPHASES);
@@ -960,11 +962,18 @@ export function CubePracticeApp() {
 
   const detectFormulaRecognition = useCallback(
     (nextFacelets: string) => {
-      if (!formulaRecognitionEnabledRef.current) return;
+      const recording = phaseRef.current === "solving" && solveSourceRef.current === "smart-cube";
+      if (!formulaRecognitionEnabledRef.current && !recording) return;
       const recognitionModule = formulaRecognitionModuleRef.current;
       if (!recognitionModule) return;
       const match = recognitionModule.recognizeLastLayerFormula(nextFacelets, orientation);
       if (!match) return;
+      if (recording && !solveFormulasRef.current[match.phase]
+        && (match.phase !== "oll" || (!solveFormulasRef.current.pll && cfopTimesRef.current.oll === null))) {
+        solveFormulasRef.current = { ...solveFormulasRef.current, [match.phase]: match };
+        setSolveFormulas(solveFormulasRef.current);
+      }
+      if (!formulaRecognitionEnabledRef.current) return;
       setRecognizedFormula((current) => (
         current?.phase === match.phase && current.id === match.id ? current : match
       ));
@@ -973,16 +982,16 @@ export function CubePracticeApp() {
   );
 
   useEffect(() => {
-    if (!formulaRecognitionEnabled) return;
+    if (!formulaRecognitionEnabled && connectionState !== "connected") return;
     let cancelled = false;
     void loadFormulaRecognitionModule().then(() => {
-      if (cancelled || !formulaRecognitionEnabledRef.current || !faceletsRef.current) return;
+      if (cancelled || !faceletsRef.current) return;
       detectFormulaRecognition(faceletsRef.current);
     });
     return () => {
       cancelled = true;
     };
-  }, [detectFormulaRecognition, formulaRecognitionEnabled, loadFormulaRecognitionModule]);
+  }, [connectionState, detectFormulaRecognition, formulaRecognitionEnabled, loadFormulaRecognitionModule]);
 
   const armPostSolveMoveGate = useCallback((faceletsSerial: number) => {
     postSolveMoveGateRef.current = { faceletsSerial: normalizeCubeSerial(faceletsSerial) };
@@ -1266,6 +1275,8 @@ export function CubePracticeApp() {
       solveMsRef.current = 0;
       solveMoveCountRef.current = initialMoveGroup ? 1 : 0;
       solveMoveCountGroupRef.current = initialMoveGroup;
+      solveFormulasRef.current = {};
+      setSolveFormulas({});
       cfopTimesRef.current = EMPTY_CFOP;
       cfopMovesRef.current = EMPTY_CFOP;
       f2lSubTimesRef.current = EMPTY_F2L_SUBPHASES;
@@ -1282,9 +1293,12 @@ export function CubePracticeApp() {
       }, 17);
       phaseRef.current = "solving";
       setPhase("solving");
-      if (timingModeRef.current === "smart-cube") requestFaceletsThrottled();
+      if (timingModeRef.current === "smart-cube") {
+        if (faceletsRef.current) detectFormulaRecognition(faceletsRef.current);
+        requestFaceletsThrottled();
+      }
     },
-    [clearSolveTick, requestFaceletsThrottled, updateSolveMs],
+    [clearSolveTick, detectFormulaRecognition, requestFaceletsThrottled, updateSolveMs],
   );
 
   const recordSolveMove = useCallback((move: string) => {
@@ -1394,6 +1408,8 @@ export function CubePracticeApp() {
         source: recordingSource,
         ...(recordingSource === "smart-cube"
           ? {
+              ollCase: solveFormulasRef.current.oll?.id,
+              pllCase: solveFormulasRef.current.pll?.id,
               moves: solveMoveCountRef.current,
               cfop: toHistoryCfopMetrics(finalCfop),
               cfopMoves: toHistoryCfopMetrics(finalCfopMoves),
@@ -3553,20 +3569,36 @@ export function CubePracticeApp() {
                     ))}
                   </div>
                 </div>
-                <div className={`solve-phase-card solve-phase-card-oll${cfopTimes.oll !== null ? " completed" : phase === "solving" && cfopTimes.f2l !== null ? " active" : ""}`}>
-                  <span>OLL</span>
-                  <b>
-                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "oll")}
-                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "oll")}</small>
-                  </b>
-                </div>
-                <div className={`solve-phase-card solve-phase-card-pll${cfopTimes.pll !== null ? " completed" : phase === "solving" && cfopTimes.oll !== null ? " active" : ""}`}>
-                  <span>PLL</span>
-                  <b>
-                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "pll")}
-                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "pll")}</small>
-                  </b>
-                </div>
+                {(["oll", "pll"] as const).map((key) => {
+                  const formula = solveFormulas[key];
+                  const previousPhase = key === "oll" ? "f2l" : "oll";
+                  return (
+                    <div
+                      key={key}
+                      className={`solve-phase-card solve-phase-card-${key}${cfopTimes[key] !== null ? " completed" : phase === "solving" && cfopTimes[previousPhase] !== null ? " active" : ""}`}
+                      tabIndex={formula ? 0 : undefined}
+                      aria-describedby={formula ? `current-${key}-formula-tooltip` : undefined}
+                    >
+                      <span>{key.toUpperCase()}</span>
+                      <b>
+                        {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), key)}
+                        <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), key)}</small>
+                      </b>
+                      {formula && (
+                        <div id={`current-${key}-formula-tooltip`} className="solve-formula-popover" role="tooltip">
+                          <strong>{t(formula.name)}</strong>
+                          <FormulaTopViewImage
+                            facelets={formula.facelets}
+                            faceColors={formulaTopViewFaceColors}
+                            arrows={formula.arrows}
+                            className="solve-formula-preview"
+                            title={t(formula.name)}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>}
             </div>
           </div>

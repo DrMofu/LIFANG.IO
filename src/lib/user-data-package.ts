@@ -124,7 +124,7 @@ const FORMULA_SCOPED_DATA_KEYS = [
 ] as const;
 
 export const USER_DATA_EXPORT_SCHEMA = {
-  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves", "source"],
+  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves", "source", "ollCase", "pllCase"],
   daily: ["id", "date", "completedAt", "avg", "solves"],
   dailySolve: ["ms", "ts", "moves", "source"],
   dailyPractice: ["date", "seconds", "updatedAt"],
@@ -343,6 +343,8 @@ function serializeCompactSolveHistoryEntry(entry: SolveHistoryEntry): CompactSol
     f2lMetricsToTuple(entry.cfopF2l) ?? null,
     f2lMetricsToTuple(entry.cfopF2lMoves, false) ?? null,
     compactSource(entry.source),
+    entry.ollCase ?? null,
+    entry.pllCase ?? null,
   ]);
 }
 
@@ -351,11 +353,13 @@ function parseCompactSolveHistoryEntry(value: unknown): SolveHistoryEntry | null
   const [ms] = value;
   if (typeof ms !== "number") return null;
   const legacyHasScramble = typeof value[1] === "string";
-  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves, source] = legacyHasScramble
+  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves, source, ollCase, pllCase] = legacyHasScramble
     ? value.slice(2)
     : value.slice(1);
   if (typeof ts !== "number") return null;
   const parsed: SolveHistoryEntry = { ms, ts };
+  if (typeof ollCase === "string" && ollCase) parsed.ollCase = ollCase;
+  if (typeof pllCase === "string" && pllCase) parsed.pllCase = pllCase;
   const parsedSource = expandSource(source);
   if (!parsedSource) return null;
   parsed.source = parsedSource;

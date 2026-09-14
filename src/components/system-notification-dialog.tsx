@@ -27,6 +27,15 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.1.7",
+    changes: [
+      "重做教程：六格识别法",
+      "公式界面添加用时分布",
+      "微调统计界面布局",
+      "练习界面训练时会追踪记录用户的OLL，PLL情景",
+    ],
+  },
+  {
     version: "v0.1.6",
     changes: [
       "重做专项练习界面",

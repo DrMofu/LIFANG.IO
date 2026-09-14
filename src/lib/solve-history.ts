@@ -28,6 +28,8 @@ export type SolveHistoryEntry = {
     index: number;
     completed: boolean;
   };
+  ollCase?: string;
+  pllCase?: string;
   cfop?: CfopPhaseMetrics;
   cfopMoves?: CfopPhaseMetrics;
   cfopF2l?: F2lSubphaseMetrics;
@@ -399,6 +401,8 @@ export function normalizeSolveHistoryEntry(entry: SolveHistoryEntry): SolveHisto
   return {
     ...rest,
     source: entry.source === "timer" ? "timer" : "smart-cube",
+    ollCase: typeof entry.ollCase === "string" && entry.ollCase ? entry.ollCase : undefined,
+    pllCase: typeof entry.pllCase === "string" && entry.pllCase ? entry.pllCase : undefined,
     cfop: normalizeCfopPhaseMetrics(entry.cfop),
     cfopMoves: normalizeCfopPhaseMetrics(entry.cfopMoves),
     cfopF2l: normalizeF2lSubphaseMetrics(entry.cfopF2l),

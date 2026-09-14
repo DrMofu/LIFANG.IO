@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.6-4b7bec" />
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.7-4b7bec" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178c6" />
   <img alt="GAN Smart Cube" src="https://img.shields.io/badge/GAN-Smart_Cube-55a86b" />
@@ -41,6 +41,8 @@
 - 通过 Web Bluetooth 连接 GAN 智能魔方
 - 三维魔方同步、计时练习与专项训练
 - CFOP 公式浏览、筛选与练习
+- 记录首次 OLL、PLL 情景，支持情景名称与示意图悬浮预览
+- 专项练习默认 20 轮，支持轮数设置、自动结束与复原成功率统计
 - 成绩趋势、阶段用时与练习热力图
 - 中英文界面与本地数据存档
 

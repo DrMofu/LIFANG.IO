@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.6-4b7bec" />
+  <img alt="Version" src="https://img.shields.io/badge/version-v0.1.7-4b7bec" />
   <img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-black" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-6-3178c6" />
   <img alt="GAN Smart Cube" src="https://img.shields.io/badge/GAN-Smart_Cube-55a86b" />
@@ -41,6 +41,8 @@
 - Connect to GAN smart cubes via Web Bluetooth
 - Real-time 3D cube synchronization, timed practice, and targeted drills
 - Browse, filter, and practice CFOP algorithms
+- Save the first OLL and PLL cases, with case names and diagrams available on hover
+- Training defaults to 20 rounds, with configurable round limits, automatic completion, and solve success rates
 - Performance trends, solve-stage timing, and practice heatmaps
 - Chinese and English interfaces with local data storage
 

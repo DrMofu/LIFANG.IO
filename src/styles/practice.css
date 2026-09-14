@@ -1754,7 +1754,7 @@
   box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.1);
 }
 
-.practice-focus-app .solve-phase-card-f2l:focus-visible {
+.practice-focus-app .solve-phase-card[tabindex]:focus-visible {
   outline: 2px solid rgba(47, 111, 242, 0.38);
   outline-offset: 2px;
 }
@@ -1821,7 +1821,8 @@
   line-height: 1;
 }
 
-.practice-focus-app .f2l-subphase-popover {
+.practice-focus-app .f2l-subphase-popover,
+.practice-focus-app .solve-formula-popover {
   position: absolute;
   z-index: 12;
   top: calc(100% + 8px);
@@ -1844,7 +1845,8 @@
   backdrop-filter: blur(18px);
 }
 
-.practice-focus-app .f2l-subphase-popover::before {
+.practice-focus-app .f2l-subphase-popover::before,
+.practice-focus-app .solve-formula-popover::before {
   position: absolute;
   top: -6px;
   right: 22px;
@@ -1857,7 +1859,8 @@
   transform: rotate(45deg);
 }
 
-.practice-focus-app .solve-phase-card-f2l:is(:hover, :focus, :focus-within) .f2l-subphase-popover {
+.practice-focus-app .solve-phase-card-f2l:is(:hover, :focus, :focus-within) .f2l-subphase-popover,
+.practice-focus-app .solve-phase-card:is(:hover, :focus-within) .solve-formula-popover {
   opacity: 1;
   transform: translateY(0) scale(1);
 }
@@ -1885,13 +1888,13 @@
 
 .practice-focus-app .f2l-subphase-popover strong {
   color: #173567;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .practice-focus-app .f2l-subphase-popover em,
 .practice-focus-app .f2l-subphase-popover b {
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
   font-weight: 800;
 }
@@ -2182,4 +2185,50 @@
     margin-top: 18px;
     font-size: 12px;
   }
+}
+
+.practice-focus-app .solve-phase-card[aria-describedby] {
+  position: relative;
+  cursor: help;
+}
+
+.practice-focus-app .solve-formula-popover {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: 10px;
+  width: min(168px, calc(100vw - 28px));
+  padding: 14px;
+  visibility: hidden;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.practice-focus-app .solve-formula-popover > strong {
+  color: #19386f;
+  font-size: var(--ui-type-lg);
+  font-weight: var(--ui-weight-emphasis);
+  line-height: 1.2;
+}
+
+.practice-focus-app .solve-formula-preview {
+  display: block;
+  width: 108px;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 10px;
+}
+
+.practice-focus-app .solve-phase-card-oll .solve-formula-popover {
+  right: auto;
+  left: 0;
+}
+
+.practice-focus-app .solve-phase-card-oll .solve-formula-popover::before {
+  right: auto;
+  left: 22px;
+}
+
+.practice-focus-app .solve-phase-card:is(:hover, :focus-within) .solve-formula-popover {
+  visibility: visible;
 }
