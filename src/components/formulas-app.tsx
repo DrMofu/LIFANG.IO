@@ -39,6 +39,7 @@ import { normalizeFormulaRotationOffset, rotateAlgorithmByYOffset, rotateFacelet
 import {
   FORMULAS,
   OLL_SHAPES,
+  OLL_SHAPE_LABELS,
   type FormulaArrow,
   type FormulaItem,
   type FormulaVariant as FormulaVariantData,
@@ -119,22 +120,6 @@ const STATUS_FILTERS: Array<{ key: LearningStatusFilter; label: string }> = [
   { key: "all", label: "全部" },
   ...LEARNING_STATUSES.map(({ key, label }) => ({ key, label })),
 ];
-const OLL_SHAPE_LABELS: Record<OllShape, string> = {
-  "all-corners-oriented": "formula.shape.allCornersOriented",
-  awkward: "formula.shape.awkward",
-  c: "formula.shape.c",
-  dot: "formula.shape.dot",
-  fish: "formula.shape.fish",
-  "knight-move": "formula.shape.knightMove",
-  l: "formula.shape.l",
-  lightning: "formula.shape.lightning",
-  line: "formula.shape.line",
-  ocll: "formula.shape.ocll",
-  p: "formula.shape.p",
-  square: "formula.shape.square",
-  t: "formula.shape.t",
-  w: "formula.shape.w",
-};
 const OLL_SHAPE_OPTIONS: readonly OllShapeFilter[] = ["all", ...OLL_SHAPES];
 const OLL_SHAPE_PREVIEW_CASES = Object.fromEntries(
   OLL_SHAPES.map((shape) => [shape, FORMULAS.oll.items.find((item) => item.shape === shape)]),
@@ -206,6 +191,7 @@ function OllShapeSelectField({
         id={id}
         type="button"
         className="fm-shape-select-trigger"
+        aria-label={`${t("formula.shape.label")}: ${t(selectedLabel)}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={`${id}-menu`}
@@ -2054,6 +2040,14 @@ export function FormulasApp() {
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               />
+              {cat === "oll" && (
+                <OllShapeSelectField
+                  id="oll-shape-filter"
+                  selected={ollShapeFilter}
+                  faceColors={formulaTopViewFaceColors}
+                  onSelect={setOllShapeFilter}
+                />
+              )}
               <LearningStatusSelectField selected={statusFilter} onSelect={setStatusFilter} />
               {!isFavoritesView && (
                 <button
@@ -2067,17 +2061,6 @@ export function FormulasApp() {
                 </button>
               )}
             </div>
-            {cat === "oll" && (
-              <div className="fm-shape-filter">
-                <label htmlFor="oll-shape-filter">{t("formula.shape.label")}</label>
-                <OllShapeSelectField
-                  id="oll-shape-filter"
-                  selected={ollShapeFilter}
-                  faceColors={formulaTopViewFaceColors}
-                  onSelect={setOllShapeFilter}
-                />
-              </div>
-            )}
             <div className="fm-list">
               {items.length === 0 ? (
                 <div className="fm-empty">{emptyMessage}</div>

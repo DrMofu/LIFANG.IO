@@ -1,5 +1,8 @@
 ## v0.1.8 (working)
 
+IMPROVEMENTS:
+- 微调每日练习成绩界面
+
 ## v0.1.7 (26.09.14)
 
 FEATURES:

@@ -2,6 +2,20 @@ import type { Locale } from "@/lib/i18n";
 
 export const messages = {
   zh: {
+    "formulaLibrary.title": "公式库管理",
+    "formulaLibrary.selected": "已选 {count} / {total} 个公式",
+    "formulaLibrary.all": "全选",
+    "formulaLibrary.clear": "清空",
+    "formulaLibrary.save": "保存",
+    "formulaLibrary.cancel": "取消",
+    "formulaLibrary.empty": "请至少选择一个公式",
+    "formulaLibrary.pool": "随机池：{count} 个",
+
+    "dailyResult.title": "每日测试成绩",
+    "dailyResult.average": "平均用时",
+    "dailyResult.details": "五次测试成绩",
+    "dailyResult.continue": "继续练习",
+
     "brand.name": "立方",
     "brand.subtitle": "魔方练习小站",
     "nav.home": "返回首页",
@@ -115,6 +129,20 @@ export const messages = {
     "connection.batteryUnknown": "电量未知",
   },
   en: {
+    "formulaLibrary.title": "Formula library",
+    "formulaLibrary.selected": "{count} / {total} cases selected",
+    "formulaLibrary.all": "Select all",
+    "formulaLibrary.clear": "Clear",
+    "formulaLibrary.save": "Save",
+    "formulaLibrary.cancel": "Cancel",
+    "formulaLibrary.empty": "Select at least one case",
+    "formulaLibrary.pool": "Random pool: {count}",
+
+    "dailyResult.title": "Daily test results",
+    "dailyResult.average": "Average time",
+    "dailyResult.details": "Five test results",
+    "dailyResult.continue": "Continue practicing",
+
     "brand.name": "Cube",
     "brand.subtitle": "Smart Cube Practice",
     "nav.home": "Back to home",

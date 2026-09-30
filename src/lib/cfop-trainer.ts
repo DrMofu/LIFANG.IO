@@ -36,12 +36,14 @@ function randomItem<T>(items: T[]) {
 
 export async function createFormulaTrainerScenario(
   phase: CfopTrainerPhase,
-  options: { includeRotations?: boolean } = {},
+  options: { includeRotations?: boolean; selectedCaseIds?: readonly string[] } = {},
 ): Promise<CfopTrainerScenario> {
   const category = FORMULAS[phase];
   const algos = category.items
+    .filter((item) => !options.selectedCaseIds || options.selectedCaseIds.includes(item.id))
     .map(firstAlgo)
     .filter((algo): algo is string => Boolean(algo));
+  if (!algos.length) throw new Error("No formulas selected");
   const selectedAlgo = randomItem(algos);
   const rotation = (options.includeRotations ? Math.floor(Math.random() * 4) : 0) as FormulaRotationOffset;
   const sourceAlgo = rotateAlgorithmByYOffset(selectedAlgo, rotation);
@@ -56,6 +58,6 @@ export async function createFormulaTrainerScenario(
   };
 }
 
-export function formulaTrainerScenarioCount(phase: CfopTrainerPhase, options: { includeRotations?: boolean } = {}) {
-  return FORMULAS[phase].items.filter((item) => Boolean(firstAlgo(item))).length * (options.includeRotations ? 4 : 1);
+export function formulaTrainerScenarioCount(phase: CfopTrainerPhase, options: { includeRotations?: boolean; selectedCaseIds?: readonly string[] } = {}) {
+  return FORMULAS[phase].items.filter((item) => Boolean(firstAlgo(item)) && (!options.selectedCaseIds || options.selectedCaseIds.includes(item.id))).length * (options.includeRotations ? 4 : 1);
 }

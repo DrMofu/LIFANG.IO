@@ -6,6 +6,10 @@ import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
+import { CubeIdleFaceletsSync } from "@/lib/cube-idle-facelets-sync";
+import { getInitialCubeVisualState } from "@/lib/cube-visual-state";
+import { FormulaLibraryDialog } from "@/components/formula-library-dialog";
+import { FORMULAS } from "@/lib/formulas-data";
 import { MoveToken } from "@/components/move-token";
 import {
   expandMoveNotation,
@@ -28,7 +32,6 @@ import {
   SOLVED_FACELETS,
   createFormulaTrainerScenario,
   displayFaceletsToHardwareFacelets,
-  formulaTrainerScenarioCount,
   type CfopTrainerPhase,
 } from "@/lib/cfop-trainer";
 import { detectCfopMilestones, detectF2lTargetEdgeSolved, isSolvedFacelets, type F2lTargetSlot } from "@/lib/cube-state";
@@ -78,6 +81,24 @@ const TRAINER_SELECTED_PHASE_KEY = "cfop-trainer-selected-phase";
 const TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds-v2";
 const LEGACY_TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds";
 const TRAINER_ROTATION_VARIANTS_KEY = "cfop-trainer-rotation-variants";
+function trainerLibraryKey(phase: CfopTrainerPhase) {
+  return `cfop-trainer-${phase}-library-v1`;
+}
+
+function readStoredFormulaCases(phase: CfopTrainerPhase): string[] {
+  const allCaseIds = FORMULAS[phase].items.map((item) => item.id);
+  try {
+    const stored: unknown = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(trainerLibraryKey(phase))) || "null");
+    if (Array.isArray(stored)) {
+      const valid = allCaseIds.filter((id) => stored.includes(id));
+      if (valid.length) return valid;
+    }
+  } catch {
+    // Use the full library when storage is unavailable or invalid.
+  }
+  return allCaseIds;
+}
+
 const TRAINER_FORMULA_HINT_KEY = "cfop-trainer-formula-hint";
 const TRAINER_ROTATION_ARROW_KEY = "cfop-trainer-rotation-arrow";
 const TRAINER_F2L_EDGE_ONLY_KEY = "cfop-trainer-f2l-edge-only";
@@ -389,6 +410,12 @@ function CfopTrainerClient() {
   const [solveMs, setSolveMs] = useState(0);
   const [timerKind, setTimerKind] = useState<"observe" | "solve">("solve");
   const [sessionResults, setSessionResults] = useState<TrainerRoundResult[]>([]);
+  const [selectedCaseIds, setSelectedCaseIds] = useState(() => ({
+    f2l: readStoredFormulaCases("f2l"),
+    oll: readStoredFormulaCases("oll"),
+    pll: readStoredFormulaCases("pll"),
+  }));
+  const [formulaLibraryOpen, setFormulaLibraryOpen] = useState(false);
   const [formulaRotationVariants, setFormulaRotationVariants] = useState(() => readStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY));
   const [formulaHintEnabled, setFormulaHintEnabled] = useState(() => readStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY));
   const [formulaArrowEnabled, setFormulaArrowEnabled] = useState(() => readStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY));
@@ -419,7 +446,12 @@ function CfopTrainerClient() {
   const [recognitionWrong, setRecognitionWrong] = useState(0);
   const [recognitionAverageResponseMs, setRecognitionAverageResponseMs] = useState<number | null>(null);
 
-  const { connectionState, connectRealCube, getLatestGyro, subscribeMove, subscribeGyro } = useCubeConnection();
+  const { connectionState, connectRealCube, facelets, visualState, getLatestGyro, subscribeMove, subscribeGyro, subscribeFacelets } = useCubeConnection();
+  const realCubeStateRef = useRef({ facelets, visualState });
+  const idleFaceletsSyncRef = useRef(new CubeIdleFaceletsSync());
+  useEffect(() => {
+    realCubeStateRef.current = { facelets, visualState };
+  }, [facelets, visualState]);
   const { orientation, faceColors, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance } = useCubeAppearance();
   const connected = connectionState === "connected";
   const connecting = connectionState === "connecting";
@@ -466,6 +498,15 @@ function CfopTrainerClient() {
     (displayFacelets: string) => {
       const cube = cubeApiRef.current;
       if (!cube) return;
+      if (selectedPhaseRef.current === "turn-recognition") {
+        const snapshot = realCubeStateRef.current;
+        const initialState = getInitialCubeVisualState(snapshot.visualState, snapshot.facelets);
+        if (initialState.facelets) {
+          cube.setFacelets(initialState.facelets);
+          initialState.moves.forEach(({ layer, dir }) => cube.applyMove(layer, dir, 0));
+        }
+        return;
+      }
       if (
         isFormulaTrainerPhase(selectedPhaseRef.current) &&
         canUseFocusModeForPhase(selectedPhaseRef.current) &&
@@ -514,6 +555,16 @@ function CfopTrainerClient() {
     if (!mount) return;
     setViewResetEnabled(false);
     const initialGyroQuaternion = loadPracticeGyroDisabled() ? null : getLatestGyro();
+    const snapshot = realCubeStateRef.current;
+    const initialState = selectedPhaseRef.current === "turn-recognition"
+      ? getInitialCubeVisualState(snapshot.visualState, snapshot.facelets)
+      : null;
+    if (initialState) {
+      idleFaceletsSyncRef.current.reset();
+      if (visualPendingTimerRef.current !== null) window.clearTimeout(visualPendingTimerRef.current);
+      visualPendingTimerRef.current = null;
+      visualPendingMoveRef.current = null;
+    }
     const api = mountSmartCube(mount, {
       orientation,
       faceColors,
@@ -526,10 +577,12 @@ function CfopTrainerClient() {
       defaultDisplayState: TRAINER_CUBE_CAMERA_PRESET.displayState,
       sceneOffset: TRAINER_CUBE_CAMERA_PRESET.sceneOffset,
       initialGyroQuaternion,
+      initialFacelets: initialState?.facelets,
+      initialMoves: initialState?.moves,
       onDisplayOrientationChange: () => setViewResetEnabled(true),
     });
     cubeApiRef.current = api;
-    renderTrainerCubeFacelets(currentFaceletsRef.current);
+    if (!initialState) renderTrainerCubeFacelets(currentFaceletsRef.current);
     return () => {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
@@ -636,6 +689,33 @@ function CfopTrainerClient() {
     [animateCubeMoves, clearVisualPendingTimer, flushVisualPendingMove],
   );
 
+  useEffect(() => {
+    const sync = idleFaceletsSyncRef.current;
+    sync.reset();
+    if (!connected || !isRecognitionSpecialty) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const flush = () => {
+      timer = null;
+      if (selectedPhaseRef.current !== "turn-recognition") return;
+      const cube = cubeApiRef.current;
+      if (!cube) return;
+      const busy = visualPendingMoveRef.current !== null || cube.isAnimating();
+      if (sync.flush(busy, (nextFacelets) => cube.setFacelets(nextFacelets))) {
+        timer = setTimeout(flush, 50);
+      }
+    };
+    const unsubscribe = subscribeFacelets((nextFacelets, signal) => {
+      if (!signal || selectedPhaseRef.current !== "turn-recognition") return;
+      sync.receive(nextFacelets, signal.serial);
+      if (timer === null) flush();
+    });
+    return () => {
+      unsubscribe();
+      if (timer !== null) clearTimeout(timer);
+      sync.reset();
+    };
+  }, [connected, isRecognitionSpecialty, subscribeFacelets]);
+
   const resetFormulaHint = useCallback((moves: string[] = []) => {
     formulaHintMovesRef.current = moves;
     formulaHintIndexRef.current = 0;
@@ -739,6 +819,7 @@ function CfopTrainerClient() {
 
   const resetRun = useCallback(() => {
     runIdRef.current += 1;
+    idleFaceletsSyncRef.current.reset();
     clearAutoNextTimer();
     resetSessionResults();
     clearVisualPendingTimer();
@@ -929,10 +1010,8 @@ function CfopTrainerClient() {
     }
   }, [sessionRoundLimit, updateTrainerState]);
 
-  const processRecognitionMove = useCallback(async (move: string) => {
-    const nextFacelets = await applyMoveToFacelets(currentFaceletsRef.current, move);
+  const processRecognitionMove = useCallback((move: string) => {
     if (stateRef.current !== "solving" || selectedPhaseRef.current !== "turn-recognition") return;
-    currentFaceletsRef.current = nextFacelets;
     const expected = recognitionExpectedMoveRef.current;
     if (!expected) return;
 
@@ -974,7 +1053,7 @@ function CfopTrainerClient() {
   const beginFormulaScenario = useCallback(async (phase: CfopTrainerPhase, runId: number) => {
     updateTrainerState("loading");
     try {
-      const nextScenario = await createFormulaTrainerScenario(phase, { includeRotations: formulaRotationVariants });
+      const nextScenario = await createFormulaTrainerScenario(phase, { includeRotations: formulaRotationVariants, selectedCaseIds: selectedCaseIds[phase] });
       if (!mountedRef.current || runIdRef.current !== runId || selectedPhaseRef.current !== phase) return;
       const focusSolvedFacelets = focusSolvedFaceletsForPhase(phase);
       const nextFocusFacelets = focusSolvedFacelets
@@ -991,7 +1070,7 @@ function CfopTrainerClient() {
       if (runIdRef.current !== runId) return;
       updateTrainerState("error");
     }
-  }, [enterObserve, formulaRotationVariants, renderTrainerCubeFacelets, resetFormulaHint, updateTrainerState]);
+  }, [enterObserve, formulaRotationVariants, selectedCaseIds, renderTrainerCubeFacelets, resetFormulaHint, updateTrainerState]);
 
   const beginTrainerRound = useCallback(async (runId: number) => {
     const phase = selectedPhaseRef.current;
@@ -1100,7 +1179,7 @@ function CfopTrainerClient() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== " ") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (isTextEntryTarget(event.target)) return;
+      if (formulaLibraryOpen || isTextEntryTarget(event.target)) return;
       if (connecting) return;
 
       event.preventDefault();
@@ -1108,22 +1187,23 @@ function CfopTrainerClient() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [connecting, startTraining]);
+  }, [connecting, formulaLibraryOpen, startTraining]);
 
   const enqueueMove = useCallback(
     (move: string) => {
       const parsed = parseMoveNotation(move);
       if (!parsed) return;
       const actual = parsed.notation;
+      if (selectedPhaseRef.current === "turn-recognition") {
+        queueVisualMove(actual);
+        processRecognitionMove(actual);
+        return;
+      }
 
       moveQueueRef.current = moveQueueRef.current
         .then(async () => {
           const currentState = stateRef.current;
-          if (selectedPhaseRef.current === "turn-recognition" && currentState === "solving") {
-            queueVisualMove(actual);
-            await processRecognitionMove(actual);
-            return;
-          }
+          if (selectedPhaseRef.current === "turn-recognition") return;
           if (currentState === "observe") {
             queueVisualMove(actual);
             await beginSolve(actual);
@@ -1141,14 +1221,19 @@ function CfopTrainerClient() {
     [beginSolve, processRecognitionMove, processSolveMove, queueVisualMove, updateTrainerState],
   );
 
-  useEffect(() => subscribeMove((move) => enqueueMove(move)), [enqueueMove, subscribeMove]);
+  useEffect(() => subscribeMove((move, signal) => {
+    if (selectedPhaseRef.current === "turn-recognition" && signal) {
+      idleFaceletsSyncRef.current.recordMove(signal.serial);
+    }
+    enqueueMove(move);
+  }), [enqueueMove, subscribeMove]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key !== "r" && key !== "l" && key !== "h") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (isTextEntryTarget(event.target)) return;
+      if (formulaLibraryOpen || isTextEntryTarget(event.target)) return;
       if (
         key === "h" &&
         (!isFormulaTrainerPhase(selectedPhaseRef.current) || !canUseFocusModeForPhase(selectedPhaseRef.current))
@@ -1167,7 +1252,7 @@ function CfopTrainerClient() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [canResetDisplayOrientation, resetDisplayOrientation, toggleF2lFocusMode, toggleGyroDisabled]);
+  }, [canResetDisplayOrientation, formulaLibraryOpen, resetDisplayOrientation, toggleF2lFocusMode, toggleGyroDisabled]);
 
   const selectPhase = (phase: TrainerSpecialty) => {
     if (settingsLocked) return;
@@ -1230,21 +1315,11 @@ function CfopTrainerClient() {
                 role="status"
               >{t("开启陀螺仪功能会导致较大计算开销")}</div>
             )}
-            <div className="stage-bottom-stack">
+            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : ""}`}>
               {formulaHintVisible && (
-                <div className="stage-hint trainer-formula-stage" role="status" aria-label={t("公式提示")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("公式提示")}</div>
-                    {formulaHintUndoDisplay.length > 0 && (
-                      <div className="sh-notice sh-notice-inline error">
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...formulaHintUndoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </div>
-                    )}
+                <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
+                  <div className="ui-section-head">
+                    <div className="ui-section-title">{t("公式提示")}</div>
                     <div className="sh-actions">
                       <div className="sh-counter">
                         <span className="sh-counter-num">{formulaHintCounter}</span>
@@ -1253,6 +1328,16 @@ function CfopTrainerClient() {
                       </div>
                     </div>
                   </div>
+                  {formulaHintUndoDisplay.length > 0 && (
+                    <div className="sh-notice error">
+                      <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                      <span className="sh-undo-list">
+                        {[...formulaHintUndoDisplay].reverse().map((move, index) => (
+                          <MoveToken key={`${move}-${index}`} move={move} />
+                        ))}
+                      </span>
+                    </div>
+                  )}
                   <div className="sh-grid">
                     {formulaHintMoves.map((move, index) => {
                       const stepStatus: AlgorithmStepStatus =
@@ -1276,8 +1361,6 @@ function CfopTrainerClient() {
                   </div>
                 </div>
               )}
-            </div>
-            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : ""}`}>
               {recognitionSequenceVisible ? (
                 <div className="stage-hint trainer-recognition-sequence" role="status" aria-live="polite" aria-label={t("转动序列")}>
                   <div className="sh-head">
@@ -1432,26 +1515,12 @@ function CfopTrainerClient() {
               ) : (
                 <>
                   <div className="trainer-option-list">
-                    <label className="trainer-variant-toggle">
-                      <input
-                        type="checkbox"
-                        checked={formulaRotationVariants}
-                        disabled={settingsLocked}
-                        onChange={(event) => {
-                          const next = event.target.checked;
-                          setFormulaRotationVariants(next);
-                          saveStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY, next);
-                        }}
-                      />
-                      <span>
-                        <b>{t("加入 Y 轴旋转变体")}</b>
-                        <small>
-                          {formulaRotationVariants
-                            ? t(`当前随机池：${formulaTrainerScenarioCount(selectedPhase, { includeRotations: true })} 个（公式库 ×4）`)
-                            : t(`当前随机池：${formulaTrainerScenarioCount(selectedPhase)} 个`)}
-                        </small>
-                      </span>
-                    </label>
+                    {isFormulaTrainerPhase(selectedPhase) && (
+                      <button type="button" className="trainer-variant-toggle trainer-library-button" disabled={settingsLocked} onClick={() => setFormulaLibraryOpen(true)} aria-haspopup="dialog">
+                        <span><b>{t("formulaLibrary.title")}</b><small>{t("formulaLibrary.selected").replace("{count}", String(selectedCaseIds[selectedPhase].length)).replace("{total}", String(FORMULAS[selectedPhase].items.length))}</small></span>
+                        <span aria-hidden="true">›</span>
+                      </button>
+                    )}
                     {selectedPhase === "f2l" && (
                       <label className="trainer-variant-toggle">
                         <input
@@ -1596,6 +1665,21 @@ function CfopTrainerClient() {
           </div>
         </section>
       </main>
+      {formulaLibraryOpen && isFormulaTrainerPhase(selectedPhase) && (
+        <FormulaLibraryDialog phase={selectedPhase} selectedIds={selectedCaseIds[selectedPhase]} includeRotations={formulaRotationVariants}
+          onClose={() => setFormulaLibraryOpen(false)}
+          onSave={(ids, rotations) => {
+            setSelectedCaseIds((current) => ({ ...current, [selectedPhase]: ids }));
+            setFormulaRotationVariants(rotations);
+            saveStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY, rotations);
+            try {
+              window.localStorage.setItem(getArchiveScopedStorageKey(trainerLibraryKey(selectedPhase)), JSON.stringify(ids));
+            } catch {
+              // Keep the selection for this session when storage is unavailable.
+            }
+            setFormulaLibraryOpen(false);
+          }} />
+      )}
       <AppFooter />
     </div>
   );

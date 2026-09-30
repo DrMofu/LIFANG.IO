@@ -61,6 +61,23 @@ export const OLL_SHAPES = [
 
 export type OllShape = (typeof OLL_SHAPES)[number];
 
+export const OLL_SHAPE_LABELS: Record<OllShape, string> = {
+  "all-corners-oriented": "formula.shape.allCornersOriented",
+  awkward: "formula.shape.awkward",
+  c: "formula.shape.c",
+  dot: "formula.shape.dot",
+  fish: "formula.shape.fish",
+  "knight-move": "formula.shape.knightMove",
+  l: "formula.shape.l",
+  lightning: "formula.shape.lightning",
+  line: "formula.shape.line",
+  ocll: "formula.shape.ocll",
+  p: "formula.shape.p",
+  square: "formula.shape.square",
+  t: "formula.shape.t",
+  w: "formula.shape.w",
+};
+
 function isOllShape(value: unknown): value is OllShape {
   return typeof value === "string" && OLL_SHAPES.some((shape) => shape === value);
 }

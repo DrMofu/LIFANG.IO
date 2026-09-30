@@ -3,6 +3,7 @@
 import { Fragment, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
+import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
 import {
@@ -28,6 +29,7 @@ import {
   movesMatchExpected,
   parseMoveNotation,
 } from "@/lib/algorithms";
+import { getInitialCubeVisualState } from "@/lib/cube-visual-state";
 import { detectCfopMilestones, detectF2lSolvedSlotCount, isSolvedFacelets } from "@/lib/cube-state";
 import { solveFacelets } from "@/lib/cubing-solver";
 import { fmtShort, fmtTime } from "@/lib/format";
@@ -678,6 +680,7 @@ export function CubePracticeApp() {
   const [solveMs, setSolveMs] = useState(0);
   const [solveMoveCount, setSolveMoveCount] = useState(0);
   const [history, setHistory] = useState<SolveHistoryEntry[]>([]);
+  const [dailyTestResult, setDailyTestResult] = useState<DailyLevelEntry | null>(null);
   const [dailyLevels, setDailyLevels] = useState<DailyLevelEntry[]>([]);
   const [dailyTest, setDailyTest] = useState<DailyTestRun | null>(null);
   const [averageSettings, setAverageSettings] = useState<AverageTimeSettings>(DEFAULT_AVERAGE_TIME_SETTINGS);
@@ -1498,6 +1501,7 @@ export function CubePracticeApp() {
         });
         dailyTestRef.current = null;
         setDailyTest(null);
+        setDailyTestResult(completedLevel);
         const completedLabel = activeDailyTest.localDate === getDailyTestDateKey() ? t("今日测试") : t("补测成绩");
         setScrambleNotice(t(`${completedLabel}完成，平均 ${fmtShort(averageMs)}。`));
       } else {
@@ -2234,14 +2238,9 @@ export function CubePracticeApp() {
   }, []);
 
   const getInitialVisualCubeState = useCallback(() => {
-    const visualStateSnapshot = visualStateRef.current;
-    const baseFacelets = visualStateSnapshot.baseFacelets ?? faceletsRef.current;
-    if (!baseFacelets) return { facelets: null, moves: [] };
-
-    lastAppliedFaceletsRef.current = baseFacelets;
-    const restoredMoves = visualStateSnapshot.baseFacelets ? visualStateSnapshot.moves : [];
-    const expandedMoves = restoredMoves.flatMap((move) => expandMoveNotation(move.move));
-    return { facelets: baseFacelets, moves: expandedMoves };
+    const initialState = getInitialCubeVisualState(visualStateRef.current, faceletsRef.current);
+    if (initialState.facelets) lastAppliedFaceletsRef.current = initialState.facelets;
+    return initialState;
   }, []);
 
   useEffect(() => {
@@ -2444,7 +2443,7 @@ export function CubePracticeApp() {
       const key = event.key.toLowerCase();
       if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (isTextEntryTarget(event.target)) return;
+      if (dailyTestResult || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
       if (key === " " && timingModeRef.current === "timer") {
@@ -2483,7 +2482,7 @@ export function CubePracticeApp() {
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if (event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
+      if (dailyTestResult || event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
       event.preventDefault();
       releaseManualTimerHold();
     };
@@ -3053,8 +3052,8 @@ export function CubePracticeApp() {
                 ) : (
                   <button
                     className="practice-btn practice-btn-primary"
-                    onClick={() => startDailyLevelTest(todayLocalDate)}
-                    disabled={Boolean(todayDailyLevel) || !canStartTodayDailyTest}
+                    onClick={() => todayDailyLevel ? setDailyTestResult(todayDailyLevel) : startDailyLevelTest(todayLocalDate)}
+                    disabled={!todayDailyLevel && !canStartTodayDailyTest}
                   >
                     {todayDailyLevel && dailyTestAverageLabel ? t(`今日平均用时 ${dailyTestAverageLabel}`) : t("开始今日测试")}
                   </button>
@@ -3758,6 +3757,7 @@ export function CubePracticeApp() {
         </section>
       </main>
 
+      {dailyTestResult && <DailyTestResultDialog entry={dailyTestResult} onClose={() => setDailyTestResult(null)} />}
       <AppFooter />
     </div>
   );
