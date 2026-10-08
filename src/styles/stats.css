@@ -1380,22 +1380,7 @@
   padding: 16px 2px 2px;
 }
 
-.dl-chart-summary span,
-.dl-chart-summary em {
-  color: var(--tech-muted);
-  font-size: var(--ui-type-md);
-  font-style: normal;
-  font-weight: var(--ui-weight-support);
-}
-
-.dl-chart-summary b {
-  color: var(--tech-blue);
-  font-size: var(--ui-type-xl);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--ui-weight-emphasis);
-}
-
-.dl-chart-summary em {
+.dl-chart-summary .trend-dropdown {
   margin-left: auto;
 }
 

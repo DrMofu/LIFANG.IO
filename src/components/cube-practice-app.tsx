@@ -15,6 +15,7 @@ import {
 import { CubeColorLegend } from "@/components/cube-color-legend";
 import { FormulaTopViewImage } from "@/components/formula-cube-image";
 import { MoveToken } from "@/components/move-token";
+import { SolveTimeline, type SolveTimelineRecord } from "@/components/solve-timeline";
 import { getFaceHexColors, mapMoveToOrientation } from "@/lib/cube-appearance";
 import { useClientReady } from "@/lib/client-ready";
 import {
@@ -240,6 +241,22 @@ type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
 type F2lSubphaseKey = "one" | "two" | "three" | "four";
 type LiveCfopMetrics = Record<CfopPhaseKey, number | null>;
 type LiveF2lSubphaseMetrics = Record<F2lSubphaseKey, number | null>;
+type CurrentPracticeResult = {
+  archiveStorageKey: string;
+  ms: number;
+  source: SolveSource;
+  moveCount: number;
+  cfop: LiveCfopMetrics;
+  cfopMoves: LiveCfopMetrics;
+  f2l: LiveF2lSubphaseMetrics;
+  f2lMoves: LiveF2lSubphaseMetrics;
+  formulas: Partial<Record<"oll" | "pll", FormulaRecognitionResult>>;
+  timeline: SolveTimelineRecord | null;
+};
+
+// Client navigation keeps this module alive; a page reload clears the temporary result.
+let lastCompletedPracticeResult: CurrentPracticeResult | null = null;
+
 type InspectionAudioVoice = {
   gain: GainNode;
   oscillators: OscillatorNode[];
@@ -605,6 +622,9 @@ export function CubePracticeApp() {
   const solveStartedAtEpochRef = useRef(0);
   const solveMsRef = useRef(0);
   const solveMoveCountRef = useRef(0);
+  const solveTimelineMovesRef = useRef<SolveTimelineRecord["moves"]>([]);
+  const timelineArchiveStorageKeyRef = useRef<string | null>(null);
+  const [completedSolveTimeline, setCompletedSolveTimeline] = useState<SolveTimelineRecord | null>(null);
   const solveMoveCountGroupRef = useRef<ReturnType<typeof solveMoveCountGroup>>(null);
   const freeScrambleMoveCountRef = useRef(0);
   const freeAwaitingIdleFaceletsRef = useRef(false);
@@ -780,6 +800,31 @@ export function CubePracticeApp() {
 
   useEffect(() => {
     function refreshArchiveData() {
+      const archiveStorageKey = getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY);
+      // Saving a solve also refreshes statistics; discard transient moves only on an archive switch.
+      if (timelineArchiveStorageKeyRef.current !== archiveStorageKey) {
+        solveTimelineMovesRef.current = [];
+        if (lastCompletedPracticeResult?.archiveStorageKey !== archiveStorageKey) lastCompletedPracticeResult = null;
+        const result = lastCompletedPracticeResult;
+        solveMsRef.current = result?.ms ?? 0;
+        solveMoveCountRef.current = result?.moveCount ?? 0;
+        solveSourceRef.current = result?.source ?? "timer";
+        cfopTimesRef.current = result?.cfop ?? EMPTY_CFOP;
+        cfopMovesRef.current = result?.cfopMoves ?? EMPTY_CFOP;
+        f2lSubTimesRef.current = result?.f2l ?? EMPTY_F2L_SUBPHASES;
+        f2lSubMovesRef.current = result?.f2lMoves ?? EMPTY_F2L_SUBPHASES;
+        solveFormulasRef.current = result?.formulas ?? {};
+        setSolveMs(solveMsRef.current);
+        setSolveMoveCount(solveMoveCountRef.current);
+        setCfopTimes(cfopTimesRef.current);
+        setF2lSubTimes(f2lSubTimesRef.current);
+        setF2lSubMoves(f2lSubMovesRef.current);
+        setSolveFormulas(solveFormulasRef.current);
+        setCompletedSolveTimeline(result?.timeline ?? null);
+        phaseRef.current = result ? "done" : "idle";
+        setPhase(phaseRef.current);
+        timelineArchiveStorageKeyRef.current = archiveStorageKey;
+      }
       const disabled = loadPracticeGyroDisabled();
       const recognitionEnabled = loadPracticeFormulaRecognitionEnabled();
       const uiPreferences = loadPracticeUiPreferences();
@@ -1278,6 +1323,9 @@ export function CubePracticeApp() {
       solveMsRef.current = 0;
       solveMoveCountRef.current = initialMoveGroup ? 1 : 0;
       solveMoveCountGroupRef.current = initialMoveGroup;
+      solveTimelineMovesRef.current = solveSourceRef.current === "smart-cube" && initialMove
+        ? [{ notation: initialMove, elapsedMs: 0 }]
+        : [];
       solveFormulasRef.current = {};
       setSolveFormulas({});
       cfopTimesRef.current = EMPTY_CFOP;
@@ -1305,6 +1353,12 @@ export function CubePracticeApp() {
   );
 
   const recordSolveMove = useCallback((move: string) => {
+    if (solveSourceRef.current === "smart-cube") {
+      solveTimelineMovesRef.current.push({
+        notation: move,
+        elapsedMs: Math.max(0, Math.round(performance.now() - solveStartRef.current)),
+      });
+    }
     const nextMoveGroup = solveMoveCountGroup(move);
     if (!nextMoveGroup) return;
     if (!isSameSolveMoveCountGroup(solveMoveCountGroupRef.current, nextMoveGroup)) {
@@ -1384,7 +1438,9 @@ export function CubePracticeApp() {
   const finishSolve = useCallback(
     (source: "auto" | "manual") => {
       if (phaseRef.current !== "solving") return;
-      const elapsed = solveMsRef.current || Math.max(0, performance.now() - solveStartRef.current);
+      const elapsed = solveSourceRef.current === "smart-cube"
+        ? Math.max(0, performance.now() - solveStartRef.current)
+        : solveMsRef.current || Math.max(0, performance.now() - solveStartRef.current);
       const recordingSource = solveSourceRef.current;
       const activeDailyTest = dailyTestRef.current;
       const dailyIndex = activeDailyTest ? activeDailyTest.solves.length + 1 : null;
@@ -1404,6 +1460,28 @@ export function CubePracticeApp() {
       cfopTimesRef.current = finalCfop;
       cfopMovesRef.current = finalCfopMoves;
       setCfopTimes(finalCfop);
+      const timeline: SolveTimelineRecord | null = recordingSource === "smart-cube" ? {
+        durationMs: Math.round(elapsed),
+        moves: solveTimelineMovesRef.current,
+        cfop: { ...finalCfop },
+        cfopMoves: { ...finalCfopMoves },
+        moveCount: solveMoveCountRef.current,
+        f2l: { ...f2lSubTimesRef.current },
+      } : null;
+      setCompletedSolveTimeline(timeline);
+      lastCompletedPracticeResult = {
+        archiveStorageKey: getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY),
+        ms: elapsed,
+        source: recordingSource,
+        moveCount: solveMoveCountRef.current,
+        cfop: { ...finalCfop },
+        cfopMoves: { ...finalCfopMoves },
+        f2l: { ...f2lSubTimesRef.current },
+        f2lMoves: { ...f2lSubMovesRef.current },
+        formulas: { ...solveFormulasRef.current },
+        timeline,
+      };
+      solveTimelineMovesRef.current = [];
       const historyEntry: SolveHistoryEntry = {
         ms: elapsed,
         ts: entryTs,
@@ -1494,7 +1572,7 @@ export function CubePracticeApp() {
           solves: nextDailySolves,
         };
         setDailyLevels((prev) => {
-          const next = [completedLevel, ...prev.filter((entry) => entry.localDate !== completedLevel.localDate)].slice(0, 120);
+          const next = [completedLevel, ...prev.filter((entry) => entry.localDate !== completedLevel.localDate)];
           touchLocalUserDataPackageUpdatedAt();
           saveDailyLevels(next);
           return next;
@@ -1676,6 +1754,7 @@ export function CubePracticeApp() {
     undoStackRef.current = [];
     setUndoDisplay([]);
     solveStartRef.current = 0;
+    solveTimelineMovesRef.current = [];
     solveStartedAtEpochRef.current = 0;
     setManualFallbackNotice(false);
     setPhase("idle");
@@ -2995,6 +3074,9 @@ export function CubePracticeApp() {
             ? t("长按空格键或计时器以开始下一次")
             : t("长按空格键或计时器以准备");
   const manualTimerDisplayMs = manualTimerArmState === "idle" && (phase === "solving" || phase === "done") ? solveMs : 0;
+  const currentSolveTimeline = !isManualTimer && phase !== "solving" && completedSolveTimeline?.durationMs === Math.round(solveMs)
+    ? completedSolveTimeline
+    : null;
 
   const undoExpected = undoStackRef.current[undoStackRef.current.length - 1];
   const smartSolveUndoExpected = smartSolveUndoDisplay[smartSolveUndoDisplay.length - 1];
@@ -3252,6 +3334,15 @@ export function CubePracticeApp() {
                     <div className="manual-timer-status" aria-live="polite">{manualTimerPhaseLabel}</div>
                   </div>
                 </div>
+                {phase === "solving" && (
+                  <button
+                    type="button"
+                    className="practice-btn practice-btn-ghost manual-timer-cancel"
+                    onClick={() => resetAttempt()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onKeyUp={(event) => event.stopPropagation()}
+                  >{t("取消")}</button>
+                )}
               </div>
             )}
 
@@ -3525,7 +3616,16 @@ export function CubePracticeApp() {
                 className="solve-metric-main"
                 aria-label={isManualTimer ? fmtShort(solveMs) : `${fmtShort(solveMs)} / ${solveMoveCount} ${t("步")}`}
               >
-                <em>{fmtShort(solveMs)}</em>
+                <span
+                  className="solve-timeline-trigger"
+                  tabIndex={currentSolveTimeline ? 0 : undefined}
+                  aria-describedby={currentSolveTimeline ? "current-solve-timeline" : undefined}
+                >
+                  <em>{fmtShort(solveMs)}</em>
+                  {currentSolveTimeline && (
+                    <SolveTimeline record={currentSolveTimeline} label={t("CFOP 阶段用时")} moveUnit={t("步")} />
+                  )}
+                </span>
                 {isManualTimer ? (
                   <b className="solve-source-label">{t("纯计时器")}</b>
                 ) : (

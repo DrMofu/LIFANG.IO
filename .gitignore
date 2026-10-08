@@ -4,3 +4,7 @@ node_modules/
 
 .env*.local
 *.tsbuildinfo
+
+src/lib/cube-idle-facelets-sync.test.ts
+src/lib/cube-visual-state.test.ts
+src/lib/formula-time-distribution.test.ts

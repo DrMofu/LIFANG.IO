@@ -1,6 +1,10 @@
 // Source-text keys keep the initial migration compact. New copy should prefer semantic keys.
 export const englishSourceMessages: Record<string, string> = {
   "全部": "All",
+  "100天": "100 days",
+  "30天": "30 days",
+  "7天": "7 days",
+  "每日能力水平显示范围": "Daily level chart range",
   "用时": "Time",
   "步数": "Moves",
   "最近100次": "Last 100",

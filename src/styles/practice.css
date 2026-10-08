@@ -1534,6 +1534,16 @@
   -webkit-user-select: none;
 }
 
+.practice-focus-app .manual-timer-cancel {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  width: auto;
+  min-height: 32px;
+  padding: 0 16px;
+  transform: translateX(-50%);
+}
+
 .practice-focus-app .manual-timer-surface:not(.phase-done):focus-visible {
   outline: 3px solid rgba(47, 111, 242, 0.18);
   outline-offset: -3px;
@@ -1930,6 +1940,47 @@
   backdrop-filter: blur(18px);
 }
 
+.practice-focus-app .solve-metric-main .solve-timeline-trigger {
+  display: inline-flex;
+}
+
+.practice-focus-app .solve-timeline-trigger:focus-visible {
+  outline: 2px solid #2f6ff2;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+.practice-focus-app .solve-timeline-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  display: block;
+  width: 142px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+}
+
+.practice-focus-app .solve-timeline-popover:not(:popover-open) {
+  display: none;
+}
+
+.solve-timeline-popover svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.solve-timeline-popover text {
+  fill: #647897;
+  font: 600 11px var(--mono);
+}
+
 .practice-focus-app .f2l-subphase-popover::before,
 .practice-focus-app .solve-formula-popover::before {
   position: absolute;
@@ -2307,11 +2358,14 @@
 }
 
 .practice-focus-app .solve-phase-card-oll .solve-formula-popover {
+  --oll-popover-surface: #f5f8ff;
+  background: var(--oll-popover-surface);
   right: auto;
   left: 0;
 }
 
 .practice-focus-app .solve-phase-card-oll .solve-formula-popover::before {
+  background: var(--oll-popover-surface);
   right: auto;
   left: 22px;
 }

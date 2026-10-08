@@ -33,6 +33,14 @@ type CfopAverageSize = 5 | 20 | 100;
 type TrendMetric = "time" | "moves";
 type TrendPhaseFilter = "all" | CfopPhaseKey;
 type TrendRangeFilter = "all" | "100" | "500" | "1000";
+type DailyLevelRangeFilter = "all" | "100" | "30" | "7";
+
+const DAILY_LEVEL_RANGE_OPTIONS: Array<{ key: DailyLevelRangeFilter; label: string }> = [
+  { key: "all", label: "全部" },
+  { key: "100", label: "100天" },
+  { key: "30", label: "30天" },
+  { key: "7", label: "7天" },
+];
 
 const CFOP_AVERAGE_SIZES: CfopAverageSize[] = [5, 20, 100];
 const CFOP_PHASES: Array<{ key: CfopPhaseKey; name: string }> = [
@@ -579,6 +587,7 @@ export function StatsApp() {
   const [trendMetric, setTrendMetric] = useState<TrendMetric>("time");
   const [trendPhaseFilter, setTrendPhaseFilter] = useState<TrendPhaseFilter>("all");
   const [trendRange, setTrendRange] = useState<TrendRangeFilter>("all");
+  const [dailyLevelRange, setDailyLevelRange] = useState<DailyLevelRangeFilter>("all");
   const [averageSettings, setAverageSettings] = useState<AverageTimeSettings>(DEFAULT_AVERAGE_TIME_SETTINGS);
   const [trendCfopTip, setTrendCfopTip] = useState<TrendCfopTip | null>(null);
   const [trendGuideIndex, setTrendGuideIndex] = useState<number | null>(null);
@@ -586,7 +595,7 @@ export function StatsApp() {
   const [trendViewBoxWidth, setTrendViewBoxWidth] = useState(TREND_CHART_WIDTH);
   const dailyLevelChartRef = useRef<SVGSVGElement | null>(null);
   const [dailyLevelChartWidth, setDailyLevelChartWidth] = useState(960);
-  const [openTrendDropdown, setOpenTrendDropdown] = useState<"metric" | "phase" | "range" | null>(null);
+  const [openTrendDropdown, setOpenTrendDropdown] = useState<"metric" | "phase" | "range" | "dailyRange" | null>(null);
   const [heatmapTip, setHeatmapTip] = useState<HeatmapTip | null>(null);
   const [dailyLevelTip, setDailyLevelTip] = useState<DailyLevelTip | null>(null);
   const [isDailyHistoryOpen, setIsDailyHistoryOpen] = useState(false);
@@ -894,7 +903,16 @@ export function StatsApp() {
   const todayDailyLevel = dailyLevelSummary.today;
   const dailyLevelRows = dailyLevelSummary.rows;
   const bestDailyLevel = dailyLevelSummary.bestEntry?.averageMs ?? null;
-  const dailyLevelTrend = dailyLevelSummary.trend;
+  const dailyLevelTrend = useMemo(() => {
+    if (dailyLevelRange === "all") return dailyLevelSummary.trend;
+    const firstDay = new Date(`${todayLocalDate}T00:00:00`);
+    firstDay.setDate(firstDay.getDate() - Number(dailyLevelRange) + 1);
+    const firstDate = getDailyTestDateKey(firstDay);
+    return summarizeDailyLevels(
+      dailyLevels.filter((entry) => entry.localDate >= firstDate && entry.localDate <= todayLocalDate),
+      todayLocalDate,
+    ).trend;
+  }, [dailyLevels, dailyLevelRange, dailyLevelSummary, todayLocalDate]);
   const recentDailyLevels = dailyLevelRows.slice(0, 5);
   const recentSevenDailyAverage = dailyLevelRows.length === 0
     ? null
@@ -1383,7 +1401,7 @@ export function StatsApp() {
     options,
     onSelect,
   }: {
-    id: "metric" | "phase" | "range";
+    id: "metric" | "phase" | "range" | "dailyRange";
     label: string;
     value: T;
     options: Array<{ key: T; label: string }>;
@@ -1425,7 +1443,8 @@ export function StatsApp() {
               onClick={() => {
                 onSelect(option.key);
                 setOpenTrendDropdown(null);
-                clearTrendHover();
+                if (id === "dailyRange") setDailyLevelTip(null);
+                else clearTrendHover();
               }}
             >
               {t(option.label)}
@@ -1524,7 +1543,13 @@ export function StatsApp() {
             ) : (
               <div className="daily-level-board">
                 <div className="dl-chart-summary">
-                  <em>{t(`${dailyLevels.length} 天测试`)}</em>
+                  {renderTrendDropdown({
+                    id: "dailyRange",
+                    label: t("每日能力水平显示范围"),
+                    value: dailyLevelRange,
+                    options: DAILY_LEVEL_RANGE_OPTIONS,
+                    onSelect: setDailyLevelRange,
+                  })}
                 </div>
                 <div className="dl-chart">
                   {renderDailyLevelChart()}

@@ -410,7 +410,7 @@
         {
           "id": "oll-29-1",
           "name": "公式一",
-          "algo": "(R U R' U') R U' R' F' U' (F R U R')"
+          "algo": "(R U R' U') (R U' R') (F' U' F) (R U R')"
         }
       ],
       "facelets": "XUUUUXXXUXUXRRRRRRUUXFFFFFFDDDDDDDDDXXXLLLLLLXXUBBBBBB"
