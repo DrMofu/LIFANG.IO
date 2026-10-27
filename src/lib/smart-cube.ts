@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { COLOR_HEX, DEFAULT_ORIENTATION, getFaceColors, type CubeColor, type CubeOrientation } from "@/lib/cube-appearance";
 import { expandMoveNotation } from "@/lib/algorithms";
+import { advanceCubeMoveProgress } from "@/lib/cube-move-animation";
 
 export type CubeFace = "U" | "D" | "L" | "R" | "F" | "B";
 export type CubeSlice = "M" | "E" | "S";
@@ -271,7 +272,8 @@ type QueuedMove = {
 type ActiveMove = QueuedMove & {
   pivot: THREE.Group;
   cubies: Cubie[];
-  startTime: number;
+  progress: number;
+  lastUpdateTime: number;
 };
 
 function isInitialLowerLayerSticker(face: CubeFace, y: number) {
@@ -562,15 +564,6 @@ function selectLayers(cubies: Cubie[], layers: CubeMoveLayer[]): Cubie[] {
 
 function easeInOutCubic(t: number) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-function scaleMoveDuration(durationMs: number, backlog: number) {
-  if (durationMs <= 0 || backlog <= 1) return durationMs;
-  if (backlog >= 12) return Math.max(12, Math.round(durationMs * 0.06));
-  if (backlog >= 8) return Math.max(18, Math.round(durationMs * 0.1));
-  if (backlog >= 5) return Math.max(28, Math.round(durationMs * 0.18));
-  if (backlog >= 3) return Math.max(45, Math.round(durationMs * 0.35));
-  return Math.max(80, Math.round(durationMs * 0.6));
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -1008,7 +1001,7 @@ export function mountSmartCube(
     refreshStickerDisplayColors();
   }
 
-  function startNext() {
+  function startNext(now = performance.now()) {
     if (current || queue.length === 0) return;
     const next = queue.shift();
     if (!next) return;
@@ -1018,13 +1011,12 @@ export function mountSmartCube(
     cubeRoot.add(pivot);
     selectedCubies.forEach((cubie) => pivot.attach(cubie));
 
-    const durationMs = scaleMoveDuration(next.durationMs, queue.length + 1);
     current = {
       ...next,
-      durationMs,
       pivot,
       cubies: selectedCubies,
-      startTime: performance.now(),
+      progress: 0,
+      lastUpdateTime: now,
     };
   }
 
@@ -1167,7 +1159,8 @@ export function mountSmartCube(
       durationMs: 0,
       pivot,
       cubies: selectedCubies,
-      startTime: performance.now(),
+      progress: 0,
+      lastUpdateTime: performance.now(),
     };
     finishCurrent();
   }
@@ -1377,12 +1370,17 @@ export function mountSmartCube(
     if (autoRotateDegPerSecond !== 0 && !dragging) {
       applyCameraCoordinates(cameraLatitude, cameraLongitude + autoRotateDegPerSecond * deltaSec);
     }
-    if (!current) startNext();
+    if (!current) startNext(now);
     if (current) {
-      const t = Math.min(1, (now - current.startTime) / current.durationMs);
+      const t = advanceCubeMoveProgress(current.progress, now - current.lastUpdateTime, current.durationMs, queue.length + 1);
+      current.progress = t;
+      current.lastUpdateTime = now;
       current.pivot.rotation[current.axis] = current.targetAngle * easeInOutCubic(t);
       projectionBorderVisibilityDirty = true;
-      if (t >= 1) finishCurrent();
+      if (t >= 1) {
+        finishCurrent();
+        startNext(now);
+      }
     }
     if (gyroActive) {
       if (cubeRoot.quaternion.angleTo(targetCubeOrientation) < GYRO_SETTLE_ANGLE) {

@@ -596,12 +596,16 @@
   counter-reset: pairing-step;
 }
 
-.top-connect-prompt-steps li {
-  position: relative;
-  min-height: 44px;
+.top-connect-prompt-steps li,
+.top-connect-environment {
   border: 1px solid rgba(214, 226, 244, 0.9);
   border-radius: 13px;
   background: rgba(247, 250, 255, 0.82);
+}
+
+.top-connect-prompt-steps li {
+  position: relative;
+  min-height: 44px;
   padding: 11px 14px 11px 52px;
   color: var(--tech-ink-2);
   font-size: 13px;
@@ -628,79 +632,114 @@
 }
 
 .top-connect-environment {
-  margin-top: 12px;
-  border-radius: 11px;
-  background: rgba(47, 111, 242, 0.08);
-  padding: 12px 14px 4px;
-  color: var(--tech-ink-2);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.top-connect-environment dl {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin: 0;
-}
-
-.top-connect-environment dl > div {
-  min-width: 0;
-}
-
-.top-connect-environment dt {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.top-connect-environment dd {
-  margin: 0;
+  margin-top: 16px;
+  padding: 14px 16px;
+  color: var(--tech-muted);
+  font-family: var(--sans);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 700;
+  line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
 .top-connect-environment-status {
-  margin: 6px 0 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--tech-ink-2);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.top-connect-environment-icon {
+  display: grid;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 50%;
   color: #9a5415;
+  background: rgba(184, 111, 34, 0.1);
 }
 
-.top-connect-environment-status[data-status="supported"] {
+.top-connect-environment-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.top-connect-environment[data-status="supported"] .top-connect-environment-icon {
   color: #16734c;
+  background: rgba(22, 115, 76, 0.09);
 }
 
-.top-connect-environment-status[data-status="checking"] {
+.top-connect-environment[data-status="checking"] .top-connect-environment-status {
   color: var(--tech-muted);
 }
 
+.top-connect-environment[data-status="checking"] .top-connect-environment-icon {
+  color: var(--tech-muted);
+  background: rgba(47, 111, 242, 0.08);
+}
+
+.top-connect-environment-icon .dot {
+  width: 6px;
+  height: 6px;
+}
+
 .top-connect-environment details {
-  margin-top: 4px;
+  margin: 6px 0 -6px 32px;
 }
 
 .top-connect-environment summary {
-  width: fit-content;
-  min-height: 44px;
-  align-content: center;
-  color: var(--tech-ink-2);
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--tech-muted);
+  list-style: none;
   cursor: pointer;
 }
 
+.top-connect-environment summary::-webkit-details-marker {
+  display: none;
+}
+
+.top-connect-environment-device {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.top-connect-environment-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--tech-line);
+}
+
+.top-connect-environment-chevron {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.top-connect-environment details[open] .top-connect-environment-chevron {
+  transform: rotate(180deg);
+}
+
 .top-connect-environment summary:focus-visible {
-  outline: 2px solid var(--tech-ink-2);
+  outline: 2px solid var(--tech-blue);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
 .top-connect-platform-note {
-  margin: 0 0 4px;
+  margin: 4px 0 8px;
+  border-top: 1px solid var(--tech-line);
+  padding-top: 10px;
   white-space: pre-line;
 }
 

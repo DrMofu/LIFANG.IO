@@ -1315,7 +1315,7 @@ function CfopTrainerClient() {
                 role="status"
               >{t("开启陀螺仪功能会导致较大计算开销")}</div>
             )}
-            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : ""}`}>
+            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : formulaHintVisible ? " trainer-formula-timer-stack" : ""}`}>
               {formulaHintVisible && (
                 <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
                   <div className="ui-section-head">
@@ -1369,7 +1369,7 @@ function CfopTrainerClient() {
                   <div className="sh-grid trainer-recognition-viewport">
                     <div
                       className="trainer-recognition-track"
-                      style={{ transform: `translateX(calc(-24px - ${recognitionIndex * 56}px))` }}
+                      style={{ transform: `translateX(calc(var(--recognition-token-size) / -2 - ${recognitionIndex} * (var(--recognition-token-size) + var(--recognition-token-gap))))` }}
                     >
                       {recognitionMoves.map((move, index) => (
                         <AlgorithmStepToken
