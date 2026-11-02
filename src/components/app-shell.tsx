@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type FocusEvent, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type FocusEvent, type SetStateAction, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -263,7 +263,7 @@ export function BrandMark() {
   );
 }
 
-export function CompactConnectButton() {
+export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorSelector?: string }) {
   const { t } = useLanguage();
   const {
     connectionState,
@@ -282,6 +282,9 @@ export function CompactConnectButton() {
   const [tooltipPinned, setTooltipPinned] = useState(false);
   const [tooltipHovered, setTooltipHovered] = useState(false);
   const actionRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 16, top: 16 });
+  const tooltipHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quaternionParts = parseTelemetryParts(telemetry.quaternion, ["x", "y", "z", "w"]);
 
   const connected = connectionState === "connected";
@@ -293,6 +296,37 @@ export function CompactConnectButton() {
       ? t("connection.connecting")
       : t("connection.disconnected");
   const tooltipOpen = connected && (tooltipPinned || tooltipHovered);
+
+  useLayoutEffect(() => {
+    if (!tooltipAnchorSelector || !tooltipOpen) return;
+    const action = actionRef.current;
+    const tooltip = tooltipRef.current;
+    const anchorElement = document.querySelector(tooltipAnchorSelector);
+    if (!action || !tooltip || !anchorElement) return;
+
+    const updatePosition = () => {
+      const anchor = anchorElement.getBoundingClientRect();
+      const { width, height } = tooltip.getBoundingClientRect();
+      const margin = 16;
+      const next = {
+        left: Math.max(margin, Math.min(anchor.left + (anchor.width - width) / 2, window.innerWidth - width - margin)),
+        top: Math.max(margin, Math.min(anchor.top + (anchor.height - height) / 2, window.innerHeight - height - margin)),
+      };
+      setTooltipPosition((previous) => previous.left === next.left && previous.top === next.top ? previous : next);
+    };
+
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(anchorElement);
+    observer.observe(tooltip);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [tooltipAnchorSelector, tooltipOpen]);
 
   useEffect(() => {
     if (connected) return;
@@ -322,10 +356,24 @@ export function CompactConnectButton() {
     void requestBattery({ minIntervalMs: 60_000 });
   };
 
+  useEffect(() => () => {
+    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
+  }, []);
+
   const showTooltip = () => {
+    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
     if (!connected) return;
     setTooltipHovered(true);
     refreshBatteryOnPeek();
+  };
+
+  const hideTooltip = () => {
+    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
+    if (tooltipAnchorSelector) {
+      tooltipHideTimerRef.current = setTimeout(() => setTooltipHovered(false), 400);
+    } else {
+      setTooltipHovered(false);
+    }
   };
 
   const toggleTooltip = () => {
@@ -342,7 +390,7 @@ export function CompactConnectButton() {
       ref={actionRef}
       className={`top-connect-action${tooltipOpen ? " tooltip-open" : ""}`}
       onPointerEnter={showTooltip}
-      onPointerLeave={() => setTooltipHovered(false)}
+      onPointerLeave={hideTooltip}
     >
       {connected ? (
         <button
@@ -395,34 +443,47 @@ export function CompactConnectButton() {
               </div>
               <div>
                 <div className="top-connect-prompt-title" id="top-connect-prompt-title">
-                  {t(failure ? "connection.failure.title" : "connection.pairingTitle")}
+                  {t("connection.pairingTitle")}
                 </div>
-                {!failure && <div className="top-connect-prompt-intro">
+                <div className="top-connect-prompt-intro">
                   {t(connecting ? "connection.pairingConnectingIntro" : "connection.pairingIntro")}
-                </div>}
+                </div>
               </div>
             </div>
-            {failure ? (
-              <div className="top-connect-error" role="alert">
-                <strong>{t(`connection.failure.${failure}`)}</strong>
-                <p>{t(`connection.failure.${failure}Help`)}</p>
-                {failure === "mac" && (
-                  <>
-                    <code>chrome://flags/#enable-experimental-web-platform-features</code>
-                    <p>{t("connection.failure.chromeFlagsHelp")}</p>
-                  </>
-                )}
-                <details>
-                  <summary>{t("connection.failure.details")}</summary>
-                  <pre>{connectionInfo.error}</pre>
-                </details>
-              </div>
-            ) : <ol className="top-connect-prompt-steps">
+            <ol className="top-connect-prompt-steps">
               <li>{t("connection.pairingStepWake")}</li>
               <li>{t("connection.pairingStepSelect")}</li>
               <li>{t("connection.pairingStepWait")}</li>
-            </ol>}
+            </ol>
             <ConnectionEnvironment />
+            {failure && (
+              <div className="top-connect-environment top-connect-error" data-status="error" role="alert">
+                <p className="top-connect-environment-status">
+                  <span className="top-connect-environment-icon" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 5v6m0 4h.01" />
+                    </svg>
+                  </span>
+                  <span>{t(`connection.failure.${failure}`)}</span>
+                </p>
+                <div className="top-connect-error-help">
+                  <p>{t(`connection.failure.${failure}Help`)}</p>
+                  {failure === "mac" && (
+                    <ol className="top-connect-error-checks">
+                      <li>
+                        <strong>{t("connection.failure.chromeFlagsCheck")}</strong>
+                        <code>chrome://flags/#enable-experimental-web-platform-features</code>
+                        <p>{t("connection.failure.chromeFlagsHelp")}</p>
+                      </li>
+                      <li>
+                        <strong>{t("connection.failure.otherConnectionCheck")}</strong>
+                        <p>{t("connection.failure.otherConnectionHelp")}</p>
+                      </li>
+                    </ol>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="top-connect-brand-field">
               <label htmlFor="top-connect-brand">{t("connection.cubeBrand")}</label>
               <div className="top-connect-brand-select-wrap">
@@ -466,7 +527,14 @@ export function CompactConnectButton() {
         </>,
         document.body,
       )}
-      <div className="top-connect-tooltip" id="top-connect-detail" role="tooltip" aria-hidden={!tooltipOpen}>
+      <div
+        ref={tooltipRef}
+        className="top-connect-tooltip"
+        id="top-connect-detail"
+        role="tooltip"
+        aria-hidden={!tooltipOpen}
+        style={tooltipAnchorSelector ? tooltipPosition : undefined}
+      >
         <div className="top-connect-grid">
           <div className="top-connect-section">
             <div className="top-connect-title">{t("connection.device")}</div>

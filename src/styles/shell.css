@@ -969,39 +969,30 @@
   text-align: right;
 }
 
-.top-connect-error {
-  margin: 18px 0;
-  border: 1px solid rgba(192, 69, 55, 0.2);
-  border-radius: 14px;
-  background: rgba(255, 239, 235, 0.65);
-  color: var(--tech-ink);
-  padding: 14px;
-  font-size: 13px;
-  line-height: 1.65;
-  overflow-wrap: anywhere;
+.top-connect-error-help {
+  margin-left: 32px;
 }
 
-.top-connect-error strong {
-  color: #9b352b;
-}
-
-.top-connect-error p {
+.top-connect-error-help p {
   margin: 8px 0;
 }
 
-.top-connect-error code,
-.top-connect-error pre {
+.top-connect-error-checks {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+
+.top-connect-error-checks li + li {
+  margin-top: 12px;
+}
+
+.top-connect-error code {
   display: block;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-family: var(--mono);
   font-size: 12px;
   user-select: text;
-}
-
-.top-connect-error summary {
-  cursor: pointer;
-  color: var(--tech-muted);
 }
 
 .top-connect-actions {

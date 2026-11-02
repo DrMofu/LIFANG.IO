@@ -122,7 +122,7 @@ export function HomeLandingApp() {
               ))}
             </nav>
             <div className="home-actions">
-              <CompactConnectButton />
+              <CompactConnectButton tooltipAnchorSelector=".home-cube-stage" />
             </div>
           </div>
 

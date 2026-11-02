@@ -408,7 +408,7 @@ export const englishSourceMessages: Record<string, string> = {
   "收起": "Show less",
   "优化每日练习成绩界面": "Improved the daily practice results interface",
   "练习界面悬停当前成绩时显示可视化坐标条": "Hover over the current result in practice to view its position on a visual scale",
-  "连接失败时显示具体原因与解决建议，新增 MAC 地址获取失败的 Chrome 设置指引": "Show connection failure reasons and troubleshooting advice, including Chrome setup instructions when MAC address retrieval fails",
+  "连接失败时显示具体原因与解决建议": "Show connection failure reasons and troubleshooting advice",
   "移除每日记录仅保存 120 天的限制": "Removed the 120-day retention limit for daily records",
   "重做教程：六格识别法": "Redesigned the six-sticker recognition tutorial",
   "公式界面添加用时分布": "Added time distributions to the Algorithms page",
