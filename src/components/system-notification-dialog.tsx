@@ -27,6 +27,15 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.1.8",
+    changes: [
+      "优化每日练习成绩界面",
+      "练习界面悬停当前成绩时显示可视化坐标条",
+      "连接失败时显示具体原因与解决建议，新增 MAC 地址获取失败的 Chrome 设置指引",
+      "移除每日记录仅保存 120 天的限制",
+    ],
+  },
+  {
     version: "v0.1.7",
     changes: [
       "重做教程：六格识别法",

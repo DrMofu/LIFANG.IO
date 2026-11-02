@@ -174,10 +174,7 @@ function formatTimestamp() {
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) {
-    if (error.message.includes("Unable to determine cube MAC address")) {
-      return "无法自动确定魔方 MAC 地址，连接失败";
-    }
-    return error.message;
+    return `${error.name}: ${error.message}`;
   }
   if (typeof error === "string") return error;
   return "无法连接魔方";
@@ -733,7 +730,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
         ...EMPTY_INFO,
         error: "当前浏览器不支持 Web Bluetooth。请使用 Chrome / Edge 连接你的智能魔方。",
       });
-      hideConnectionPrompt(3500);
+      showConnectionPrompt();
       return false;
     }
 
@@ -743,7 +740,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
         ...EMPTY_INFO,
         error: "Web Bluetooth 需要 HTTPS 或 localhost 安全上下文。",
       });
-      hideConnectionPrompt(3500);
+      showConnectionPrompt();
       return false;
     }
 
@@ -846,11 +843,12 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       }, BATTERY_RETRY_DELAY_MS);
       return true;
     } catch (error) {
+      console.error("[LI-FANG Cube] Connection failed", error);
       await disconnectCube();
       setConnectionState("error");
       setConnectionInfo({
         ...EMPTY_INFO,
-        error: `${errorMessage(error)}。请确认魔方已开机、靠近电脑，并重新连接。`,
+        error: errorMessage(error),
       });
       showConnectionPrompt();
       return false;

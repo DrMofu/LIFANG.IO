@@ -9,6 +9,7 @@ import { useLanguage } from "@/components/language-provider";
 import { ConnectionEnvironment } from "@/components/connection-environment";
 import type { MessageKey } from "@/lib/i18n-messages";
 import { isSmartCubeBrandId } from "@/lib/smart-cube-connection";
+import { classifyCubeConnectionError } from "@/lib/cube-connection-error";
 import { useClientReady } from "@/lib/client-ready";
 import settings from "@/settings.json";
 
@@ -285,6 +286,7 @@ export function CompactConnectButton() {
 
   const connected = connectionState === "connected";
   const connecting = connectionState === "connecting";
+  const failure = connectionInfo.error ? classifyCubeConnectionError(connectionInfo.error) : null;
   const label = connected
     ? connectionInfo.deviceName
     : connecting
@@ -393,18 +395,33 @@ export function CompactConnectButton() {
               </div>
               <div>
                 <div className="top-connect-prompt-title" id="top-connect-prompt-title">
-                  {t("connection.pairingTitle")}
+                  {t(failure ? "connection.failure.title" : "connection.pairingTitle")}
                 </div>
-                <div className="top-connect-prompt-intro">
+                {!failure && <div className="top-connect-prompt-intro">
                   {t(connecting ? "connection.pairingConnectingIntro" : "connection.pairingIntro")}
-                </div>
+                </div>}
               </div>
             </div>
-            <ol className="top-connect-prompt-steps">
+            {failure ? (
+              <div className="top-connect-error" role="alert">
+                <strong>{t(`connection.failure.${failure}`)}</strong>
+                <p>{t(`connection.failure.${failure}Help`)}</p>
+                {failure === "mac" && (
+                  <>
+                    <code>chrome://flags/#enable-experimental-web-platform-features</code>
+                    <p>{t("connection.failure.chromeFlagsHelp")}</p>
+                  </>
+                )}
+                <details>
+                  <summary>{t("connection.failure.details")}</summary>
+                  <pre>{connectionInfo.error}</pre>
+                </details>
+              </div>
+            ) : <ol className="top-connect-prompt-steps">
               <li>{t("connection.pairingStepWake")}</li>
               <li>{t("connection.pairingStepSelect")}</li>
               <li>{t("connection.pairingStepWait")}</li>
-            </ol>
+            </ol>}
             <ConnectionEnvironment />
             <div className="top-connect-brand-field">
               <label htmlFor="top-connect-brand">{t("connection.cubeBrand")}</label>
@@ -442,7 +459,7 @@ export function CompactConnectButton() {
                 onClick={() => void connectRealCube(selectedCubeBrand)}
                 disabled={connecting}
               >
-                {t(connecting ? "connection.waitingForPairing" : "connection.startPairing")}
+                {t(connecting ? "connection.waitingForPairing" : failure ? "connection.failure.retry" : "connection.startPairing")}
               </button>
             </div>
           </div>
@@ -471,7 +488,6 @@ export function CompactConnectButton() {
             <TopInfoRow label={t("connection.field.clockSkew")} value={telemetry.clockSkew} />
             <TopVectorGrid label={t("connection.field.quaternion")} parts={quaternionParts} fallback={telemetry.quaternion} />
             <TopInfoRow label={t("connection.field.angularVelocity")} value={telemetry.angularVelocity} />
-            {connectionInfo.error && <div className="top-connect-error">{connectionInfo.error}</div>}
             {connected && (
               <div className="top-connect-actions">
                 <button
