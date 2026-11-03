@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { AlgorithmStepToken } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
@@ -1568,7 +1569,7 @@ function FormulaStage({
                   className="formula-top-view-svg formula-cube-svg-hero"
                 />
               ) : active.caseImage ? (
-                <img src={active.caseImage} alt="" />
+                <Image src={active.caseImage} alt="" width={96} height={96} />
               ) : displayFacelets ? (
                 <FormulaCubeImage
                   facelets={displayFacelets}
@@ -2100,7 +2101,7 @@ export function FormulasApp() {
                           className="fmr-img formula-top-view-svg"
                         />
                       ) : item.image ? (
-                        <img className="fmr-img" src={item.image} alt="" loading="lazy" />
+                        <Image className="fmr-img" src={item.image} alt="" width={48} height={48} />
                       ) : casePreviewFacelets ? (
                         <FormulaCubeImage
                           facelets={casePreviewFacelets}

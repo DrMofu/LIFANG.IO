@@ -3,6 +3,7 @@
 import { type CSSProperties, type FocusEvent, type SetStateAction, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 import { useLanguage } from "@/components/language-provider";
@@ -258,7 +259,7 @@ export function AppFooter() {
 export function BrandMark() {
   return (
     <div className="brand-mark" aria-hidden="true">
-      <img src="/li-fang-logo.png" alt="" />
+      <Image src="/li-fang-logo.png" alt="" width={32} height={32} />
     </div>
   );
 }
@@ -439,7 +440,7 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
             </button>
             <div className="top-connect-prompt-head">
               <div className="top-connect-prompt-visual" aria-hidden="true">
-                <img src="/li-fang-logo.png" alt="" />
+                <Image src="/li-fang-logo.png" alt="" width={42} height={42} />
               </div>
               <div>
                 <div className="top-connect-prompt-title" id="top-connect-prompt-title">

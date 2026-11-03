@@ -394,6 +394,8 @@ export function FormulaTopViewImage({ facelets: rawFacelets, faceColors, classNa
   );
 
   return (
+    // Canvas 生成的 data URL 已在本地缓存，无需经过 Next.js 图片优化服务。
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       className={className}
       src={src || TOP_VIEW_PLACEHOLDER_SRC}

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import banner from "../../public/banner.png";
 import { AppFooter, CompactConnectButton, NavIcon } from "@/components/app-shell";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection, type CubeVisualState } from "@/components/cube-connection-provider";
@@ -110,7 +112,7 @@ export function HomeLandingApp() {
         <section className="home-hero" aria-labelledby="home-title">
           <div className="home-copy">
             <h1 id="home-title">
-              <img className="home-banner" src="/banner.png" alt={t("brand.name")} />
+              <Image className="home-banner" src={banner} alt={t("brand.name")} sizes="(max-width: 760px) 100vw, 510px" preload />
             </h1>
             <nav className="home-nav topnav" aria-label={t("home.navigation")}>
               {HOME_NAV.map((item) => (
