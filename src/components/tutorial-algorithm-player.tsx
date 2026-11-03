@@ -9,19 +9,27 @@ import {
 } from "@/lib/algorithms";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
 import { mountSmartCube, type SmartCubeApi } from "@/lib/smart-cube";
+import { useTutorialVisibility } from "@/lib/use-tutorial-visibility";
 
 const MOVE_DURATION_MS = 520;
 
-function waitForAnimation(api: SmartCubeApi) {
+function waitForAnimation(api: SmartCubeApi, signal: AbortSignal) {
   return new Promise<void>((resolve) => {
+    let frame = 0;
+    function finish() {
+      window.cancelAnimationFrame(frame);
+      signal.removeEventListener("abort", finish);
+      resolve();
+    }
     function check() {
-      if (!api.isAnimating() && api.queueLength() === 0) {
-        resolve();
+      if (signal.aborted || (!api.isAnimating() && api.queueLength() === 0)) {
+        finish();
         return;
       }
-      window.requestAnimationFrame(check);
+      frame = window.requestAnimationFrame(check);
     }
-    window.requestAnimationFrame(check);
+    signal.addEventListener("abort", finish, { once: true });
+    check();
   });
 }
 
@@ -36,6 +44,9 @@ export function TutorialAlgorithmPlayer({
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<SmartCubeApi | null>(null);
+  const animationWaitRef = useRef<AbortController | null>(null);
+  const [cubeApi, setCubeApi] = useState<SmartCubeApi | null>(null);
+  const { shouldMount, active } = useTutorialVisibility(mountRef);
   const actionIdRef = useRef(0);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState(0);
@@ -55,7 +66,7 @@ export function TutorialAlgorithmPlayer({
 
   useEffect(() => {
     const container = mountRef.current;
-    if (!container) return;
+    if (!container || !shouldMount) return;
 
     const api = mountSmartCube(container, {
       faceColors,
@@ -72,11 +83,14 @@ export function TutorialAlgorithmPlayer({
       onFirstRender: () => setReady(true),
     });
     apiRef.current = api;
+    setCubeApi(api);
 
     return () => {
       actionIdRef.current += 1;
+      animationWaitRef.current?.abort();
       api.dispose();
       if (apiRef.current === api) apiRef.current = null;
+      setCubeApi((current) => current === api ? null : current);
       setReady(false);
     };
   }, [
@@ -86,11 +100,16 @@ export function TutorialAlgorithmPlayer({
     orientation,
     renderMaxFps,
     setupMoves,
+    shouldMount,
   ]);
 
   useEffect(() => {
+    cubeApi?.setRenderingPaused(!active);
+  }, [active, cubeApi]);
+
+  useEffect(() => {
     apiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
-  }, [backFaceProjectionDistance]);
+  }, [backFaceProjectionDistance, cubeApi]);
 
   function prepareCase(api: SmartCubeApi) {
     api.reset();
@@ -103,14 +122,19 @@ export function TutorialAlgorithmPlayer({
     const api = apiRef.current;
     if (!api) return;
     actionIdRef.current += 1;
+    animationWaitRef.current?.abort();
     setPlaying(false);
     prepareCase(api);
   }
 
   async function playMove(api: SmartCubeApi, move: string) {
+    const controller = new AbortController();
+    animationWaitRef.current?.abort();
+    animationWaitRef.current = controller;
     api.setHintMove(move);
     api.applyMoves(expandMoveNotation(move), MOVE_DURATION_MS);
-    await waitForAnimation(api);
+    await waitForAnimation(api, controller.signal);
+    if (animationWaitRef.current === controller) animationWaitRef.current = null;
   }
 
   async function playAll() {

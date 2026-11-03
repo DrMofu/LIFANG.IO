@@ -7,6 +7,7 @@ import { useLanguage } from "@/components/language-provider";
 import { expandMoveNotation, parseMoveNotation } from "@/lib/algorithms";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
 import { mountSmartCube, type SmartCubeApi } from "@/lib/smart-cube";
+import { useTutorialVisibility } from "@/lib/use-tutorial-visibility";
 
 const MOVE_DURATION_MS = 1000;
 const SOLVED_HOLD_MS = 500;
@@ -15,6 +16,7 @@ const MOVED_HOLD_MS = 1500;
 export function TutorialCubePlayground() {
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
+  const { shouldMount, active } = useTutorialVisibility(cubeMountRef);
   const [cubeApi, setCubeApi] = useState<SmartCubeApi | null>(null);
   const [selectedMove, setSelectedMove] = useState<string | null>(null);
   const { locale } = useLanguage();
@@ -61,14 +63,13 @@ export function TutorialCubePlayground() {
 
   useEffect(() => {
     const container = cubeMountRef.current;
-    if (!container) return;
+    if (!container || !shouldMount) return;
 
     const api = mountSmartCube(container, {
       faceColors,
       orientation,
       maxFps: renderMaxFps,
       showBackFaceProjection: backFaceProjectionEnabled,
-      backFaceProjectionDistance,
       defaultDisplayState: CUBE_CAMERA_PRESETS.formulas.displayState,
       wheelZoomEnabled: false,
     });
@@ -85,14 +86,19 @@ export function TutorialCubePlayground() {
     faceColors,
     orientation,
     renderMaxFps,
+    shouldMount,
   ]);
 
   useEffect(() => {
-    cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
-  }, [backFaceProjectionDistance]);
+    cubeApi?.setRenderingPaused(!active);
+  }, [active, cubeApi]);
 
   useEffect(() => {
-    if (!cubeApi) return;
+    cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
+  }, [backFaceProjectionDistance, cubeApi]);
+
+  useEffect(() => {
+    if (!cubeApi || !active) return;
     const api = cubeApi;
 
     let timerId: number | null = null;
@@ -137,7 +143,7 @@ export function TutorialCubePlayground() {
       clearTimer();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [cubeApi, selectedMove]);
+  }, [active, cubeApi, selectedMove]);
 
   function selectMove(move: string) {
     const parsed = parseMoveNotation(move);

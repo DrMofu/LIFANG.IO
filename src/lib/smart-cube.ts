@@ -54,6 +54,7 @@ export type SmartCubeApi = {
   resetDisplayOrientation(): void;
   getDisplayState(): CubeDisplayState;
   setInteractionLocked(locked: boolean): void;
+  setRenderingPaused(paused: boolean): void;
   setLowerLayerDimmed(dimmed: boolean): void;
   setTransparentFormulaFacelets(enabled: boolean): void;
   setBackFaceProjectionDistance(distance: number): void;
@@ -801,6 +802,7 @@ export function mountSmartCube(
   let frameTimeoutId = 0;
   let frameScheduled = false;
   let disposed = false;
+  let renderingPaused = false;
   let firstRenderPending = true;
   let dragging = false;
   const pointerPositions = new Map<number, { x: number; y: number }>();
@@ -1089,7 +1091,7 @@ export function mountSmartCube(
   }
 
   function scheduleRender(delayMs = 0) {
-    if (disposed || frameScheduled) return;
+    if (disposed || renderingPaused || frameScheduled) return;
     frameScheduled = true;
 
     if (delayMs > 0) {
@@ -1357,7 +1359,7 @@ export function mountSmartCube(
   function loop(now: number) {
     frameId = 0;
     frameScheduled = false;
-    if (disposed) return;
+    if (disposed || renderingPaused) return;
 
     const frameElapsedMs = now - lastFrameTime;
     if (targetFrameMs > 0 && frameElapsedMs < targetFrameMs) {
@@ -1409,7 +1411,7 @@ export function mountSmartCube(
   }
 
   function handleVisibilityChange() {
-    if (disposed || document.visibilityState !== "visible") return;
+    if (disposed || renderingPaused || document.visibilityState !== "visible") return;
     flushMoveQueueImmediately();
     lastFrameTime = performance.now();
     updateProjectionBorderVisibility();
@@ -1514,6 +1516,21 @@ export function mountSmartCube(
         cameraLatitude,
         cameraLongitude,
       };
+    },
+    setRenderingPaused(paused) {
+      if (disposed || renderingPaused === paused) return;
+      renderingPaused = paused;
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(frameTimeoutId);
+      frameId = 0;
+      frameTimeoutId = 0;
+      frameScheduled = false;
+      if (!paused) {
+        const now = performance.now();
+        lastFrameTime = now;
+        if (current) current.lastUpdateTime = now;
+        requestRender();
+      }
     },
     setInteractionLocked(locked) {
       if (interactionLocked === locked) return;
