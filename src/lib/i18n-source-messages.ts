@@ -1,5 +1,10 @@
 // Source-text keys keep the initial migration compact. New copy should prefer semantic keys.
 export const englishSourceMessages: Record<string, string> = {
+  "结束测试": "End test",
+  "本组测试已结束": "Test ended",
+  "本局加载失败，请重试本局": "Could not load this round. Please retry.",
+  "转动处理失败，请重试本局": "Could not process the move. Please retry this round.",
+  "重试本局": "Retry round",
   "全部": "All",
   "100天": "100 days",
   "30天": "30 days",

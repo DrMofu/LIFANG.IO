@@ -53,7 +53,7 @@ import {
   mountSmartCube,
 } from "@/lib/smart-cube";
 
-type TrainerState = "idle" | "loading" | "observe" | "solving" | "cancelled" | "done" | "error";
+type TrainerState = "idle" | "loading" | "observe" | "solving" | "cancelled" | "ended" | "done" | "error";
 type FormulaHintStepStatus = "pending" | "partial" | "correct";
 type TrainerSpecialty = CfopTrainerPhase | "turn-recognition";
 
@@ -406,6 +406,7 @@ function CfopTrainerClient() {
 
   const [selectedPhase, setSelectedPhase] = useState<TrainerSpecialty>(readStoredTrainerPhase);
   const [state, setState] = useState<TrainerState>("idle");
+  const [trainerError, setTrainerError] = useState<string | null>(null);
   const [observeMs, setObserveMs] = useState(0);
   const [solveMs, setSolveMs] = useState(0);
   const [timerKind, setTimerKind] = useState<"observe" | "solve">("solve");
@@ -485,6 +486,7 @@ function CfopTrainerClient() {
   );
 
   const updateTrainerState = useCallback((next: TrainerState) => {
+    if (next !== "error") setTrainerError(null);
     stateRef.current = next;
     setState(next);
   }, []);
@@ -874,6 +876,18 @@ function CfopTrainerClient() {
     }
   }, [sessionRoundLimit, updateTrainerState]);
 
+  const endTraining = useCallback(() => {
+    if (!sessionInProgress) return;
+    runIdRef.current += 1;
+    clearAutoNextTimer();
+    flushVisualPendingMove();
+    const now = performance.now();
+    if (stateRef.current === "observe") setObserveMs(Math.max(0, now - observeStartRef.current));
+    if (stateRef.current === "solving") setSolveMs(Math.max(0, now - solveStartRef.current));
+    updateTrainerState("ended");
+    setSessionInProgress(false);
+  }, [clearAutoNextTimer, flushVisualPendingMove, sessionInProgress, updateTrainerState]);
+
   const finishRun = useCallback((facelets: string) => {
     completeRound({
       observeMs: Math.max(0, solveStartRef.current - observeStartRef.current),
@@ -1066,8 +1080,10 @@ function CfopTrainerClient() {
       resetFormulaHint(parseAlgorithm(nextScenario.sourceAlgo));
       renderTrainerCubeFacelets(nextScenario.startFacelets);
       enterObserve();
-    } catch {
-      if (runIdRef.current !== runId) return;
+    } catch (error) {
+      if (!mountedRef.current || runIdRef.current !== runId) return;
+      console.error("Failed to prepare trainer round", error);
+      setTrainerError("本局加载失败，请重试本局");
       updateTrainerState("error");
     }
   }, [enterObserve, formulaRotationVariants, selectedCaseIds, renderTrainerCubeFacelets, resetFormulaHint, updateTrainerState]);
@@ -1077,6 +1093,14 @@ function CfopTrainerClient() {
     if (!isFormulaTrainerPhase(phase)) return;
     await beginFormulaScenario(phase, runId);
   }, [beginFormulaScenario]);
+
+  const retryTrainerRound = useCallback(() => {
+    if (!sessionInProgress || !connected || stateRef.current !== "error") return;
+    runIdRef.current += 1;
+    clearVisualPendingTimer();
+    visualPendingMoveRef.current = null;
+    void beginTrainerRound(runIdRef.current);
+  }, [beginTrainerRound, clearVisualPendingTimer, connected, sessionInProgress]);
 
   const beginRecognitionTraining = useCallback(() => {
     const now = performance.now();
@@ -1200,8 +1224,10 @@ function CfopTrainerClient() {
         return;
       }
 
+      const runId = runIdRef.current;
       moveQueueRef.current = moveQueueRef.current
         .then(async () => {
+          if (runIdRef.current !== runId) return;
           const currentState = stateRef.current;
           if (selectedPhaseRef.current === "turn-recognition") return;
           if (currentState === "observe") {
@@ -1214,7 +1240,10 @@ function CfopTrainerClient() {
             await processSolveMove(actual);
           }
         })
-        .catch(() => {
+        .catch((error) => {
+          if (!mountedRef.current || runIdRef.current !== runId) return;
+          console.error("Failed to process trainer move", error);
+          setTrainerError("转动处理失败，请重试本局");
           updateTrainerState("error");
         });
     },
@@ -1387,11 +1416,15 @@ function CfopTrainerClient() {
               ) : !isRecognitionSpecialty ? (
                 <div className={`timer timer-${state}`}>
                   <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
-                  <div className="t-phase">
-                    {autoNextPending
+                  <div className="t-phase" role={state === "error" ? "alert" : undefined}>
+                    {state === "error"
+                    ? t(trainerError ?? "本局加载失败，请重试本局")
+                    : autoNextPending
                     ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
                     : state === "cancelled"
                     ? t("本组已取消")
+                    : state === "ended"
+                    ? t("本组测试已结束")
                     : timerKind === "observe"
                       ? t("观察 / 反应计时")
                       : state === "solving"
@@ -1415,14 +1448,33 @@ function CfopTrainerClient() {
                     ? isRecognitionSpecialty ? t("结束 · 按 SPACE") : t("取消 · 按 SPACE")
                     : connected ? t("开始 · 按 SPACE") : t("连接智能魔方")}</span>
                 </button>
-                {!isRecognitionSpecialty && roundInProgress && (
+                {!isRecognitionSpecialty && sessionInProgress && state === "error" && (
                   <button
-                    className="practice-btn practice-btn-ghost trainer-abandon-btn"
+                    className="practice-btn practice-btn-ghost"
                     type="button"
-                    onClick={abandonRound}
+                    onClick={retryTrainerRound}
+                    disabled={!connected || connecting}
                   >
-                    <span>{t("放弃本局")}</span>
+                    <span>{t("重试本局")}</span>
                   </button>
+                )}
+                {!isRecognitionSpecialty && roundInProgress && (
+                  <div className="trainer-round-actions">
+                    <button
+                      className="practice-btn practice-btn-ghost trainer-abandon-btn"
+                      type="button"
+                      onClick={abandonRound}
+                    >
+                      <span>{t("放弃本局")}</span>
+                    </button>
+                    <button
+                      className="practice-btn practice-btn-ghost"
+                      type="button"
+                      onClick={endTraining}
+                    >
+                      <span>{t("结束测试")}</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

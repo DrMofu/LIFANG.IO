@@ -120,11 +120,17 @@
   position: relative;
 }
 
-.trainer-focus-app .trainer-abandon-btn {
+.trainer-focus-app .trainer-round-actions {
   position: absolute;
   top: 0;
   left: calc(100% + 8px);
-  width: 82px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 172px;
+}
+
+.trainer-focus-app .trainer-abandon-btn {
   border-color: rgba(229, 88, 88, 0.28);
   box-shadow: none;
   color: #c74343;
@@ -265,16 +271,14 @@
   }
 }
 
+@media (max-width: 1320px) {
+  .trainer-focus-app .trainer-round-actions {
+    position: static;
+    width: 100%;
+  }
+}
+
 @media (max-width: 420px) {
-  .trainer-focus-app .trainer-timer-controls {
-    width: 176px;
-  }
-
-  .trainer-focus-app .trainer-abandon-btn {
-    left: calc(100% + 6px);
-    width: 64px;
-  }
-
   .trainer-focus-app .trainer-stage-tools {
     grid-template-columns: 1fr;
   }

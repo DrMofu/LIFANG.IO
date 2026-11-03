@@ -1,3 +1,8 @@
+## v0.2.0 (working)
+
+BUG FIXES:
+- 修复专项练习时会突然中断的BUG
+
 ## v0.1.8 (26.11.01)
 
 IMPROVEMENTS:

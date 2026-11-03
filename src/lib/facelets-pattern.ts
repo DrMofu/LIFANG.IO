@@ -194,15 +194,20 @@ export function patternToFacelets(patternData: KPatternData) {
   return stickersToFacelets(stickers);
 }
 
+function toPuzzleMove(move: string) {
+  // Half-turn direction is useful for display, but cubing expects R2 rather than R'2.
+  return move.replace(/^([URFDLBMESurfdlbxyz])(?:'2|2')$/, "$12");
+}
+
 export async function applyMoveToFacelets(facelets: string, move: string) {
   const pattern = await faceletsToPattern(facelets);
-  return patternToFacelets(pattern.applyMove(move).patternData);
+  return patternToFacelets(pattern.applyMove(toPuzzleMove(move)).patternData);
 }
 
 export async function applyMovesToFacelets(facelets: string, moves: string[]) {
   let pattern = await faceletsToPattern(facelets);
   moves.forEach((move) => {
-    pattern = pattern.applyMove(move);
+    pattern = pattern.applyMove(toPuzzleMove(move));
   });
   return patternToFacelets(pattern.patternData);
 }
@@ -237,7 +242,7 @@ export async function applyMovesToFormulaFacelets(facelets: string, moves: strin
     },
   });
   moves.forEach((move) => {
-    pattern = pattern.applyMove(move);
+    pattern = pattern.applyMove(toPuzzleMove(move));
   });
 
   const sourceStickers = formulaStickersWithoutCenters(facelets);
