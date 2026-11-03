@@ -1,5 +1,8 @@
 // Source-text keys keep the initial migration compact. New copy should prefer semantic keys.
 export const englishSourceMessages: Record<string, string> = {
+  "选公式": "Choose formula",
+  "切换公式": "Switch formula",
+  "关闭公式菜单": "Close formula menu",
   "结束测试": "End test",
   "本组测试已结束": "Test ended",
   "本局加载失败，请重试本局": "Could not load this round. Please retry.",

@@ -210,6 +210,8 @@ export function SettingsApp() {
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
       initialDisplayState: cubeDisplayStateRef.current,
+      wheelZoomEnabled: false,
+      pinchZoomEnabled: false,
       onDisplayOrientationChange: () => {
         if (cubeApiRef.current) cubeDisplayStateRef.current = cubeApiRef.current.getDisplayState();
       },

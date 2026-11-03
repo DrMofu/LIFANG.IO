@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AlgorithmStepToken } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
@@ -759,6 +760,8 @@ function FormulaStage({
   learningStatus,
   onLearningStatusChange,
   averageSettings,
+  formulaPickerOpen,
+  onChooseFormula,
 }: {
   active: FormulaVariantItem;
   shouldSolveToReset: boolean;
@@ -766,6 +769,8 @@ function FormulaStage({
   learningStatus: LearningStatus;
   onLearningStatusChange(status: LearningStatus): void;
   averageSettings: AverageTimeSettings;
+  formulaPickerOpen: boolean;
+  onChooseFormula(): void;
 }) {
   const { t } = useLanguage();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
@@ -1586,6 +1591,14 @@ function FormulaStage({
                   <span>{formulaTitle}</span>
                 </h2>
                 <b>{displayedMoveCount} MOVES</b>
+                <button
+                  type="button"
+                  className="ghost-link fm-mobile-choose"
+                  aria-haspopup="dialog"
+                  aria-controls="fm-mobile-library"
+                  aria-expanded={formulaPickerOpen}
+                  onClick={onChooseFormula}
+                >{t("切换公式")}</button>
               </div>
               <div className="formula-hero-tags" aria-label={t("公式信息")}>
                 <div
@@ -1747,6 +1760,49 @@ function FormulaStage({
   );
 }
 
+const MOBILE_FORMULA_QUERY = "(max-width: 560px)";
+const isMobileFormulaLayout = () => window.matchMedia(MOBILE_FORMULA_QUERY).matches;
+const serverMobileFormulaLayout = () => false;
+
+function FormulaPicker({ mobile, open, onClose, children }: {
+  mobile: boolean;
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!mobile || !open || !dialog) return;
+    const overflow = document.body.style.overflow;
+    const previousFocus = document.activeElement;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = overflow;
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
+    };
+  }, [mobile, open]);
+
+  if (!mobile) return children;
+  return createPortal(
+    <dialog
+      ref={dialogRef}
+      id="fm-mobile-library"
+      className="lf-tech-app fm-library-dialog"
+      aria-labelledby="fm-library-title"
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      {children}
+    </dialog>,
+    document.body,
+  );
+}
+
 export function FormulasApp() {
   const { t } = useLanguage();
   const { orientation, faceColors } = useCubeAppearance();
@@ -1766,6 +1822,18 @@ export function FormulasApp() {
   const [expandedCaseIds, setExpandedCaseIds] = useState<Set<string>>(() => new Set());
   const [archiveDataReady, setArchiveDataReady] = useState(false);
   const [archiveRefreshKey, setArchiveRefreshKey] = useState(0);
+  const [mobileLibraryOpen, setMobileLibraryOpen] = useState(false);
+  const subscribeMobileLayout = useCallback((onChange: () => void) => {
+    const query = window.matchMedia(MOBILE_FORMULA_QUERY);
+    const handleChange = () => {
+      setFormulaTip(null);
+      if (!query.matches) setMobileLibraryOpen(false);
+      onChange();
+    };
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+  const isMobile = useSyncExternalStore(subscribeMobileLayout, isMobileFormulaLayout, serverMobileFormulaLayout);
   const keyboardSelectionRef = useRef(false);
   const formulaCases = useMemo(
     () =>
@@ -1860,7 +1928,7 @@ export function FormulasApp() {
           }))
           .filter((item) => item.variants.length > 0);
     const firstVariant = nextItems[0]?.variants[0];
-    if (firstVariant) {
+    if (firstVariant && !isMobile) {
       setActiveKey(firstVariant.key);
       const firstCase = nextItems[0];
       if (firstCase && caseUsesVariantList(firstCase)) {
@@ -1916,7 +1984,9 @@ export function FormulasApp() {
 
   const visibleFormulaVariants = useMemo(() => items.flatMap((item) => item.variants), [items]);
 
-  const active = isFavoritesView
+  const active = isMobile
+    ? findVariantByKey(formulaCases, activeKey) || formulaCases[0]?.variants[0] || null
+    : isFavoritesView
     ? findVariantByKey(favoriteCases, activeKey) || favoriteCases[0]?.variants[0] || null
     : findVariantByKey(categoryCases, activeKey) || categoryCases[0]?.variants[0] || null;
   const resolvedActiveKey = active?.key ?? activeKey;
@@ -1926,6 +1996,7 @@ export function FormulasApp() {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (isMobile) return;
       const direction = getFormulaNavigationDirection(event);
       if (direction === 0) return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -1957,7 +2028,7 @@ export function FormulasApp() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [items, resolvedActiveKey, visibleFormulaVariants]);
+  }, [isMobile, items, resolvedActiveKey, visibleFormulaVariants]);
 
   useEffect(() => {
     if (!keyboardSelectionRef.current) return;
@@ -1988,6 +2059,11 @@ export function FormulasApp() {
   }
 
   function selectCase(item: FormulaCaseItem) {
+    if (isMobile) {
+      if (item.variants.length > 1) toggleCaseExpanded(item.id);
+      else if (item.variants[0]) selectVariant(item.variants[0].key);
+      return;
+    }
     if (!caseHasVariantKey(item, resolvedActiveKey)) {
       const firstVariant = item.variants[0];
       if (firstVariant) setActiveKey(firstVariant.key);
@@ -1995,7 +2071,16 @@ export function FormulasApp() {
     if (caseUsesVariantList(item)) toggleCaseExpanded(item.id);
   }
 
+  function selectVariant(key: string) {
+    setActiveKey(key);
+    if (isMobile) {
+      setMobileLibraryOpen(false);
+      setFormulaTip(null);
+    }
+  }
+
   function showFormulaTip(target: HTMLElement, title: string, sourceName: string, variants: FormulaVariantItem[]) {
+    if (isMobile) return;
     if (variants.length === 0) return;
     const rect = target.getBoundingClientRect();
     const tipWidth = Math.min(360, window.innerWidth - 32);
@@ -2015,7 +2100,12 @@ export function FormulasApp() {
       <AppTopbar />
 
       <main className="fm-grid">
+        <FormulaPicker mobile={isMobile} open={mobileLibraryOpen} onClose={() => setMobileLibraryOpen(false)}>
         <section className="fm-left practice-card">
+          <header className="fm-mobile-library-head">
+            <h2 id="fm-library-title" className="ui-section-title">{t("切换公式")}</h2>
+            <button className="ghost-link" type="button" aria-label={t("关闭公式菜单")} onClick={() => setMobileLibraryOpen(false)}>×</button>
+          </header>
           <div className="fm-category-tabs" aria-label={t("公式类别")}>
             {Object.entries(FORMULAS).map(([key, value]) => (
               <button
@@ -2069,7 +2159,7 @@ export function FormulasApp() {
                 items.map((item) => {
                 const caseActive = item.variants.some((variant) => variant.key === resolvedActiveKey);
                 const totalVariantCount = getTotalVariantCount(item);
-                const usesVariantList = caseUsesVariantList(item);
+                const usesVariantList = isMobile ? item.variants.length > 1 : caseUsesVariantList(item);
                 const caseExpanded = usesVariantList && expandedCaseIds.has(item.id);
                 const summary = usesVariantList ? null : formatListStats(getCaseStats(item, formulaStats), averageSettings);
                 const itemLearningStatus = getLearningStatus(learningStatuses, item.variants[0]?.key ?? item.id);
@@ -2182,7 +2272,7 @@ export function FormulasApp() {
                               key={variant.key}
                               data-formula-key={variant.key}
                               className={`fm-variant-row${variantActive ? " active" : ""}`}
-                              onClick={() => setActiveKey(variant.key)}
+                              onClick={() => selectVariant(variant.key)}
                               onBlur={() => setFormulaTip(null)}
                               onFocus={(event) => showFormulaTip(event.currentTarget, `${variant.caseName} · ${variant.name}`, variant.sourceName, [variant])}
                               onMouseEnter={(event) => showFormulaTip(event.currentTarget, `${variant.caseName} · ${variant.name}`, variant.sourceName, [variant])}
@@ -2190,7 +2280,7 @@ export function FormulasApp() {
                               onKeyDown={(event) => {
                                 if (event.key !== "Enter" && event.key !== " ") return;
                                 event.preventDefault();
-                                setActiveKey(variant.key);
+                                selectVariant(variant.key);
                               }}
                               tabIndex={0}
                             >
@@ -2228,6 +2318,7 @@ export function FormulasApp() {
             </div>
           </div>
         </section>
+        </FormulaPicker>
 
         <section className="fm-right">
           {active ? (
@@ -2241,6 +2332,8 @@ export function FormulasApp() {
                   learningStatus={activeLearningStatus}
                   onLearningStatusChange={(status) => setFormulaLearningStatus(active.key, status)}
                   averageSettings={averageSettings}
+                  formulaPickerOpen={mobileLibraryOpen}
+                  onChooseFormula={() => { setFormulaTip(null); setMobileLibraryOpen(true); }}
                 />
               </div>
             </>

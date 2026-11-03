@@ -595,6 +595,7 @@ export type SmartCubeOptions = {
   compensateInitialGyroOffset?: boolean;
   interactionLocked?: boolean;
   wheelZoomEnabled?: boolean;
+  pinchZoomEnabled?: boolean;
   /** Reserve the canvas edges for page scrolling. */
   compactGestureRegion?: boolean;
   preserveDrawingBuffer?: boolean;
@@ -653,6 +654,7 @@ export function mountSmartCube(
     : 0;
   const compensateInitialGyroOffset = options.compensateInitialGyroOffset ?? true;
   const wheelZoomEnabled = options.wheelZoomEnabled ?? true;
+  const pinchZoomEnabled = options.pinchZoomEnabled ?? true;
   const animateHintArrow = options.animateHintArrow ?? true;
   const minCameraDistance = Math.max(
     0.1,
@@ -1305,7 +1307,7 @@ export function mountSmartCube(
 
     if (pointerPositions.size >= 2) {
       const nextPinchDistance = getPinchDistance();
-      if (pinchDistance > 0 && nextPinchDistance > 0) {
+      if (pinchZoomEnabled && pinchDistance > 0 && nextPinchDistance > 0) {
         const nextDistance = cameraDistance * (pinchDistance / nextPinchDistance);
         if (applyCameraDistance(nextDistance)) onDisplayOrientationChange?.();
       }

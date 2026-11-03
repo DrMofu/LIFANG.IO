@@ -921,7 +921,7 @@ export function StatsApp() {
     const svg = dailyLevelChartRef.current;
     if (!svg) return;
     const updateWidth = () => {
-      const nextWidth = Math.max(320, Math.round(svg.getBoundingClientRect().width));
+      const nextWidth = Math.max(1, Math.round(svg.getBoundingClientRect().width));
       setDailyLevelChartWidth((current) => current === nextWidth ? current : nextWidth);
     };
     updateWidth();
@@ -1263,8 +1263,8 @@ export function StatsApp() {
   };
 
   const renderDailyLevelChart = () => {
-    const W = dailyLevelChartWidth, H = 262;
-    const padLeft = 48, padRight = 20, padTop = 16, padBot = 32;
+    const W = dailyLevelChartWidth, H = W <= 526 ? 236 : 262;
+    const padLeft = W <= 526 ? 36 : 48, padRight = W <= 526 ? 16 : 20, padTop = 16, padBot = 32;
     const { entries, points, min, max } = dailyLevelTrend;
 
     if (points.length === 0) return <div className="chart-empty">{t("暂无每日测试数据")}</div>;
