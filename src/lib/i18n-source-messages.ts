@@ -388,7 +388,7 @@ export const englishSourceMessages: Record<string, string> = {
   "重新发送验证码": "Resend code",
   "发送验证码": "Send code",
   "登录": "Sign in",
-  "未登录时继续使用本地数据；登录后可手动上传或恢复云端快照。": "Local data remains available while signed out. Sign in to upload or restore cloud snapshots manually.",
+  "登录后可将本地数据上传到云端或从云端恢复。": "Sign in to upload local data to the cloud or restore it from the cloud.",
   "存档管理": "Archive management",
   "当前存档统计": "Current archive statistics",
   "条复原": "solves",

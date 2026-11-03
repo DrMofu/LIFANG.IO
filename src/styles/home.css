@@ -236,11 +236,6 @@
 }
 
 @media (max-width: 560px) {
-  .home-actions {
-    align-items: center;
-    flex-direction: column;
-  }
-
   .home-cube-stage {
     min-height: 430px;
   }

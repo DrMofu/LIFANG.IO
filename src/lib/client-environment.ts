@@ -19,6 +19,7 @@ export async function detectClientEnvironment(): Promise<ClientEnvironment> {
     : hints?.platform || (/Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows"
       : /Macintosh/.test(ua) ? "macOS" : /CrOS/.test(ua) ? "ChromeOS" : /Linux/.test(ua) ? "Linux" : "");
   const browserPatterns: [string, RegExp][] = [
+    ["Bluefy", /\bBluefy(?:\/([\d.]+))?\b/i],
     ["Edge", /(?:EdgA|EdgiOS|Edg)\/([\d.]+)/],
     ["Opera", /(?:OPR|OPiOS)\/([\d.]+)/],
     ["Samsung Internet", /SamsungBrowser\/([\d.]+)/],
@@ -27,10 +28,11 @@ export async function detectClientEnvironment(): Promise<ClientEnvironment> {
     ["Safari", /Version\/([\d.]+).*Safari/],
   ];
   const match = browserPatterns.find(([, pattern]) => pattern.test(ua));
-  let browser = match ? `${match[0]} ${ua.match(match[1])![1].split(".")[0]}` : "";
+  const browserVersion = match ? ua.match(match[1])?.[1]?.split(".")[0] : undefined;
+  let browser = match ? `${match[0]}${browserVersion ? ` ${browserVersion}` : ""}` : "";
   const brand = hints?.brands.find(({ brand }) => !/Chromium|Not/i.test(brand))
     ?? hints?.brands.find(({ brand }) => brand === "Chromium");
-  if (brand) browser = `${brand.brand} ${brand.version}`;
+  if (brand && match?.[0] !== "Bluefy") browser = `${brand.brand} ${brand.version}`;
 
   let status: ClientEnvironment["status"] = !window.isSecureContext ? "insecure"
     : typeof navigator.bluetooth?.requestDevice !== "function" ? "unsupported" : "supported";

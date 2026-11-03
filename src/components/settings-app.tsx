@@ -996,7 +996,7 @@ export function SettingsApp() {
                     {authStatusMessage.text}
                   </div>
                 )}
-                <div className="settings-data-note">{t("未登录时继续使用本地数据；登录后可手动上传或恢复云端快照。")}</div>
+                <div className="settings-data-note">{t("登录后可将本地数据上传到云端或从云端恢复。")}</div>
               </>
             )}
           </div>

@@ -23,7 +23,10 @@ export function ConnectionEnvironment() {
     };
   }, []);
 
-  const status = environment?.status ?? "checking";
+  const needsBluefy = environment !== null
+    && (environment.os === "iOS" || environment.os === "iPadOS")
+    && !/^Bluefy\b/i.test(environment.browser);
+  const status = needsBluefy ? "unsupported" : environment?.status ?? "checking";
   const needsAttention = environment !== null && status !== "supported";
 
   return (
@@ -36,7 +39,7 @@ export function ConnectionEnvironment() {
             </svg>
           )}
         </span>
-        <span>{t(`connection.environment.${status}`)}</span>
+        <span>{t(needsBluefy ? "connection.environment.bluefyRequired" : `connection.environment.${status}`)}</span>
       </p>
       {environment && (
         <details key={status} open={needsAttention}>

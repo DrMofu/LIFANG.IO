@@ -34,7 +34,7 @@
 | ChromeOS | ✅ 支持 | Chrome | - |
 | Android 6.0 及以上 | ✅ 支持 | Chrome | - |
 | Linux | ⚠️ 实验性支持 | Chrome、Chromium | 可能需要在浏览器中启用实验性 Web Platform 功能 |
-| iOS / iPadOS | ❌ 不支持 | — | 系统浏览器暂不提供本项目所需的 Web Bluetooth 支持 |
+| iOS / iPadOS | ✅ 支持 | Bluefy | iPhone、iPad 需使用 Bluefy 浏览器连接智能魔方 |
 
 ## 功能
 
@@ -47,7 +47,7 @@
 - 中英文界面与本地数据存档
 
 > [!NOTE]
-> 当前仅支持 GAN 智能魔方，建议使用支持 Web Bluetooth 的 Chromium 浏览器访问。
+> 当前仅支持 GAN 智能魔方。电脑和安卓设备建议使用支持 Web Bluetooth 的 Chromium 浏览器；iPhone、iPad 需使用 Bluefy 浏览器。
 
 ## 技术栈
 

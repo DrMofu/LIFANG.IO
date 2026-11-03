@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import banner from "../../public/banner.png";
-import { AppFooter, CompactConnectButton, NavIcon } from "@/components/app-shell";
+import { AppFooter, CompactConnectButton, LanguageToggleButton, NavIcon } from "@/components/app-shell";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection, type CubeVisualState } from "@/components/cube-connection-provider";
 import { useLanguage } from "@/components/language-provider";
@@ -125,6 +125,7 @@ export function HomeLandingApp() {
             </nav>
             <div className="home-actions">
               <CompactConnectButton tooltipAnchorSelector=".home-cube-stage" />
+              <LanguageToggleButton />
             </div>
           </div>
 

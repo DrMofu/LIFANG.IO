@@ -34,7 +34,7 @@
 | ChromeOS | ✅ Supported | Chrome | - |
 | Android 6.0 and later | ✅ Supported | Chrome | - |
 | Linux | ⚠️ Experimental support | Chrome, Chromium | Experimental Web Platform features may need to be enabled in the browser |
-| iOS / iPadOS | ❌ Not supported | — | System browsers do not currently provide the Web Bluetooth support required by this project |
+| iOS / iPadOS | ✅ Supported | Bluefy | iPhone and iPad require the Bluefy browser to connect to smart cubes |
 
 ## Features
 
@@ -47,7 +47,7 @@
 - Chinese and English interfaces with local data storage
 
 > [!NOTE]
-> Currently, only GAN smart cubes are supported. We recommend using a Chromium-based browser with Web Bluetooth support.
+> Currently, only GAN smart cubes are supported. We recommend a Chromium-based browser with Web Bluetooth support on desktop and Android devices. iPhone and iPad require the Bluefy browser.
 
 ## Tech stack
 

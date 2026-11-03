@@ -760,16 +760,14 @@
   white-space: nowrap;
 }
 
-.settings-cloud-actions {
+.settings-cloud-actions,
+.settings-data-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
 .settings-data-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
   padding-top: 14px;
   border-top: 1px solid var(--tech-line-2);
 }
@@ -1110,17 +1108,13 @@
     grid-template-columns: 1fr;
   }
 
-  .settings-color-select-grid {
-    grid-template-columns: 1fr;
-  }
-
   .settings-preview {
     min-height: 320px;
   }
 
   .settings-inline-select-row {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .settings-render-fps-segmented,
@@ -1143,27 +1137,19 @@
     padding: 16px;
   }
 
-  .settings-number-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .settings-segmented,
-  .settings-segmented-two,
-  .settings-segmented-four {
-    grid-template-columns: 1fr;
+  .settings-segmented {
+    display: flex;
+    flex-wrap: wrap;
     border-radius: 18px;
   }
 
   .settings-segment {
+    flex: 1 1 0;
+    min-width: max-content;
     border-radius: 14px;
   }
 
   .settings-archive-controls {
-    grid-template-columns: 1fr;
-  }
-
-  .settings-data-actions,
-  .settings-cloud-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
