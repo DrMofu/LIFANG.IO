@@ -3,6 +3,10 @@
   display: none;
 }
 
+.lf-tech-app .formula-hero-title > .fm-mobile-choose {
+  display: none;
+}
+
 .lf-tech-app .fm-grid {
   position: relative;
   z-index: 1;
@@ -1368,14 +1372,18 @@
 
   .lf-tech-app .fm-grid {
     display: grid;
+    width: min(100%, 820px);
     min-height: auto;
-    grid-template-columns: minmax(0, 1fr) 360px;
-    grid-template-areas:
-      "library library"
-      "stage side";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "stage" "side";
     gap: 14px;
+    margin-inline: auto;
     padding: 14px;
     overflow: visible;
+  }
+
+  .lf-tech-app .fm-grid > .fm-left {
+    display: none;
   }
 
   .lf-tech-app .fm-left,
@@ -1387,13 +1395,6 @@
     inset: auto;
   }
 
-  .lf-tech-app .fm-left {
-    grid-area: library;
-    width: auto;
-    height: min(420px, calc(100dvh - 160px));
-    min-height: 380px;
-  }
-
   .lf-tech-app .fm-right,
   .lf-tech-app .fm-detail-body {
     display: contents;
@@ -1403,53 +1404,17 @@
   .lf-tech-app .fm-stage {
     position: relative;
     grid-area: stage;
-    min-height: 590px;
+    min-height: 560px;
   }
 
   .lf-tech-app .fm-stage .cube-mount {
-    inset: 36px 0 165px;
-  }
-
-  .lf-tech-app .fm-side {
-    grid-area: side;
-    display: flex;
-    width: auto;
-    height: calc(590px + 2 * var(--formula-shadow-space));
-    min-height: 590px;
-    gap: 14px;
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
-
-  .lf-tech-app .stage-controls {
-    bottom: 24px;
-    width: min(478px, calc(100% - 28px));
-  }
-
-  .lf-tech-app .formula-stage-timer-stack {
-    bottom: 90px;
-    width: min(430px, calc(100% - 28px));
-    min-width: 0;
-  }
-}
-
-@media (max-width: 960px) {
-  .lf-tech-app .fm-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "library" "stage" "side";
-  }
-
-  .lf-tech-app .fm-left {
-    height: min(520px, calc(100dvh - 140px));
-  }
-
-  .lf-tech-app .fm-stage {
-    min-height: 560px;
+    inset: 24px 0 200px;
   }
 
   .lf-tech-app .fm-side {
     --formula-shadow-space: 0px;
-    height: auto;
+    grid-area: side;
+    width: auto;
     min-height: 0;
     gap: 10px;
     overflow: visible;
@@ -1458,29 +1423,17 @@
   .lf-tech-app .fm-side-bottom {
     min-height: 220px;
   }
-}
 
-@media (max-width: 820px) {
-  .lf-tech-app .fm-left {
-    height: min(620px, calc(100dvh - 100px));
-    min-height: 500px;
-    max-height: 620px;
+  .lf-tech-app .stage-controls {
+    bottom: 12px;
+    width: min(478px, calc(100% - 20px));
+    gap: 8px;
   }
 
-  .lf-tech-app .fm-stage {
-    min-height: 540px;
-  }
-}
-
-@media (max-width: 560px) {
-  .lf-tech-app .fm-grid {
-    grid-template-areas: "stage" "side";
-    gap: 10px;
-    padding: 10px;
-  }
-
-  .lf-tech-app .fm-grid > .fm-left {
-    display: none;
+  .lf-tech-app .formula-stage-timer-stack {
+    bottom: 118px;
+    width: min(430px, calc(100% - 20px));
+    min-width: 0;
   }
 
   .lf-tech-app .formula-hero-title {
@@ -1499,21 +1452,38 @@
     box-shadow: none;
   }
 
+  .lf-tech-app .fm-stage > .fm-mobile-choose {
+    position: absolute;
+    z-index: 8;
+    top: 14px;
+    right: 0;
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  html[lang="en"] .lf-tech-app .formula-mode-switch {
+    left: 0;
+    gap: 12px;
+    transform: none;
+  }
+
   .lf-tech-app.fm-library-dialog {
     position: fixed;
     inset: auto 0 0;
-    width: 100%;
+    width: min(720px, 100%);
     max-width: none;
     height: 90dvh;
     max-height: 90dvh;
     min-height: 0;
-    margin: 0;
+    margin: 0 auto;
     padding: 0;
     overflow: hidden;
     border: 0;
     border-radius: 24px 24px 0 0;
     background: #f8fbff;
     color: var(--tech-ink);
+    font-family: var(--sans);
   }
 
   .fm-library-dialog:not([open]) {
@@ -1581,27 +1551,84 @@
     height: 42px;
   }
 
+}
+
+@media (min-width: 701px) and (max-width: 1240px) {
+  .app.lf-tech-app {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lf-tech-app .fm-grid {
+    width: 100%;
+    min-height: 0;
+    grid-template-columns: clamp(280px, 32vw, 360px) minmax(0, 1fr);
+    grid-template-areas: "side stage";
+    overflow: hidden;
+  }
+
   .lf-tech-app .fm-stage {
-    min-height: 560px;
+    min-height: 0;
+  }
+
+  .lf-tech-app .fm-side {
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   .lf-tech-app .fm-stage .cube-mount {
-    inset: 24px 0 200px;
+    inset: 55px 0 165px;
   }
 
   .lf-tech-app .formula-stage-timer-stack {
-    bottom: 118px;
-    width: calc(100% - 20px);
+    bottom: 90px;
   }
 
-  .lf-tech-app .stage-controls {
-    bottom: 12px;
-    width: calc(100% - 20px);
-    gap: 8px;
+  .lf-tech-app .fm-stage > .fm-mobile-choose {
+    display: none;
   }
 
-  .lf-tech-app .sc-btn {
-    min-height: 38px;
+  .lf-tech-app .formula-hero-title > .fm-mobile-choose {
+    display: inline-flex;
+    min-height: 34px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .lf-tech-app .formula-hero {
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .lf-tech-app .formula-hero-image {
+    width: 52px;
+    height: 52px;
+  }
+
+  .lf-tech-app .formula-hero-info h2 {
+    font-size: var(--ui-type-lg);
+  }
+
+  .lf-tech-app .formula-hero-info h2 span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .lf-tech-app .formula-hero-tags {
+    flex-wrap: wrap;
+  }
+
+  html[lang="en"] .lf-tech-app .formula-mode-switch {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 560px) {
+  .lf-tech-app .fm-grid {
+    gap: 10px;
+    padding: 10px;
   }
 
   .lf-tech-app .formula-main-section {

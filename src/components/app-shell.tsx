@@ -288,12 +288,10 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
     disconnectCube,
     requestBattery,
   } = useCubeConnection();
-  const [tooltipPinned, setTooltipPinned] = useState(false);
-  const [tooltipHovered, setTooltipHovered] = useState(false);
+  const [tooltipVisible, setTooltipVisible] = useState(false);
   const actionRef = useRef<HTMLDivElement | null>(null);
   const tooltipRef = useRef<HTMLDivElement | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState({ left: 16, top: 16 });
-  const tooltipHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 16, top: 16, maxHeight: "calc(100dvh - 32px)", maxWidth: "calc(100vw - 32px)" });
   const quaternionParts = parseTelemetryParts(telemetry.quaternion, ["x", "y", "z", "w"]);
 
   const connected = connectionState === "connected";
@@ -304,24 +302,41 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
     : connecting
       ? t("connection.connecting")
       : t("connection.disconnected");
-  const tooltipOpen = connected && (tooltipPinned || tooltipHovered);
+  const tooltipOpen = connected && tooltipVisible;
 
   useLayoutEffect(() => {
-    if (!tooltipAnchorSelector || !tooltipOpen) return;
+    if (!tooltipOpen) return;
     const action = actionRef.current;
     const tooltip = tooltipRef.current;
-    const anchorElement = document.querySelector(tooltipAnchorSelector);
+    const anchorElement = (tooltipAnchorSelector ? document.querySelector(tooltipAnchorSelector) : null) ?? action;
     if (!action || !tooltip || !anchorElement) return;
 
     const updatePosition = () => {
       const anchor = anchorElement.getBoundingClientRect();
       const { width, height } = tooltip.getBoundingClientRect();
       const margin = 16;
+      const viewport = window.visualViewport;
+      const viewportLeft = viewport?.offsetLeft ?? 0;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const spaceBelow = Math.max(0, viewportTop + viewportHeight - margin - anchor.bottom - 12);
+      const spaceAbove = Math.max(0, anchor.top - viewportTop - margin - 12);
+      const placeBelow = spaceBelow >= Math.min(height, 240) || spaceBelow >= spaceAbove;
+      const viewportMaxHeight = Math.max(0, viewportHeight - margin * 2);
+      const maxHeight = tooltipAnchorSelector ? viewportMaxHeight : Math.min(viewportMaxHeight, placeBelow ? spaceBelow : spaceAbove);
+      const preferredTop = tooltipAnchorSelector
+        ? anchor.top + (anchor.height - height) / 2
+        : placeBelow
+          ? anchor.bottom + 12
+          : anchor.top - Math.min(height, maxHeight) - 12;
       const next = {
-        left: Math.max(margin, Math.min(anchor.left + (anchor.width - width) / 2, window.innerWidth - width - margin)),
-        top: Math.max(margin, Math.min(anchor.top + (anchor.height - height) / 2, window.innerHeight - height - margin)),
+        left: Math.max(viewportLeft + margin, Math.min(anchor.left + (anchor.width - width) / 2, viewportLeft + viewportWidth - width - margin)),
+        top: Math.max(viewportTop + margin, Math.min(preferredTop, viewportTop + viewportHeight - Math.min(height, maxHeight) - margin)),
+        maxHeight: `${Math.max(0, maxHeight)}px`,
+        maxWidth: `${Math.max(0, viewportWidth - margin * 2)}px`,
       };
-      setTooltipPosition((previous) => previous.left === next.left && previous.top === next.top ? previous : next);
+      setTooltipPosition((previous) => previous.left === next.left && previous.top === next.top && previous.maxHeight === next.maxHeight && previous.maxWidth === next.maxWidth ? previous : next);
     };
 
     updatePosition();
@@ -330,83 +345,71 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
     observer.observe(tooltip);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
     };
   }, [tooltipAnchorSelector, tooltipOpen]);
 
   useEffect(() => {
     if (connected) return;
     const timer = window.setTimeout(() => {
-      setTooltipPinned(false);
-      setTooltipHovered(false);
+      setTooltipVisible(false);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [connected]);
 
   useEffect(() => {
-    if (!tooltipPinned) return;
+    if (!tooltipOpen) return;
 
     function handlePointerDown(event: PointerEvent) {
       const target = event.target;
-      if (!(target instanceof Node) || actionRef.current?.contains(target)) return;
-      setTooltipPinned(false);
-      setTooltipHovered(false);
+      if (!(target instanceof Node) || actionRef.current?.contains(target) || tooltipRef.current?.contains(target)) return;
+      setTooltipVisible(false);
     }
 
-    window.addEventListener("pointerdown", handlePointerDown);
-    return () => window.removeEventListener("pointerdown", handlePointerDown);
-  }, [tooltipPinned]);
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setTooltipVisible(false);
+      actionRef.current?.querySelector("button")?.focus();
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [tooltipOpen]);
 
   const refreshBatteryOnPeek = () => {
     if (!connected) return;
     void requestBattery({ minIntervalMs: 60_000 });
   };
 
-  useEffect(() => () => {
-    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
-  }, []);
-
-  const showTooltip = () => {
-    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
-    if (!connected) return;
-    setTooltipHovered(true);
-    refreshBatteryOnPeek();
-  };
-
-  const hideTooltip = () => {
-    if (tooltipHideTimerRef.current) clearTimeout(tooltipHideTimerRef.current);
-    if (tooltipAnchorSelector) {
-      tooltipHideTimerRef.current = setTimeout(() => setTooltipHovered(false), 400);
-    } else {
-      setTooltipHovered(false);
-    }
-  };
-
   const toggleTooltip = () => {
     if (!connected) return;
-    setTooltipPinned((pinned) => {
-      const nextPinned = !pinned;
-      if (!nextPinned) setTooltipHovered(false);
-      return nextPinned;
-    });
+    if (!tooltipOpen) refreshBatteryOnPeek();
+    setTooltipVisible((visible) => !visible);
   };
 
   return (
     <div
       ref={actionRef}
-      className={`top-connect-action${tooltipOpen ? " tooltip-open" : ""}`}
-      onPointerEnter={showTooltip}
-      onPointerLeave={hideTooltip}
+      className="top-connect-action"
     >
       {connected ? (
         <button
           className="ghost-link"
           type="button"
           onClick={toggleTooltip}
-          aria-describedby="top-connect-detail"
+          aria-haspopup="dialog"
+          aria-controls={tooltipOpen ? "top-connect-detail" : undefined}
           aria-expanded={tooltipOpen}
         >
           <span className="dot dot-on"></span>
@@ -536,13 +539,13 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
         </>,
         document.body,
       )}
-      <div
+      {tooltipOpen && createPortal(<div
         ref={tooltipRef}
         className="top-connect-tooltip"
         id="top-connect-detail"
-        role="tooltip"
-        aria-hidden={!tooltipOpen}
-        style={tooltipAnchorSelector ? tooltipPosition : undefined}
+        role="dialog"
+        aria-label={t("connection.device")}
+        style={tooltipPosition}
       >
         <div className="top-connect-grid">
           <div className="top-connect-section">
@@ -571,8 +574,7 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
                   type="button"
                   className="danger"
                   onClick={() => {
-                    setTooltipPinned(false);
-                    setTooltipHovered(false);
+                    setTooltipVisible(false);
                     void disconnectCube();
                   }}
                 >
@@ -582,7 +584,7 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
             )}
           </div>
         </div>
-      </div>
+      </div>, document.body)}
     </div>
   );
 }

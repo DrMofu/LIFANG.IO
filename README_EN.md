@@ -33,8 +33,8 @@
 | macOS | ✅ Supported | Chrome, Edge | - |
 | ChromeOS | ✅ Supported | Chrome | - |
 | Android 6.0 and later | ✅ Supported | Chrome | - |
-| Linux | ⚠️ Experimental support | Chrome, Chromium | Experimental Web Platform features may need to be enabled in the browser |
 | iOS / iPadOS | ✅ Supported | Bluefy | iPhone and iPad require the Bluefy browser to connect to smart cubes |
+| Linux | ⚠️ Experimental support | Chrome, Chromium | Experimental Web Platform features may need to be enabled in the browser |
 
 ## Features
 

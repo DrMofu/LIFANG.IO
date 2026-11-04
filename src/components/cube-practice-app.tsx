@@ -3184,7 +3184,7 @@ export function CubePracticeApp() {
               >{t("纯计时器")}</button>
             </div>
 
-            {!isManualTimer && <div className="stage-tools">
+            {!isManualTimer && <div className="stage-tools stage-touch-controls">
               <button
                 className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
                 onClick={toggleGyroDisabled}

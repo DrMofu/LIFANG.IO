@@ -33,8 +33,8 @@
 | macOS | ✅ 支持 | Chrome、Edge | - |
 | ChromeOS | ✅ 支持 | Chrome | - |
 | Android 6.0 及以上 | ✅ 支持 | Chrome | - |
-| Linux | ⚠️ 实验性支持 | Chrome、Chromium | 可能需要在浏览器中启用实验性 Web Platform 功能 |
 | iOS / iPadOS | ✅ 支持 | Bluefy | iPhone、iPad 需使用 Bluefy 浏览器连接智能魔方 |
+| Linux | ⚠️ 实验性支持 | Chrome、Chromium | 可能需要在浏览器中启用实验性 Web Platform 功能 |
 
 ## 功能
 

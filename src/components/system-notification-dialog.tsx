@@ -13,6 +13,7 @@ import {
 import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/language-provider";
+import { BluefyNoticeDialog, useBluefyNotice } from "@/components/bluefy-notice-dialog";
 import { useClientReady } from "@/lib/client-ready";
 import settings from "@/settings.json";
 
@@ -113,6 +114,7 @@ const CHANGELOG_ENTRIES = [
 ] as const;
 
 export function SystemNotificationProvider({ children }: { children: ReactNode }) {
+  const bluefyNotice = useBluefyNotice();
   const pathname = usePathname();
   const clientReady = useClientReady();
   const [manualOpen, setManualOpen] = useState(false);
@@ -142,7 +144,8 @@ export function SystemNotificationProvider({ children }: { children: ReactNode }
   return (
     <SystemNotificationContext.Provider value={value}>
       {children}
-      <SystemNotificationDialog open={open} onClose={closeSystemNotification} />
+      <SystemNotificationDialog open={open && !bluefyNotice.open} onClose={closeSystemNotification} />
+      <BluefyNoticeDialog open={bluefyNotice.open} onClose={bluefyNotice.close} />
     </SystemNotificationContext.Provider>
   );
 }

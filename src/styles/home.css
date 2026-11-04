@@ -78,26 +78,6 @@
   margin-top: 18px;
 }
 
-.home-actions .top-connect-action::after {
-  display: none;
-}
-
-.home-actions .top-connect-tooltip {
-  position: fixed;
-  right: auto;
-  width: min(520px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  text-align: left;
-  transform: none;
-  transition: opacity 0.16s ease;
-}
-
-.home-actions .top-connect-tooltip::before {
-  display: none;
-}
-
 .home-cube-stage {
   position: relative;
   min-height: min(78vh, 780px);

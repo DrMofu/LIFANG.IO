@@ -1490,6 +1490,14 @@ function FormulaStage({
   return (
     <>
       <div className="fm-stage">
+        <button
+          type="button"
+          className="ghost-link fm-mobile-choose"
+          aria-haspopup="dialog"
+          aria-controls="fm-mobile-library"
+          aria-expanded={formulaPickerOpen}
+          onClick={onChooseFormula}
+        >{t("切换公式")}</button>
         <div className="formula-mode-switch" role="group" aria-label={t("公式模式")}>
           <button
             type="button"
@@ -1537,7 +1545,7 @@ function FormulaStage({
             </div>
           </div>
         )}
-        <div className="stage-controls" aria-label={t("公式显示控制")}>
+        <div className="stage-controls stage-touch-controls" aria-label={t("公式显示控制")}>
           <button className={`sc-btn${playbackActive ? " active" : ""}`} onClick={play} type="button">
             <span className="sc-key" aria-hidden="true">P</span>{t("播放公式")}</button>
           <button className="sc-btn" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
@@ -1546,6 +1554,7 @@ function FormulaStage({
             <button
               className={`sc-btn${transparentDisplay ? " active" : ""}`}
               onClick={toggleTransparentDisplay}
+              aria-pressed={transparentDisplay}
               type="button"
             >
               <span className="sc-key" aria-hidden="true">T</span>{t("透明显示")}</button>
@@ -1554,6 +1563,7 @@ function FormulaStage({
             <button
               className={`sc-btn${lowerLayerHidden ? " active" : ""}`}
               onClick={toggleLowerLayerHidden}
+              aria-pressed={lowerLayerHidden}
               type="button"
             >
               <span className="sc-key" aria-hidden="true">H</span>{t("专注模式")}</button>
@@ -1760,7 +1770,7 @@ function FormulaStage({
   );
 }
 
-const MOBILE_FORMULA_QUERY = "(max-width: 560px)";
+const MOBILE_FORMULA_QUERY = "(max-width: 1240px)";
 const isMobileFormulaLayout = () => window.matchMedia(MOBILE_FORMULA_QUERY).matches;
 const serverMobileFormulaLayout = () => false;
 
@@ -2342,6 +2352,14 @@ export function FormulasApp() {
               <div className="fmd-cat">{t("收藏夹")}</div>
               <div className="fmd-name">{t("还没有收藏公式")}</div>
               <div className="fm-empty">{t("点击任意公式右侧的星标后，会在这里集中显示。")}</div>
+              <button
+                type="button"
+                className="ghost-link fm-mobile-choose"
+                aria-haspopup="dialog"
+                aria-expanded={mobileLibraryOpen}
+                aria-controls="fm-mobile-library"
+                onClick={() => setMobileLibraryOpen(true)}
+              >{t("切换公式")}</button>
             </div>
           )}
         </section>
