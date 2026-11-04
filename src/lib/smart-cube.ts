@@ -1608,6 +1608,7 @@ export function mountSmartCube(
       hintArrow.geometries.forEach((geom) => geom.dispose());
       hintArrow.material.dispose();
       renderer.dispose();
+      renderer.forceContextLoss();
       container.replaceChildren();
     },
   };

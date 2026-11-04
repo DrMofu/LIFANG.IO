@@ -1,3 +1,132 @@
+.tutorial-orientation-settings {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  width: min(560px, 100%);
+  margin: 16px auto;
+  padding: 16px;
+  border: 1px solid var(--tech-line);
+  border-radius: var(--tech-radius-md);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 22px rgba(45, 78, 128, 0.09);
+  backdrop-filter: blur(18px);
+}
+
+.tutorial-orientation-settings label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.tutorial-orientation-settings:has([aria-expanded="true"]) {
+  z-index: 10;
+}
+
+.tutorial-orientation-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+}
+
+.tutorial-orientation-palette-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.tutorial-orientation-palette-label label {
+  margin: 0;
+}
+
+.tutorial-orientation-settings :is(.settings-color-trigger, .settings-palette-trigger) {
+  min-height: 40px;
+}
+
+.tutorial-orientation-settings .lg-row {
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.tutorial-orientation-settings .lg-sw {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.tutorial-markdown .tutorial-solve-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tutorial-markdown .tutorial-solve-flow li + li {
+  margin: 0;
+}
+
+.tutorial-solve-flow a {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border: 1px solid var(--tech-line);
+  border-radius: var(--tech-radius-md);
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: 0 10px 22px rgba(45, 78, 128, 0.06);
+  text-decoration: none;
+}
+
+.tutorial-solve-flow a:hover,
+.tutorial-solve-flow a:focus-visible {
+  border-color: var(--tech-blue);
+  outline: 2px solid rgba(47, 111, 242, 0.15);
+  outline-offset: 2px;
+}
+
+.tutorial-solve-flow-number {
+  align-self: flex-start;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tech-blue-soft);
+  color: var(--tech-blue);
+  font: 800 12px var(--mono);
+}
+
+.tutorial-solve-flow-cube {
+  width: 100%;
+  max-width: 170px;
+  height: 130px;
+}
+
+.tutorial-solve-flow-cube .tutorial-stage-cube-render {
+  min-height: 130px;
+}
+
+.tutorial-solve-flow-label {
+  color: var(--tech-ink-2);
+  font-size: var(--ui-type-md);
+  font-weight: var(--ui-weight-support);
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .tutorial-markdown .tutorial-solve-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
 .tutorial-scroll {
   position: relative;
   z-index: 1;

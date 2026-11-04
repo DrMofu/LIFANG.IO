@@ -1,26 +1,27 @@
 "use client";
 
+import { CubeD, CubeU } from "@/components/cube-inline-labels";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { TutorialStaticCube } from "@/components/tutorial-static-cube";
 import type { CubeOrientation } from "@/lib/cube-appearance";
 import type { CubeFace } from "@/lib/smart-cube";
+import { toTutorialHeadingId } from "@/lib/tutorial-headings";
 
 type CubeStageId =
-  | "piece-types"
-  | "white-daisy"
-  | "white-cross"
-  | "white-cross-check"
-  | "first-layer-corner-cases"
+  | "bottom-daisy"
+  | "bottom-cross"
+  | "bottom-cross-check"
+  | "bottom-corner-cases"
   | "first-layer"
   | "middle-edge-cases"
   | "middle-layer"
-  | "yellow-cross-cases"
-  | "yellow-cross"
-  | "yellow-edge-check"
-  | "yellow-edges"
-  | "yellow-corner-check"
-  | "yellow-corners"
-  | "yellow-corner-twist"
+  | "top-cross-cases"
+  | "top-cross"
+  | "top-edge-check"
+  | "top-edges"
+  | "top-corner-check"
+  | "top-corners"
+  | "top-corner-twist"
   | "solved";
 
 type CubeStageItem = {
@@ -35,196 +36,130 @@ type CubeStageGroup = {
   items: CubeStageItem[];
 };
 
-const WHITE_TOP_CENTERS = [
-  [4, "D"],
-  [13, "R"],
-  [22, "F"],
-  [31, "U"],
-  [40, "L"],
-  [49, "B"],
+const CENTERS = [
+  [4, "U"], [13, "R"], [22, "F"], [31, "D"], [40, "L"], [49, "B"],
 ] as const;
 
-const YELLOW_TOP_CENTERS = [
-  [4, "U"],
-  [13, "R"],
-  [22, "F"],
-  [31, "D"],
-  [40, "L"],
-  [49, "B"],
-] as const;
+type PaintedAreas = ReadonlyArray<readonly [CubeFace | "X", readonly number[]]>;
 
 function indexes(start: number, count: number) {
   return Array.from({ length: count }, (_, index) => start + index);
 }
 
-function createFacelets(
-  centers: ReadonlyArray<readonly [number, string]>,
-  paintedAreas: ReadonlyArray<readonly [string, readonly number[]]>,
-) {
+function createFacelets(paintedAreas: PaintedAreas) {
   const facelets = Array<string>(54).fill("X");
-  for (const [index, color] of centers) facelets[index] = color;
-  for (const [color, area] of paintedAreas) {
-    for (const index of area) facelets[index] = color;
+  for (const [index, face] of CENTERS) facelets[index] = face;
+  for (const [face, area] of paintedAreas) {
+    for (const index of area) facelets[index] = face;
   }
   return facelets.join("");
 }
 
-const FIRST_LAYER_BOTTOM: ReadonlyArray<readonly [string, readonly number[]]> = [
+const BOTTOM_CROSS: PaintedAreas = [
+  ["D", [28, 30, 31, 32, 34]],
+  ["R", [16]], ["F", [25]], ["L", [43]], ["B", [52]],
+];
+
+const BOTTOM_LAYER: PaintedAreas = [
   ["D", indexes(27, 9)],
-  ["R", indexes(15, 3)],
-  ["F", indexes(24, 3)],
-  ["L", indexes(42, 3)],
-  ["B", indexes(51, 3)],
+  ["R", indexes(15, 3)], ["F", indexes(24, 3)],
+  ["L", indexes(42, 3)], ["B", indexes(51, 3)],
 ];
 
-const FIRST_TWO_LAYERS: ReadonlyArray<readonly [string, readonly number[]]> = [
+const FIRST_TWO_LAYERS: PaintedAreas = [
   ["D", indexes(27, 9)],
-  ["R", indexes(12, 6)],
-  ["F", indexes(21, 6)],
-  ["L", indexes(39, 6)],
-  ["B", indexes(48, 6)],
+  ["R", indexes(12, 6)], ["F", indexes(21, 6)],
+  ["L", indexes(39, 6)], ["B", indexes(48, 6)],
 ];
 
-const YELLOW_CROSS: ReadonlyArray<readonly [string, readonly number[]]> = [
-  ...FIRST_TWO_LAYERS,
-  ["U", [1, 3, 4, 5, 7]],
+const TOP_CROSS: PaintedAreas = [...FIRST_TWO_LAYERS, ["U", [1, 3, 4, 5, 7]]];
+const TOP_EDGES: PaintedAreas = [
+  ...TOP_CROSS,
+  ["F", [19]], ["R", [10]], ["L", [37]], ["B", [46]],
 ];
 
-const YELLOW_EDGES: ReadonlyArray<readonly [string, readonly number[]]> = [
-  ...YELLOW_CROSS,
-  ["F", [19]],
-  ["R", [10]],
-  ["L", [37]],
-  ["B", [46]],
-];
-
-const CORRECT_TWISTED_CORNERS: ReadonlyArray<readonly [string, readonly number[]]> = [
-  ["R", [8, 11]],
-  ["F", [9, 6]],
-  ["U", [20, 45, 47, 38]],
-  ["B", [2, 36]],
-  ["L", [0, 18]],
+// Solved corner positions with legal twists [1, 1, 2, 2] in UFR, URB, UBL, ULF order.
+const TWISTED_TOP_CORNERS: PaintedAreas = [
+  ["U", [9, 45, 47, 38]],
+  ["R", [20, 2]], ["F", [8, 6]], ["B", [11, 36]], ["L", [0, 18]],
 ];
 
 const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
-  "piece-types": {
-    label: "三种块的位置",
+  "bottom-daisy": {
+    label: "底层小花",
+    items: [{
+      label: "四张底面贴纸朝上",
+      note: "底层棱块围住顶面中心。侧面暂时不需要对齐。",
+      facelets: createFacelets([["D", [1, 3, 5, 7]], ["X", [13, 22]]]),
+    }],
+  },
+  "bottom-cross": {
+    label: "底层十字",
+    items: [{
+      label: "底层十字完成",
+      note: "从底部看十字，四颗底棱的侧面贴纸也与中心同色。",
+      facelets: createFacelets(BOTTOM_CROSS),
+      cameraLatitude: -28,
+    }],
+  },
+  "bottom-cross-check": {
+    label: "底层十字的侧面对齐",
     items: [
       {
-        label: "中心块",
-        note: "只有一个颜色，始终留在同一面，决定该面的最终颜色。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, []),
+        label: "侧面对齐",
+        note: "底面成十字，每颗底棱的侧面贴纸与中心同色。",
+        facelets: createFacelets(BOTTOM_CROSS),
+        cameraLatitude: -28,
       },
       {
-        label: "棱块",
-        note: "有两个颜色，位于两面之间；图中标出黄绿棱块。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [["U", [7]], ["F", [19]]]),
-      },
-      {
-        label: "角块",
-        note: "有三个颜色，位于三面交界；图中标出黄橙绿角块。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [["U", [8]], ["R", [9]], ["F", [20]]]),
+        label: "侧面未对齐",
+        note: "前、右底棱放错了位置，需要回到顶层重新对齐。",
+        facelets: createFacelets([...BOTTOM_CROSS, ["R", [25]], ["F", [16]]]),
+        cameraLatitude: -28,
       },
     ],
   },
-  "white-daisy": {
-    label: "白色小花",
-    items: [{
-      label: "白色小花完成",
-      note: "黄色中心在上，四颗白色棱块围在黄色中心四周；侧面暂时不用对齐。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [["D", [1, 3, 5, 7]]]),
-    }],
-  },
-  "white-cross": {
-    label: "白色十字",
-    items: [{
-      label: "白色十字完成",
-      note: "白色棱块朝上，同时四个侧面棱块都与各自中心同色。",
-      facelets: createFacelets(WHITE_TOP_CENTERS, [
-        ["D", [1, 3, 4, 5, 7]],
-        ["F", [19]],
-        ["R", [10]],
-        ["L", [37]],
-        ["B", [46]],
-      ]),
-    }],
-  },
-  "white-cross-check": {
-    label: "白色十字的正确与错误",
+  "bottom-corner-cases": {
+    label: "右前上角的三种朝向",
     items: [
       {
-        label: "正确：白棱侧色也对齐",
-        note: "白色朝上只是第一项检查；四颗棱块的侧面颜色还要分别连接同色中心。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [
-          ["D", [1, 3, 4, 5, 7]],
-          ["F", [19]],
-          ["R", [10]],
-          ["L", [37]],
-          ["B", [46]],
-        ]),
+        label: "底面贴纸朝右",
+        note: "角块放在目标槽正上方，重复插角公式。",
+        facelets: createFacelets([...BOTTOM_CROSS, ["R", [8]], ["D", [9]], ["F", [20]]]),
       },
       {
-        label: "错误：只拼出白色图案",
-        note: "白色十字虽然完整，但前、右两颗棱块放错了位置，必须重新按中心颜色对齐。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [
-          ["D", [1, 3, 4, 5, 7]],
-          ["R", [19]],
-          ["F", [10]],
-          ["L", [37]],
-          ["B", [46]],
-        ]),
-      },
-    ],
-  },
-  "first-layer-corner-cases": {
-    label: "白色角块的三种朝向",
-    items: [
-      {
-        label: "白色朝右",
-        note: "目标角在右前下方；完整重复四步手法，直到它进入正上方的槽位。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["F", [29]], ["D", [15]], ["R", [26]]]),
-        cameraLatitude: -28,
+        label: "底面贴纸朝前",
+        note: "做完整组后再检查，不在公式中途加转动。",
+        facelets: createFacelets([...BOTTOM_CROSS, ["F", [8]], ["R", [9]], ["D", [20]]]),
       },
       {
-        label: "白色朝前",
-        note: "仍然使用同一手法，不需要记另一条角块公式。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["R", [29]], ["F", [15]], ["D", [26]]]),
-        cameraLatitude: -28,
-      },
-      {
-        label: "白色朝下",
-        note: "白色在底面时会多重复几组；每组四步都必须完整做完。",
-        facelets: createFacelets(WHITE_TOP_CENTERS, [["D", [29]], ["R", [15]], ["F", [26]]]),
-        cameraLatitude: -28,
+        label: "底面贴纸朝上",
+        note: "仍用同一条插角公式，直到目标底角三面归位。",
+        facelets: createFacelets([...BOTTOM_CROSS, ["D", [8]], ["F", [9]], ["R", [20]]]),
       },
     ],
   },
   "first-layer": {
-    label: "白色第一层",
+    label: "底层",
     items: [{
-      label: "第一层完成",
-      note: "白色面完整，四个侧面的第一排也分别与中心块同色。",
-      facelets: createFacelets(WHITE_TOP_CENTERS, [
-        ["D", indexes(0, 9)],
-        ["R", indexes(9, 3)],
-        ["F", indexes(18, 3)],
-        ["L", indexes(36, 3)],
-        ["B", indexes(45, 3)],
-      ]),
+      label: "底层完成",
+      note: "底面完整，四个侧面的最下排与各自中心同色。",
+      facelets: createFacelets(BOTTOM_LAYER),
+      cameraLatitude: -28,
     }],
   },
   "middle-edge-cases": {
-    label: "中层棱块的去向",
+    label: "中层棱块的目标槽",
     items: [
       {
-        label: "目标槽在右边",
-        note: "顶层棱块的正面颜色已对齐，另一种颜色属于右面。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_LAYER_BOTTOM, ["F", [19]], ["R", [7]]]),
+        label: "插入右前槽",
+        note: "前上棱的朝前贴纸对齐前面中心，朝上贴纸与右面中心同色。",
+        facelets: createFacelets([...BOTTOM_LAYER, ["F", [19]], ["R", [7]]]),
       },
       {
-        label: "目标槽在左边",
-        note: "另一种颜色属于左面；保持当前正面，使用向左插入的镜像公式。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_LAYER_BOTTOM, ["F", [19]], ["L", [7]]]),
+        label: "插入左前槽",
+        note: "前上棱的朝前贴纸对齐前面中心，朝上贴纸与左面中心同色。",
+        facelets: createFacelets([...BOTTOM_LAYER, ["F", [19]], ["L", [7]]]),
       },
     ],
   },
@@ -232,120 +167,100 @@ const STAGE_CONFIGS: Record<CubeStageId, CubeStageGroup> = {
     label: "前两层",
     items: [{
       label: "前两层完成",
-      note: "白色面在底部，四个侧面的下两排全部与中心块同色。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, FIRST_TWO_LAYERS),
+      note: "底层保留完整，四个侧面的下两排已复原。",
+      facelets: createFacelets(FIRST_TWO_LAYERS),
     }],
   },
-  "yellow-cross-cases": {
-    label: "黄色十字的三种未完成形态",
+  "top-cross-cases": {
+    label: "顶层十字的三种待处理形状",
     items: [
       {
         label: "中心点",
-        note: "只有黄色中心朝上；先从任意方向做一次公式。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_TWO_LAYERS, ["U", [4]]]),
+        note: "四颗顶棱都没有顶面贴纸朝上，先做一次公式。",
+        facelets: createFacelets(FIRST_TWO_LAYERS),
       },
       {
         label: "折角",
-        note: "从顶面看，把两个黄色棱块放在后方和左方。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_TWO_LAYERS, ["U", [1, 3, 4]]]),
+        note: "从上方看，两张顶面贴纸放在后、左。",
+        facelets: createFacelets([...FIRST_TWO_LAYERS, ["U", [1, 3, 4]]]),
       },
       {
         label: "一字",
-        note: "从顶面看，让黄色一字横向摆放。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...FIRST_TWO_LAYERS, ["U", [3, 4, 5]]]),
+        note: "两张顶面贴纸放在左、右，横着摆。",
+        facelets: createFacelets([...FIRST_TWO_LAYERS, ["U", [3, 4, 5]]]),
       },
     ],
   },
-  "yellow-cross": {
-    label: "黄色十字",
+  "top-cross": {
+    label: "顶层十字",
     items: [{
-      label: "黄色十字完成",
-      note: "只检查四颗黄色棱块是否朝上，顶角和侧面是否对齐暂时不重要。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, YELLOW_CROSS),
+      label: "顶层十字完成",
+      note: "四张顶面贴纸朝上，棱块的侧面贴纸可以暂时不对齐。",
+      facelets: createFacelets(TOP_CROSS),
     }],
   },
-  "yellow-edge-check": {
-    label: "黄色棱块的两种待处理情形",
+  "top-edge-check": {
+    label: "顶棱侧面的两种对齐情况",
     items: [
       {
-        label: "两颗相邻棱块对齐",
-        note: "图中先找到了前面与右面；执行前水平转动整颗魔方，把它们移到右面与后面。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_CROSS, ["F", [19]], ["R", [10]]]),
+        label: "相邻两颗对齐",
+        note: "图中前、右已对齐。水平转动整颗魔方，把它们移到后、右再做公式。",
+        facelets: createFacelets([...TOP_CROSS, ["F", [19]], ["R", [10]]]),
       },
       {
-        label: "两颗相对棱块对齐",
-        note: "先从任意方向执行一次公式，重新转动 U 检查，通常会变成相邻情形。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_CROSS, ["F", [19]], ["B", [46]]]),
+        label: "相对两颗对齐",
+        note: "先做一次公式，再转 U 找到相邻的一对。",
+        facelets: createFacelets([...TOP_CROSS, ["F", [19]], ["B", [46]]]),
       },
     ],
   },
-  "yellow-edges": {
-    label: "黄色棱块归位",
+  "top-edges": {
+    label: "顶层棱块归位",
     items: [{
-      label: "四颗黄色棱块全部归位",
-      note: "顶面仍是黄色十字，四个侧面的上排中间块也都与中心同色。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, YELLOW_EDGES),
+      label: "四颗顶棱归位",
+      note: "顶层保留十字，四颗顶棱的侧面贴纸与中心同色。",
+      facelets: createFacelets(TOP_EDGES),
     }],
   },
-  "yellow-corner-check": {
-    label: "检查黄色角块的位置",
+  "top-corner-check": {
+    label: "顶角的位置与朝向",
     items: [
       {
-        label: "位置正确，方向可以暂时不对",
-        note: "这颗角的三种颜色与周围三个中心相同，所以它已经属于这个角落。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [
-          ...YELLOW_EDGES,
-          ["R", [8]],
-          ["F", [9]],
-          ["U", [20]],
-        ]),
+        label: "位置正确，朝向未正",
+        note: "右前上角的三张贴纸与周围三个中心同色，只需要翻正。",
+        facelets: createFacelets([...TOP_EDGES, ["F", [8]], ["U", [9]], ["R", [20]]]),
       },
       {
-        label: "位置错误，黄色朝上也不算完成",
-        note: "角块含有不属于这个角落的颜色；判断位置时要同时看完三种颜色。",
-        facelets: createFacelets(YELLOW_TOP_CENTERS, [
-          ...YELLOW_EDGES,
-          ["U", [8]],
-          ["R", [9]],
-          ["B", [20]],
-        ]),
+        label: "朝上也可能放错位置",
+        note: "这颗角块属于后、右两个中心之间，不能留在右前角。",
+        facelets: createFacelets([...TOP_EDGES, ["U", [8]], ["B", [9]], ["R", [20]]]),
       },
     ],
   },
-  "yellow-corners": {
-    label: "黄色角块归位",
+  "top-corners": {
+    label: "顶层角块归位",
     items: [{
-      label: "四颗黄色角块位置正确",
-      note: "每颗顶角都属于所在角落；黄色贴纸可能仍朝向侧面，下一步再统一翻正。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [...YELLOW_EDGES, ...CORRECT_TWISTED_CORNERS]),
+      label: "四颗顶角位置正确",
+      note: "每颗角都属于所在的角槽，顶面贴纸还可能朝向侧面。",
+      facelets: createFacelets([...TOP_EDGES, ...TWISTED_TOP_CORNERS]),
     }],
   },
-  "yellow-corner-twist": {
-    label: "逐颗翻正黄色角块",
+  "top-corner-twist": {
+    label: "翻正顶层角块",
     items: [{
-      label: "先处理右前上角",
-      note: "固定握持方向，重复四步手法直到这颗角的黄色朝上，再只转 U 换下一颗。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [
-        ...YELLOW_EDGES,
-        ...CORRECT_TWISTED_CORNERS,
-        ["U", [8]],
-        ["R", [9]],
-        ["F", [20]],
-      ]),
+      label: "处理右前上角",
+      note: "固定正面，先翻正这颗角；再只转 U 换下一颗。",
+      facelets: createFacelets([...TOP_EDGES, ...TWISTED_TOP_CORNERS]),
     }],
   },
   solved: {
     label: "复原完成",
     items: [{
-      label: "三阶魔方复原完成",
-      note: "六个面全部同色；图中以黄色朝上、白色朝下展示。",
-      facelets: createFacelets(YELLOW_TOP_CENTERS, [
-        ["U", indexes(0, 9)],
-        ["R", indexes(9, 9)],
-        ["F", indexes(18, 9)],
-        ["D", indexes(27, 9)],
-        ["L", indexes(36, 9)],
-        ["B", indexes(45, 9)],
+      label: "六面复原",
+      note: "六个面分别与各自的中心块同色。",
+      facelets: createFacelets([
+        ["U", indexes(0, 9)], ["R", indexes(9, 9)], ["F", indexes(18, 9)],
+        ["D", indexes(27, 9)], ["L", indexes(36, 9)], ["B", indexes(45, 9)],
       ]),
     }],
   },
@@ -411,5 +326,39 @@ export function TutorialCubeStage({ stage }: { stage: string }) {
         </figure>
       ))}
     </section>
+  );
+}
+
+const SOLVE_FLOW: Array<{ stage: CubeStageId; label: string; heading: string }> = [
+  { stage: "bottom-daisy", label: "底层小花", heading: "第一步：底层小花" },
+  { stage: "bottom-cross", label: "底层十字", heading: "第二步：底层十字" },
+  { stage: "first-layer", label: "复原底层", heading: "第三步：复原底层" },
+  { stage: "middle-layer", label: "中间层", heading: "第四步：复原中间层" },
+  { stage: "top-cross", label: "顶层十字", heading: "第五步：顶层十字" },
+  { stage: "top-edges", label: "顶层棱块归位", heading: "第六步：顶层棱块归位" },
+  { stage: "top-corners", label: "顶层角块归位", heading: "第七步：顶层角块归位" },
+  { stage: "solved", label: "翻正顶层角块", heading: "第八步：翻正顶层角块" },
+];
+
+export function TutorialSolveFlow() {
+  const { faceColors, orientation } = useCubeAppearance();
+
+  return (
+    <>
+      <p>先完成底层（<CubeD />），再复原中间层，最后处理顶层（<CubeU />）的棱块与角块。</p>
+      <ol className="tutorial-solve-flow" aria-label="层先法复原流程">
+        {SOLVE_FLOW.map(({ stage, label, heading }, index) => (
+          <li key={stage}>
+            <a href={`#${toTutorialHeadingId(heading)}`}>
+              <span className="tutorial-solve-flow-number" aria-hidden="true">{index + 1}</span>
+              <div className="tutorial-solve-flow-cube">
+                <StageCube item={STAGE_CONFIGS[stage].items[0]} faceColors={faceColors} orientation={orientation} />
+              </div>
+              <span className="tutorial-solve-flow-label">{label}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </>
   );
 }

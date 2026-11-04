@@ -1,5 +1,11 @@
 ## v0.2.0 (working)
 
+IMPROVEMENTS:
+- 支持iPhone, iPad
+- 调整移动端界面
+- 重写层先法教程
+
+
 BUG FIXES:
 - 修复专项练习时会突然中断的BUG
 

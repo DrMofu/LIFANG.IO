@@ -37,10 +37,12 @@ export function TutorialAlgorithmPlayer({
   title,
   algorithm,
   note,
+  setupAlgorithm,
 }: {
   title: string;
   algorithm: string;
   note: string;
+  setupAlgorithm?: string;
 }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const apiRef = useRef<SmartCubeApi | null>(null);
@@ -52,10 +54,12 @@ export function TutorialAlgorithmPlayer({
   const [step, setStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const moves = useMemo(() => parseAlgorithm(algorithm), [algorithm]);
-  const setupMoves = useMemo(() => moves
-    .slice()
-    .reverse()
-    .flatMap((move) => expandMoveNotation(invertMoveNotation(move))), [moves]);
+  const setupMoves = useMemo(() => setupAlgorithm !== undefined
+    ? parseAlgorithm(setupAlgorithm).flatMap(expandMoveNotation)
+    : moves
+      .slice()
+      .reverse()
+      .flatMap((move) => expandMoveNotation(invertMoveNotation(move))), [moves, setupAlgorithm]);
   const {
     orientation,
     faceColors,

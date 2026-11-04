@@ -3,20 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
+import { PaletteSelectField } from "@/components/palette-select-field";
+import { ColorSelectField } from "@/components/color-select-field";
 import { CubeColorLegend } from "@/components/cube-color-legend";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useLanguage } from "@/components/language-provider";
 import { useSystemNotification } from "@/components/system-notification-dialog";
 import type { MessageKey } from "@/lib/i18n-messages";
 import {
-  COLOR_LABEL,
   COLOR_LIST,
   COLOR_OPPOSITE,
   COLOR_PALETTES,
   MAX_BACK_FACE_PROJECTION_DISTANCE,
   MIN_BACK_FACE_PROJECTION_DISTANCE,
   isValidOrientation,
-  type CubeColorPaletteId,
   type CubeRenderMaxFps,
   type CubeColor,
 } from "@/lib/cube-appearance";
@@ -114,10 +114,6 @@ const RENDER_FPS_OPTIONS: Array<{ value: CubeRenderMaxFps; labelKey: MessageKey 
 ];
 
 const CLOUD_SNAPSHOT_AUTO_REFRESH_TTL_MS = 5 * 60 * 1000;
-
-const COLOR_PALETTE_OPTIONS = Object.entries(COLOR_PALETTES) as Array<
-  [CubeColorPaletteId, (typeof COLOR_PALETTES)[CubeColorPaletteId]]
->;
 
 let recentCloudSnapshotMetadata: { userId: string; metadata: CloudSnapshotMetadata | null; fetchedAt: number } | null = null;
 
@@ -1214,150 +1210,6 @@ function ArchiveSelectField({
                 onClick={() => handleSelect(archive.id)}
               >
                 <span>{t(archive.name)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PaletteSelectField({
-  id,
-  selected,
-  onSelect,
-}: {
-  id: string;
-  selected: CubeColorPaletteId;
-  onSelect(paletteId: CubeColorPaletteId): void;
-}) {
-  const { t } = useLanguage();
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedPalette = COLOR_PALETTES[selected];
-
-  function handleSelect(paletteId: CubeColorPaletteId) {
-    onSelect(paletteId);
-    setIsOpen(false);
-  }
-
-  return (
-    <div
-      className={`settings-palette-select-wrap${isOpen ? " open" : ""}`}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
-      }}
-    >
-      <button
-        id={id}
-        type="button"
-        className="settings-palette-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-controls={`${id}-menu`}
-        onClick={() => setIsOpen((current) => !current)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") setIsOpen(false);
-        }}
-      >
-        <PaletteSwatches colors={selectedPalette.colors} />
-        <span className="settings-color-select-label">{t(selectedPalette.label)}</span>
-      </button>
-      {isOpen && (
-        <div id={`${id}-menu`} className="settings-color-menu settings-palette-menu" role="listbox" aria-labelledby={id}>
-          {COLOR_PALETTE_OPTIONS.map(([paletteId, palette]) => {
-            const isSelected = selected === paletteId;
-            return (
-              <button
-                key={paletteId}
-                type="button"
-                className={`settings-color-option settings-palette-option${isSelected ? " selected" : ""}`}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => handleSelect(paletteId)}
-              >
-                <PaletteSwatches colors={palette.colors} />
-                <span>{t(palette.label)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PaletteSwatches({ colors }: { colors: Record<CubeColor, string> }) {
-  return (
-    <span className="settings-palette-swatches" aria-hidden="true">
-      {COLOR_LIST.map((color) => (
-        <span key={color} style={{ background: colors[color] }}></span>
-      ))}
-    </span>
-  );
-}
-
-function ColorSelectField({
-  id,
-  selected,
-  paletteColors,
-  disabledColors,
-  onSelect,
-}: {
-  id: string;
-  selected: CubeColor;
-  paletteColors: Record<CubeColor, string>;
-  disabledColors?: CubeColor[];
-  onSelect(color: CubeColor): void;
-}) {
-  const { t } = useLanguage();
-  const [isOpen, setIsOpen] = useState(false);
-
-  function handleSelect(color: CubeColor) {
-    if (disabledColors?.includes(color)) return;
-    onSelect(color);
-    setIsOpen(false);
-  }
-
-  return (
-    <div
-      className={`settings-color-select-wrap${isOpen ? " open" : ""}`}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
-      }}
-    >
-      <button
-        id={id}
-        type="button"
-        className="settings-color-trigger"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        aria-controls={`${id}-menu`}
-        onClick={() => setIsOpen((current) => !current)}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") setIsOpen(false);
-        }}
-      >
-        <span className="settings-color-select-dot" style={{ background: paletteColors[selected] }}></span>
-        <span className="settings-color-select-label">{t(COLOR_LABEL[selected])}</span>
-      </button>
-      {isOpen && (
-        <div id={`${id}-menu`} className="settings-color-menu" role="listbox" aria-labelledby={id}>
-          {COLOR_LIST.map((color) => {
-            const disabled = disabledColors?.includes(color) ?? false;
-            const isSelected = selected === color;
-            return (
-              <button
-                key={color}
-                type="button"
-                className={`settings-color-option${isSelected ? " selected" : ""}`}
-                role="option"
-                aria-selected={isSelected}
-                disabled={disabled}
-                onClick={() => handleSelect(color)}
-              >
-                <span className="settings-color-option-dot" style={{ background: paletteColors[color] }}></span>
-                <span>{t(COLOR_LABEL[color])}</span>
               </button>
             );
           })}

@@ -1,9 +1,11 @@
 import { Fragment, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TutorialOrientationSettings } from "@/components/tutorial-orientation-settings";
+import { CubeU, CubeD, CubeF, CubeB, CubeR, CubeL } from "@/components/cube-inline-labels";
 import { TutorialAlgorithmPlayer } from "@/components/tutorial-algorithm-player";
 import { TutorialCubePlayground } from "@/components/tutorial-cube-playground";
-import { TutorialCubeStage } from "@/components/tutorial-cube-stage";
+import { TutorialCubeStage, TutorialSolveFlow } from "@/components/tutorial-cube-stage";
 import { TutorialNotationGallery } from "@/components/tutorial-notation-gallery";
 import { TutorialPllRecognition } from "@/components/tutorial-pll-recognition";
 import { toTutorialHeadingId } from "@/lib/tutorial-headings";
@@ -12,14 +14,18 @@ type TutorialWidgetProps = Record<string, string>;
 type TutorialWidgetRenderer = (props: TutorialWidgetProps) => ReactNode;
 
 const TUTORIAL_WIDGETS: Record<string, TutorialWidgetRenderer> = {
-  "algorithm-player": ({ title, algorithm, note }) => (
-    <TutorialAlgorithmPlayer title={title} algorithm={algorithm} note={note} />
+  "algorithm-player": ({ title, algorithm, note, setupAlgorithm }) => (
+    <TutorialAlgorithmPlayer title={title} algorithm={algorithm} note={note} setupAlgorithm={setupAlgorithm} />
   ),
+  "orientation-settings": () => <TutorialOrientationSettings />,
   "cube-playground": () => <TutorialCubePlayground />,
   "cube-stage": ({ stage }) => <TutorialCubeStage stage={stage} />,
+  "solve-flow": () => <TutorialSolveFlow />,
   "notation-gallery": ({ group }) => <TutorialNotationGallery group={group} />,
   "pll-recognition": ({ group }) => <TutorialPllRecognition group={group} />,
 };
+
+const TUTORIAL_FACES: Record<string, typeof CubeU> = { U: CubeU, D: CubeD, F: CubeF, B: CubeB, R: CubeR, L: CubeL };
 
 function parseWidgetProps(source: string | undefined) {
   if (!source) return {};
@@ -47,6 +53,12 @@ export function TutorialMarkdown({ markdown }: { markdown: string }) {
   const content: ReactNode[] = [];
   let cursor = 0;
   const components = {
+    // `face:U` embeds the current face label; move notation such as `U` stays plain code.
+    code: ({ children, className }: { children?: ReactNode; className?: string }) => {
+      const face = /^face:([UDFBRL])$/.exec(String(children))?.[1];
+      const Face = face ? TUTORIAL_FACES[face] : null;
+      return Face ? <Face /> : <code className={className}>{children}</code>;
+    },
     h2: ({ children }: { children?: ReactNode }) => {
       const title = String(children);
       return <h2 id={toTutorialHeadingId(title)}>{children}</h2>;

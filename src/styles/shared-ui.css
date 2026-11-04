@@ -1,3 +1,20 @@
+.cube-inline-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.cube-inline-face-swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.85em;
+  height: 0.85em;
+  border: 1px solid #101827;
+  border-radius: 0.2em;
+}
+
 .practice-card-head,
 .ui-section-head {
   display: flex;
