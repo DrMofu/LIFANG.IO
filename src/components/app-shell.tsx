@@ -483,13 +483,13 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
                   {failure === "mac" && (
                     <ol className="top-connect-error-checks">
                       <li>
+                        <strong>{t("connection.failure.otherConnectionCheck")}</strong>
+                        <p>{t("connection.failure.otherConnectionHelp")}</p>
+                      </li>
+                      <li>
                         <strong>{t("connection.failure.chromeFlagsCheck")}</strong>
                         <code>chrome://flags/#enable-experimental-web-platform-features</code>
                         <p>{t("connection.failure.chromeFlagsHelp")}</p>
-                      </li>
-                      <li>
-                        <strong>{t("connection.failure.otherConnectionCheck")}</strong>
-                        <p>{t("connection.failure.otherConnectionHelp")}</p>
                       </li>
                     </ol>
                   )}

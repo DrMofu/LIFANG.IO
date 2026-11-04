@@ -1573,6 +1573,7 @@
   }
 
   .lf-tech-app .fm-side {
+    --formula-shadow-space: 24px;
     overflow-x: hidden;
     overflow-y: auto;
   }
