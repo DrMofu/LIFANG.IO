@@ -1012,6 +1012,224 @@
   pointer-events: none;
 }
 
+.mobile-nav-trigger {
+  display: none;
+}
+
+.mobile-nav-trigger,
+.mobile-nav-close {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(205, 220, 242, 0.65);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 8px;
+  color: #19386f;
+  cursor: pointer;
+}
+
+.mobile-nav-close {
+  display: inline-flex;
+}
+
+:is(.mobile-nav-trigger, .mobile-nav-close) .nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.mobile-nav-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  display: flex;
+  width: min(84vw, 360px);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  flex-direction: column;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-right: 0;
+  border-radius: 24px 0 0 24px;
+  background: rgba(245, 249, 255, 0.94);
+  box-shadow: -16px 0 60px rgba(30, 57, 100, 0.15);
+  padding: max(20px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+  color: #19386f;
+  font-family: var(--sans);
+  backdrop-filter: blur(24px);
+  touch-action: pan-y;
+  animation: mobileNavIn 180ms ease-out;
+}
+
+.mobile-nav-drawer:not([open]) {
+  display: none;
+}
+
+.mobile-nav-drawer::backdrop {
+  background: rgba(31, 52, 89, 0.32);
+  backdrop-filter: blur(4px);
+}
+
+.mobile-nav-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-inline: 8px;
+}
+
+.mobile-nav-brand-name {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.mobile-nav-brand-name .brand-domain {
+  position: absolute;
+  visibility: hidden;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.mobile-nav-brand-name[data-domain-visible="true"] .brand-domain {
+  position: static;
+  visibility: visible;
+}
+
+.mobile-nav-close {
+  flex-shrink: 0;
+}
+
+.mobile-nav-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-block: 28px 20px;
+}
+
+.mobile-nav-link,
+.mobile-nav-child {
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  gap: 16px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  padding: 12px 14px;
+  color: #243b65;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mobile-nav-link > span,
+.mobile-nav-child > span {
+  flex: 1;
+}
+
+.mobile-nav-link .nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+:is(.mobile-nav-link, .mobile-nav-child) .nav-icon:last-child {
+  width: 18px;
+  height: 18px;
+  color: #92a6c5;
+}
+
+.mobile-nav-practice[aria-expanded="true"] .nav-icon:last-child {
+  transform: rotate(90deg);
+}
+
+.mobile-nav-children {
+  margin: 4px 0 12px 26px;
+  border-left: 1px solid #cfddf5;
+  padding-left: 10px;
+}
+
+.mobile-nav-child {
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+:is(.mobile-nav-link, .mobile-nav-child).active {
+  background: #e4eeff;
+  color: #2f6ff2;
+}
+
+.mobile-nav-utilities {
+  margin-top: 24px;
+  border-top: 1px solid #cfddf5;
+  padding-top: 20px;
+}
+
+.mobile-nav-language {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 8px 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.mobile-nav-language-options {
+  display: flex;
+  border: 1px solid #d4e1fa;
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.mobile-nav-language-options button {
+  min-width: 60px;
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 6px 12px;
+  color: #243b65;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.mobile-nav-language-options button[aria-pressed="true"] {
+  background: #2f6ff2;
+  color: #fff;
+}
+
+:is(.mobile-nav-trigger, .mobile-nav-close, .mobile-nav-link, .mobile-nav-child, .mobile-nav-language-options button):focus-visible {
+  outline: 2px solid #2f6ff2;
+  outline-offset: -2px;
+}
+
+@keyframes mobileNavIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav-drawer { animation: none; }
+}
+
 @media (width <= 1240px) {
   .topbar {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1066,28 +1284,54 @@
 
 @media (width <= 700px) {
   .topbar {
+    gap: 8px;
     padding: 9px 12px;
   }
 
-  .brand-domain,
-  .brand-sub {
+  .brand-sub,
+  .topbar .topnav,
+  .topright > .language-toggle {
     display: none;
   }
 
+  .topbar .brand-name {
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .topbar .brand-domain {
+    position: absolute;
+    visibility: hidden;
+    white-space: nowrap;
+  }
+
+  .topbar .brand-name[data-mobile-domain="true"] .brand-domain {
+    position: static;
+    visibility: visible;
+  }
+
   .topright {
+    min-width: 0;
     gap: 8px;
   }
 
-  .topnav {
-    justify-content: center;
+  .topbar .brand-link {
+    gap: 8px;
   }
 
-  .navitem {
-    flex: 0 0 auto;
-    min-width: 80px;
-    height: 34px;
-    padding: 0 12px;
-    font-size: 12px;
+  .topbar .top-connect-action {
+    min-width: 0;
+    max-width: calc(100vw - 156px);
+  }
+
+  .topbar .top-connect-action > button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-nav-trigger {
+    display: inline-flex;
   }
 
   .top-connect-grid {
@@ -1127,40 +1371,5 @@
   .footbar {
     right: 14px;
     bottom: 10px;
-  }
-}
-
-@media (width <= 700px) {
-  .topnav-mobile {
-    width: 100%;
-    border-radius: 22px;
-    flex-wrap: nowrap;
-  }
-
-  .topnav-mobile .navitem {
-    flex: 1 1 calc((100% - 16px) / 5);
-    min-width: 0;
-    gap: 3px;
-    padding: 0 4px;
-    font-size: clamp(10px, 2.8vw, 12px);
-    white-space: nowrap;
-  }
-
-  .topnav-mobile .navgroup {
-    flex: 1 1 calc((100% - 16px) / 5);
-    min-width: 0;
-  }
-
-  .topnav-mobile .navgroup > .navitem {
-    width: 100%;
-  }
-
-  .topnav-mobile .nav-icon {
-    width: 15px;
-    height: 15px;
-  }
-
-  .topnav-mobile .navitem small {
-    display: none;
   }
 }

@@ -63,9 +63,33 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
   const rememberedPracticeHref = clientReady ? readPracticeNavMemory() : "/practice";
   const practiceGroupRef = useRef<HTMLDivElement | null>(null);
   const mobilePracticeGroupRef = useRef<HTMLDivElement | null>(null);
+  const brandTitleRef = useRef<HTMLSpanElement | null>(null);
+  const brandDomainRef = useRef<HTMLSpanElement | null>(null);
+  const topRightRef = useRef<HTMLDivElement | null>(null);
+  const [mobileDomainVisible, setMobileDomainVisible] = useState(false);
   const routePracticeItem = PRACTICE_NAV.find((item) => navItemActive(pathname, item.href)) ?? null;
   const activePracticeItem = routePracticeItem ?? PRACTICE_NAV.find((item) => item.href === rememberedPracticeHref) ?? PRACTICE_NAV[0];
   const practiceGroupActive = Boolean(routePracticeItem);
+
+  useLayoutEffect(() => {
+    const title = brandTitleRef.current;
+    const domain = brandDomainRef.current;
+    const controls = topRightRef.current;
+    if (!title || !domain || !controls) return;
+    const measure = () => {
+      const gap = parseFloat(getComputedStyle(title.parentElement!).columnGap) || 0;
+      const domainRight = title.getBoundingClientRect().right + gap + domain.getBoundingClientRect().width;
+      setMobileDomainVisible(domainRight <= Math.min(window.innerWidth / 2, controls.getBoundingClientRect().left - 8));
+    };
+    const observer = new ResizeObserver(measure);
+    [title, domain, controls].forEach((element) => observer.observe(element));
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   useEffect(() => {
     if (!routePracticeItem) return;
@@ -115,9 +139,9 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
         <Link href="/" className="brand-link" aria-label={t("nav.home")}>
           <BrandMark />
           <div className="brand-text">
-            <div className="brand-name">
-              {t("brand.name")}
-              <span className="brand-domain">LIFANG.IO</span>
+            <div className="brand-name" data-mobile-domain={mobileDomainVisible}>
+              <span ref={brandTitleRef}>{t("brand.name")}</span>
+              <span ref={brandDomainRef} className="brand-domain">LIFANG.IO</span>
             </div>
             <div className="brand-sub">{t("brand.subtitle")} · {settings.version}</div>
           </div>
@@ -232,11 +256,184 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
           );
         })}
       </nav>
-      <div className="topright">
+      <div ref={topRightRef} className="topright">
         {showCompactConnection && <CompactConnectButton />}
         <LanguageToggleButton />
+        <MobileNavigation />
       </div>
     </header>
+  );
+}
+
+function MobileNavigation() {
+  const { t, locale, setLocale } = useLanguage();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [practiceExpanded, setPracticeExpanded] = useState(true);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const menuTitleRef = useRef<HTMLSpanElement | null>(null);
+  const menuDomainRef = useRef<HTMLSpanElement | null>(null);
+  const [menuDomainVisible, setMenuDomainVisible] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const trigger = triggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.showModal();
+    closeRef.current?.focus();
+    const measureBrand = () => {
+      const title = menuTitleRef.current;
+      const domain = menuDomainRef.current;
+      const closeButton = closeRef.current;
+      if (!title || !domain || !closeButton) return;
+      const header = closeButton.parentElement!;
+      const closeLeft = header.getBoundingClientRect().right - parseFloat(getComputedStyle(header).paddingRight) - closeButton.getBoundingClientRect().width;
+      const gap = parseFloat(getComputedStyle(title.parentElement!).columnGap) || 0;
+      setMenuDomainVisible(title.getBoundingClientRect().right + gap + domain.getBoundingClientRect().width <= closeLeft - 12);
+    };
+    const observer = new ResizeObserver(measureBrand);
+    [dialog, menuTitleRef.current, menuDomainRef.current, closeRef.current].forEach((element) => {
+      if (element) observer.observe(element);
+    });
+    measureBrand();
+    const query = window.matchMedia("(width <= 700px)");
+    const handleResize = () => { if (!query.matches) close(); };
+    query.addEventListener("change", handleResize);
+    return () => {
+      query.removeEventListener("change", handleResize);
+      observer.disconnect();
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (trigger?.isConnected && trigger.offsetParent) {
+        trigger.focus({ preventScroll: true });
+      }
+    };
+  }, [close, open]);
+
+  const renderLink = (item: (typeof NAV)[number]) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      className={`mobile-nav-link${navItemActive(pathname, item.href) ? " active" : ""}`}
+      aria-current={navItemActive(pathname, item.href) ? "page" : undefined}
+      onClick={close}
+    >
+      <NavIcon name={item.icon} />
+      <span>{t(item.labelKey)}</span>
+      <NavIcon name="chevron" />
+    </Link>
+  );
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="mobile-nav-trigger"
+        aria-label={t("nav.openMenu")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? "mobile-navigation" : undefined}
+        onClick={() => { setPracticeExpanded(true); setOpen(true); }}
+      ><NavIcon name="menu" /></button>
+      {open && createPortal(
+        <dialog
+          ref={dialogRef}
+          id="mobile-navigation"
+          className="mobile-nav-drawer"
+          aria-label={t("nav.main")}
+          onCancel={(event) => { event.preventDefault(); close(); }}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") event.stopPropagation();
+            if (event.key !== "Tab") return;
+            const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")).filter((element) => element.getClientRects().length > 0);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          }}
+          onKeyUp={(event) => { if (event.key !== "Escape") event.stopPropagation(); }}
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            const bounds = event.currentTarget.getBoundingClientRect();
+            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+          }}
+          onPointerDown={(event) => {
+            if (event.pointerType === "touch") swipeStart.current = { x: event.clientX, y: event.clientY };
+          }}
+          onPointerUp={(event) => {
+            const start = swipeStart.current;
+            swipeStart.current = null;
+            if (start && event.clientX - start.x > 64 && Math.abs(event.clientY - start.y) < 48) close();
+          }}
+          onPointerCancel={() => { swipeStart.current = null; }}
+        >
+          <header className="mobile-nav-head">
+            <Link href="/" className="brand-link" aria-label={t("nav.home")} onClick={close}>
+              <BrandMark />
+              <span className="mobile-nav-brand-name" data-domain-visible={menuDomainVisible}>
+                <span ref={menuTitleRef}>{t("brand.name")}</span>
+                <span ref={menuDomainRef} className="brand-domain">LIFANG.IO</span>
+              </span>
+            </Link>
+            <button ref={closeRef} type="button" className="mobile-nav-close" aria-label={t("nav.closeMenu")} onClick={close}>
+              <NavIcon name="close" />
+            </button>
+          </header>
+          <nav className="mobile-nav-body" aria-label={t("nav.main")}>
+            <button
+              type="button"
+              className="mobile-nav-link mobile-nav-practice"
+              aria-expanded={practiceExpanded}
+              aria-controls="mobile-practice-links"
+              onClick={() => setPracticeExpanded((expanded) => !expanded)}
+            >
+              <NavIcon name="cube" /><span>{t("nav.practice")}</span><NavIcon name="chevron" />
+            </button>
+            <div id="mobile-practice-links" className="mobile-nav-children" hidden={!practiceExpanded}>
+              {PRACTICE_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`mobile-nav-child${navItemActive(pathname, item.href) ? " active" : ""}`}
+                  aria-current={navItemActive(pathname, item.href) ? "page" : undefined}
+                  onClick={() => {
+                    try { window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href); } catch { /* Navigation works without storage. */ }
+                    close();
+                  }}
+                >
+                  <span>{item.href === "/practice" ? t("自由练习") : t("专项练习")}</span><NavIcon name="chevron" />
+                </Link>
+              ))}
+            </div>
+            {SECONDARY_NAV.slice(0, -1).map(renderLink)}
+            <div className="mobile-nav-utilities">{renderLink(SECONDARY_NAV[SECONDARY_NAV.length - 1])}</div>
+          </nav>
+          <footer className="mobile-nav-language">
+            <span>{t("settings.language.label")}</span>
+            <div className="mobile-nav-language-options" role="group" aria-label={t("settings.language.aria")}>
+              {(["zh", "en"] as const).map((language) => (
+                <button key={language} type="button" aria-pressed={locale === language} lang={language === "zh" ? "zh-CN" : "en"} onClick={() => setLocale(language)}>
+                  {language === "zh" ? "中文" : "EN"}
+                </button>
+              ))}
+            </div>
+          </footer>
+        </dialog>, document.body,
+      )}
+    </>
   );
 }
 
@@ -605,6 +802,10 @@ function BatteryIndicator({ level }: { level: number | null }) {
 }
 
 export function NavIcon({ name }: { name: string }) {
+  if (name === "menu" || name === "close" || name === "chevron") {
+    const paths = { menu: "M4 6h16M4 12h16M4 18h16", close: "m6 6 12 12M6 18 18 6", chevron: "m9 5 7 7-7 7" };
+    return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name]} /></svg>;
+  }
   if (name === "practice") {
     return (
       <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">

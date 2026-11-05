@@ -1128,6 +1128,29 @@
 }
 
 @media (width <= 700px) {
+  .settings-card-appearance {
+    gap: 18px;
+  }
+
+  .settings-card-appearance .settings-card-head,
+  .settings-card-body-appearance {
+    display: contents;
+  }
+
+  .settings-card-body-appearance .settings-controls {
+    order: 1;
+  }
+
+  .settings-card-appearance .settings-color-legend {
+    order: 2;
+    align-self: center;
+    justify-content: center;
+  }
+
+  .settings-card-appearance .settings-preview {
+    order: 3;
+  }
+
   .settings-main {
     padding: 10px;
   }
