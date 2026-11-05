@@ -18,10 +18,8 @@ import { MoveToken } from "@/components/move-token";
 import { SolveTimeline, type SolveTimelineRecord } from "@/components/solve-timeline";
 import { getFaceHexColors, mapMoveToOrientation } from "@/lib/cube-appearance";
 import { useClientReady } from "@/lib/client-ready";
+import { useKeyboardHints } from "@/lib/use-keyboard-hints";
 import {
-  appendFixedViewMoveLogMove,
-  appendNormalizedMoveLogMove,
-  createMoveCoordinateState,
   expandMoveNotation,
   hintMoveForDoubleTurnProgress,
   invertMoveNotation,
@@ -104,14 +102,9 @@ const DAILY_TEST_TARGET = 5;
 const SOLVED_TRAILING_MOVE_SUPPRESS_MS = 900;
 const DISPLAY_STATE_EPSILON = 0.001;
 const CUBE_MOVE_ANIMATION_MS = 150;
-const MOVE_LOG_PILL_SIZE = 30;
-const MOVE_LOG_ROW_GAP = 5;
-const MOVE_LOG_MIN_COLUMN_GAP = 3;
-const MOVE_LOG_FALLBACK_ROWS = 1;
 const HISTORY_ROW_SIZE = 32;
 const HISTORY_ROW_GAP = 7;
 const HISTORY_FALLBACK_ROWS = 1;
-const DEFAULT_MOVE_LOG_CAPACITY = 12;
 const MAX_UNDO_HINT_QUEUE_LENGTH = 20;
 const HISTORY_CFOP_TIP_WIDTH = 286;
 const HISTORY_CFOP_TIP_HEIGHT = 260;
@@ -293,11 +286,6 @@ function savePracticeUiPreferences(practiceMode: PracticeMode, timingMode: Timin
     // localStorage can be unavailable in restricted browsing modes.
   }
 }
-
-type MoveLogEntry = {
-  m: string;
-  t: number;
-};
 
 type HistoryCfopTip = {
   entry: SolveHistoryEntry;
@@ -591,9 +579,9 @@ function freshSmartSolveStatus(length: number) {
 
 export function CubePracticeApp() {
   const { t } = useLanguage();
+  const showKeyboardHints = useKeyboardHints();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
-  const moveLogRef = useRef<HTMLDivElement | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visualPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -666,17 +654,12 @@ export function CubePracticeApp() {
   const hasRealtimeMovesRef = useRef(false);
   const suppressSolvedTrailingMoveUntilRef = useRef(0);
   const postSolveMoveGateRef = useRef<{ faceletsSerial: number } | null>(null);
-  const moveLogCoordinateRef = useRef(createMoveCoordinateState());
-  const moveLogEntriesRef = useRef<MoveLogEntry[]>([]);
-  const moveLogCapacityRef = useRef(DEFAULT_MOVE_LOG_CAPACITY);
-  const moveLogColumnsRef = useRef(DEFAULT_MOVE_LOG_CAPACITY);
   const gyroCostNoticeFadeTimerRef = useRef<number | null>(null);
   const gyroCostNoticeTimerRef = useRef<number | null>(null);
   const formulaRecognitionEnabledRef = useRef(false);
   const formulaRecognitionModuleRef = useRef<FormulaRecognitionModule | null>(null);
   const formulaRecognitionLoadRef = useRef<Promise<FormulaRecognitionModule> | null>(null);
 
-  const [moveLog, setMoveLog] = useState<MoveLogEntry[]>([]);
   const [phase, setPhase] = useState<Phase>("idle");
   const [practiceMode, setPracticeMode] = useState<PracticeMode>("scramble");
   const [timingMode, setTimingMode] = useState<TimingMode>("smart-cube");
@@ -722,9 +705,6 @@ export function CubePracticeApp() {
   const [f2lSubMoves, setF2lSubMoves] = useState<LiveF2lSubphaseMetrics>(EMPTY_F2L_SUBPHASES);
   const [historyCfopTip, setHistoryCfopTip] = useState<HistoryCfopTip | null>(null);
   const portalReady = useClientReady();
-  const [moveLogCapacity, setMoveLogCapacity] = useState(DEFAULT_MOVE_LOG_CAPACITY);
-  const [moveLogColumns, setMoveLogColumns] = useState(DEFAULT_MOVE_LOG_CAPACITY);
-  const [moveLogRows, setMoveLogRows] = useState(MOVE_LOG_FALLBACK_ROWS);
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
   const [historyRows, setHistoryRows] = useState(HISTORY_FALLBACK_ROWS);
   const [historyScrolling, setHistoryScrolling] = useState(false);
@@ -737,7 +717,6 @@ export function CubePracticeApp() {
     connectRealCube,
     requestBattery,
     requestFacelets,
-    resetTrackedCubeState,
     getLatestGyro,
     subscribeMove,
     subscribeGyro,
@@ -868,62 +847,6 @@ export function CubePracticeApp() {
   useEffect(() => {
     smartSolveIndexRef.current = smartSolveIndex;
   }, [smartSolveIndex]);
-
-  useEffect(() => {
-    moveLogCapacityRef.current = moveLogCapacity;
-    if (moveLogEntriesRef.current.length <= moveLogCapacity) return;
-    const overflow = moveLogEntriesRef.current.length - moveLogCapacity;
-    const rowsToDrop = Math.max(1, Math.ceil(overflow / moveLogColumnsRef.current));
-    const nextEntries = moveLogEntriesRef.current.slice(rowsToDrop * moveLogColumnsRef.current);
-    moveLogEntriesRef.current = nextEntries;
-    setMoveLog(nextEntries);
-  }, [moveLogCapacity]);
-
-  useLayoutEffect(() => {
-    const track = moveLogRef.current;
-    if (!track) return;
-
-    const updateCapacity = () => {
-      const rect = track.getBoundingClientRect();
-      const parent = track.parentElement;
-      const leftColumn = parent?.parentElement;
-      const head = parent?.querySelector<HTMLElement>(".ml-head") ?? null;
-      const parentStyle = parent ? window.getComputedStyle(parent) : null;
-      const headStyle = head ? window.getComputedStyle(head) : null;
-      const leftStyle = leftColumn ? window.getComputedStyle(leftColumn) : null;
-      const width = rect.width || track.clientWidth || track.parentElement?.clientWidth || 0;
-      const leftPaddingY = leftStyle ? parseFloat(leftStyle.paddingTop) + parseFloat(leftStyle.paddingBottom) : 0;
-      const leftBorderY = leftStyle ? parseFloat(leftStyle.borderTopWidth) + parseFloat(leftStyle.borderBottomWidth) : 0;
-      const parentHeight = leftColumn
-        ? leftColumn.clientHeight -
-          leftPaddingY -
-          leftBorderY -
-          [...leftColumn.children].reduce((height, child) => child === parent ? height : height + child.getBoundingClientRect().height, 0) -
-          Math.max(0, leftColumn.children.length - 1) * (leftStyle ? parseFloat(leftStyle.rowGap) || parseFloat(leftStyle.gap) || 0 : 0)
-        : parent?.clientHeight ?? 0;
-      const parentPaddingY = parentStyle ? parseFloat(parentStyle.paddingTop) + parseFloat(parentStyle.paddingBottom) : 0;
-      const parentBorderY = parentStyle ? parseFloat(parentStyle.borderTopWidth) + parseFloat(parentStyle.borderBottomWidth) : 0;
-      const headHeight = head ? head.getBoundingClientRect().height : 0;
-      const headMarginBottom = headStyle ? parseFloat(headStyle.marginBottom) : 0;
-      const availableHeight = parentHeight - parentPaddingY - parentBorderY - headHeight - headMarginBottom;
-      const height = availableHeight > 0
-        ? availableHeight
-        : rect.height || track.clientHeight || MOVE_LOG_FALLBACK_ROWS * (MOVE_LOG_PILL_SIZE + MOVE_LOG_ROW_GAP);
-      const columns = Math.max(1, Math.floor((width - MOVE_LOG_MIN_COLUMN_GAP) / (MOVE_LOG_PILL_SIZE + MOVE_LOG_MIN_COLUMN_GAP)));
-      const rows = Math.max(1, Math.floor((height + MOVE_LOG_ROW_GAP) / (MOVE_LOG_PILL_SIZE + MOVE_LOG_ROW_GAP)));
-      moveLogColumnsRef.current = columns;
-      setMoveLogColumns(columns);
-      setMoveLogRows(rows);
-      setMoveLogCapacity(columns * rows);
-    };
-
-    updateCapacity();
-    const observer = new ResizeObserver(updateCapacity);
-    observer.observe(track);
-    if (track.parentElement) observer.observe(track.parentElement);
-    if (track.parentElement?.parentElement) observer.observe(track.parentElement.parentElement);
-    return () => observer.disconnect();
-  }, [formulaRecognitionEnabled]);
 
   useLayoutEffect(() => {
     const list = historyListRef.current;
@@ -1643,40 +1566,6 @@ export function CubePracticeApp() {
     if (pending) animateCubeMoves([pending]);
   }, [animateCubeMoves, clearVisualPendingTimer]);
 
-  const resetMoveLog = useCallback(() => {
-    moveLogCoordinateRef.current = createMoveCoordinateState();
-    moveLogEntriesRef.current = [];
-    setMoveLog([]);
-  }, []);
-
-  const appendMoveLog = useCallback((move: string, trackCoordinate = true) => {
-    const previousEntries = moveLogEntriesRef.current;
-    const next = trackCoordinate
-      ? appendNormalizedMoveLogMove(
-          previousEntries.map((entry) => entry.m),
-          move,
-          moveLogCoordinateRef.current,
-        )
-      : {
-          history: appendFixedViewMoveLogMove(previousEntries.map((entry) => entry.m), move),
-          coordinateState: createMoveCoordinateState(),
-        };
-    const timestamp = performance.now();
-    const mappedEntries = next.history
-      .map((normalizedMove, index) => {
-        const previousEntry = previousEntries[index];
-        return previousEntry?.m === normalizedMove ? previousEntry : { m: normalizedMove, t: timestamp };
-      });
-    const overflow = mappedEntries.length - moveLogCapacityRef.current;
-    const nextEntries = overflow > 0
-      ? mappedEntries.slice(Math.max(1, Math.ceil(overflow / moveLogColumnsRef.current)) * moveLogColumnsRef.current)
-      : mappedEntries;
-
-    moveLogCoordinateRef.current = next.coordinateState;
-    moveLogEntriesRef.current = nextEntries;
-    setMoveLog(nextEntries);
-  }, []);
-
   const animateUnplayedPendingMoves = useCallback(
     (moves: string[], animatedCountRef: { current: number }, fallbackMove?: string) => {
       const unplayed = moves.slice(animatedCountRef.current);
@@ -2170,7 +2059,6 @@ export function CubePracticeApp() {
       }
 
       hasRealtimeMovesRef.current = true;
-      appendMoveLog(parsed.notation, !gyroDisabledRef.current);
 
       if (smartSolveStatusRef.current === "active") {
         flushVisualPendingMove();
@@ -2220,7 +2108,6 @@ export function CubePracticeApp() {
       handleFreePracticeMove,
       handleScrambleMove,
       handleSmartSolveMove,
-      appendMoveLog,
       queueVisualMove,
       requestFaceletsThrottled,
       recordSolveMove,
@@ -2525,6 +2412,9 @@ export function CubePracticeApp() {
       if (dailyTestResult || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
+      if (key === " " && event.target instanceof HTMLElement) {
+        event.target.closest<HTMLButtonElement>(".practice-settings-panel button")?.blur();
+      }
       if (key === " " && timingModeRef.current === "timer") {
         beginManualTimerHold();
         return;
@@ -2602,11 +2492,6 @@ export function CubePracticeApp() {
     await connectRealCube();
   }
 
-  function clearMoveLog() {
-    resetTrackedCubeState();
-    resetMoveLog();
-  }
-
   function handleHistoryScroll() {
     setHistoryScrolling(true);
     if (historyScrollTimerRef.current) {
@@ -2666,11 +2551,6 @@ export function CubePracticeApp() {
   function toggleHistoryEditing() {
     setHistoryCfopTip(null);
     setHistoryEditing((current) => !current);
-  }
-
-  async function copyMoveLog() {
-    if (moveLog.length === 0) return;
-    await navigator.clipboard.writeText(moveLog.map((move) => move.m).join(" "));
   }
 
   function resetDisplayOrientation() {
@@ -2873,7 +2753,9 @@ export function CubePracticeApp() {
     } else {
       const nextScramble = generateScramble(SCRAMBLE_LENGTH);
       resetAttempt(nextScramble);
-      setScrambleNotice(t("按照公式自行完成打乱，准备复原时长按空格键。"));
+      setScrambleNotice(t(showKeyboardHints
+        ? "按照公式自行完成打乱，准备复原时长按空格键。"
+        : "按照公式自行完成打乱，准备复原时长按计时器。"));
     }
   }
 
@@ -3063,16 +2945,16 @@ export function CubePracticeApp() {
             ? t("解算中 · SOLVING")
             : t("完成 · COMPLETE");
   const manualTimerPhaseLabel = manualFallbackNotice && phase === "solving"
-    ? t("连接已断开 · 按空格结束并仅保存总用时")
+    ? t(showKeyboardHints ? "连接已断开 · 按空格结束并仅保存总用时" : "连接已断开 · 点击计时器结束并仅保存总用时")
     : phase === "solving"
-      ? t("按空格键结束")
+      ? t(showKeyboardHints ? "按空格键结束" : "点击计时器结束")
       : manualTimerArmState === "ready"
         ? t("松开开始")
         : manualTimerArmState === "holding"
           ? t("继续按住")
           : phase === "done"
-            ? t("长按空格键或计时器以开始下一次")
-            : t("长按空格键或计时器以准备");
+            ? t(showKeyboardHints ? "长按空格键或计时器以开始下一次" : "长按计时器以开始下一次")
+            : t(showKeyboardHints ? "长按空格键或计时器以准备" : "长按计时器以准备");
   const manualTimerDisplayMs = manualTimerArmState === "idle" && (phase === "solving" || phase === "done") ? solveMs : 0;
   const currentSolveTimeline = !isManualTimer && phase !== "solving" && completedSolveTimeline?.durationMs === Math.round(solveMs)
     ? completedSolveTimeline
@@ -3091,6 +2973,7 @@ export function CubePracticeApp() {
       <AppTopbar />
 
       <main className="practice-layout">
+        <div className="practice-info">
         <section className="practice-left">
           <div className="practice-card daily-test-card">
             <div className="practice-card-head">
@@ -3147,7 +3030,7 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="practice-control-panel">
+          <div className="practice-control-panel practice-settings-panel">
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("练习设置")}</div>
@@ -3184,41 +3067,39 @@ export function CubePracticeApp() {
               >{t("纯计时器")}</button>
             </div>
 
-            {!isManualTimer && <div className="stage-tools stage-touch-controls">
+            {!isManualTimer && <div className="practice-settings-tools">
               <button
-                className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
+                className={`practice-setting-button${gyroDisabled ? "" : " active"}`}
                 onClick={toggleGyroDisabled}
                 aria-keyshortcuts="L"
                 aria-pressed={!gyroDisabled}
                 aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
               >
-                <span className="tag-key" aria-hidden="true">L</span>
                 <span>{gyroDisabled ? t("陀螺仪禁用中") : t("陀螺仪启用中")}</span>
               </button>
-              <button className="tag tag-btn" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">
-                <span className="tag-key" aria-hidden="true">Q</span>
-                <span>{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</span>
-              </button>
-              <button className="tag tag-btn stage-reset-btn" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
-                <span className="tag-key" aria-hidden="true">R</span><span>{t("视角归位")}</span>
-              </button>
               <button
-                className={`tag tag-btn${formulaRecognitionEnabled ? " active" : ""}`}
+                className={`practice-setting-button${formulaRecognitionEnabled ? " active" : ""}`}
                 onClick={toggleFormulaRecognition}
                 aria-keyshortcuts="F"
                 aria-pressed={formulaRecognitionEnabled}
               >
-                <span className="tag-key" aria-hidden="true">F</span><span>{t("公式识别")}</span>
+                <span>{formulaRecognitionEnabled ? t("公式识别已开启") : t("公式识别已关闭")}</span>
+              </button>
+              <button className="practice-setting-button" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
+                <span>{t("视角归位")}</span>
+              </button>
+              <button className="practice-setting-button" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">
+                <span>{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</span>
               </button>
             </div>}
           </div>
 
-          {!isManualTimer && (formulaRecognitionEnabled ? (
-            <div className="movelog formula-recognition-panel" aria-live="polite">
-              <div className="practice-card-head ml-head">
+          {!isManualTimer && formulaRecognitionEnabled && (
+            <div className="practice-card formula-recognition-panel" aria-live="polite">
+              <div className="practice-card-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("公式识别")}</div>
-                  <div className="practice-kicker">OLL · PLL</div>
+                  <div className="practice-kicker">RECOGNITION</div>
                 </div>
               </div>
               {recognizedFormula ? (
@@ -3268,31 +3149,7 @@ export function CubePracticeApp() {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="movelog">
-              <div className="practice-card-head ml-head">
-                <div className="practice-title-line">
-                  <div className="practice-card-title">{t("移动记录")}</div>
-                  <div className="practice-kicker">MOVES</div>
-                </div>
-                <div className="ml-actions">
-                  <button className="ml-action" onClick={clearMoveLog} disabled={moveLog.length === 0}>{t("清空")}</button>
-                  <button className="ml-action" onClick={copyMoveLog} disabled={moveLog.length === 0}>{t("复制")}</button>
-                </div>
-              </div>
-              <div
-                className="ml-track"
-                ref={moveLogRef}
-                style={{ "--move-log-columns": moveLogColumns, "--move-log-rows": moveLogRows } as CSSProperties}
-              >
-                {moveLog.length > 0 && (
-                  moveLog.map((move, index) => (
-                    <span key={`${move.t}-${index}`} className="ml-pill"><MoveToken move={move.m} /></span>
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
+          )}
 
           {!isManualTimer && <div className="practice-card legend">
             <div className="practice-card-head">
@@ -3306,281 +3163,6 @@ export function CubePracticeApp() {
 
         </section>
 
-        <section className="practice-center">
-          <div className="practice-stage">
-            {!isManualTimer && gyroCostNoticeVisible && (
-              <div
-                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
-                id="gyro-cost-notice"
-                role="status"
-              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
-            )}
-            {!isManualTimer && <div className="cube-mount" ref={cubeMountRef}></div>}
-
-            {isManualTimer && (
-              <div className={`manual-timer-stage${manualScrambleVisible ? " with-scramble" : ""}`}>
-                <div
-                  className={`manual-timer-surface arm-${manualTimerArmState} phase-${phase}${manualFallbackNotice ? " fallback" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={manualTimerPhaseLabel}
-                  onPointerDown={handleManualTimerPointerDown}
-                  onPointerUp={handleManualTimerPointerUp}
-                  onPointerCancel={handleManualTimerPointerCancel}
-                  onContextMenu={(event) => event.preventDefault()}
-                >
-                  <div className="manual-timer-content">
-                    <div className="manual-timer-value">{fmtTime(manualTimerDisplayMs)}</div>
-                    <div className="manual-timer-status" aria-live="polite">{manualTimerPhaseLabel}</div>
-                  </div>
-                </div>
-                {phase === "solving" && (
-                  <button
-                    type="button"
-                    className="practice-btn practice-btn-ghost manual-timer-cancel"
-                    onClick={() => resetAttempt()}
-                    onKeyDown={(event) => event.stopPropagation()}
-                    onKeyUp={(event) => event.stopPropagation()}
-                  >{t("取消")}</button>
-                )}
-              </div>
-            )}
-
-            {!isManualTimer && !stageGuidanceVisible && (
-              <div className="stage-timer-stack">
-                <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
-                  {phase === "idle" && <div className="t-display">{fmtTime(0)}</div>}
-                  {phase === "inspect" && (
-                    <div className="t-display t-warn">
-                      {inspectionDurationMs === null ? (
-                        <svg
-                          className="practice-infinity-symbol"
-                          viewBox="0 0 72 40"
-                          role="img"
-                          aria-label={t("无限观察")}
-                        >
-                          <path d="M36 20C29 10 24 6 17 6C9 6 4 12 4 20C4 28 9 34 17 34C24 34 29 30 36 20C43 10 48 6 55 6C63 6 68 12 68 20C68 28 63 34 55 34C48 34 43 30 36 20Z" />
-                        </svg>
-                      ) : Math.ceil(inspectMs / 1000)}
-                      {inspectionDurationMs !== null && <span className="t-unit">s</span>}
-                    </div>
-                  )}
-                  {(phase === "solving" || phase === "done") && <div className="t-display t-active">{fmtTime(solveMs)}</div>}
-                  <div className="t-phase">{timerPhaseLabel}</div>
-                </div>
-
-                <div className="timer-controls">
-                  {!isConnected && phase !== "solving" && (
-                    <button className="practice-btn practice-btn-primary" onClick={startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
-                      <span>
-                        {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接魔方")}
-                      </span>
-                    </button>
-                  )}
-                  {isConnected && practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
-                    <button className="practice-btn practice-btn-primary" onClick={beginScramble} disabled={smartSolveBusy}>
-                      <span>
-                        {smartSolveBusy
-                          ? t("智能求解中")
-                          : dailyTest
-                          ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
-                          : phase === "done"
-                            ? t("下一次 · 开始打乱")
-                            : t("开始打乱 · 按 SPACE")}
-                      </span>
-                    </button>
-                  )}
-                  {practiceMode === "scramble" && phase === "inspect" && (
-                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
-                      <span>{t("取消本次复原 · 按 SPACE")}</span>
-                    </button>
-                  )}
-                  {phase === "solving" && (
-                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
-                      <span>{t("取消 · 按 SPACE")}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {(stageGuidanceVisible || manualScrambleVisible) && (
-              <div className="stage-bottom-stack">
-                {manualScrambleVisible && (
-                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("打乱公式")}</div>
-                    <div className="sh-actions">
-                      {dailyTest && (
-                        <div className="sh-counter">
-                          <span className="sh-counter-num">{dailyTestProgress + 1}</span>
-                          <span className="sh-counter-sep">/</span>
-                          <span className="sh-counter-total">{DAILY_TEST_TARGET}</span>
-                        </div>
-                      )}
-                      <button
-                        className="sh-cancel"
-                        onClick={refreshManualScramble}
-                        disabled={manualTimerArmState !== "idle"}
-                        aria-label={t("更换打乱公式")}
-                      >{t("换一条")}</button>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {scramble.map((move, index) => (
-                      <AlgorithmStepToken
-                        key={`${move}-${index}`}
-                        move={move}
-                        index={index}
-                        status="pending"
-                        active={false}
-                      />
-                    ))}
-                  </div>
-                </div>
-                )}
-                {smartSolveVisible && (
-                <div className="stage-hint solve-stage-hint" role="status" aria-label={t("智能求解")}>
-                  <div className="sh-head">
-                    <div className="sh-kicker">{t("智能求解")}</div>
-                    {smartSolveSteps.length > 0 && (
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{smartSolveCounterValue}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{smartSolveSteps.length}</span>
-                      </div>
-                    )}
-                    <button className="sh-cancel" onClick={cancelSmartSolve} aria-label={t("关闭智能求解")}>
-                      {smartSolveStatus === "active" || smartSolveStatus === "loading" ? t("取消") : t("关闭")}
-                    </button>
-                  </div>
-                  {smartSolveSteps.length > 0 && (
-                    <div className="sh-grid">
-                      {smartSolveSteps.map((move, index) => {
-                        const stepStatus: AlgorithmStepStatus =
-                          index === smartSolveIndex && (smartSolveWrong || smartSolveUndoExpected)
-                            ? "wrong"
-                            : smartSolveStepStatus[index] === "correct"
-                              ? "correct"
-                              : smartSolveStepStatus[index] === "partial"
-                                ? "partial"
-                                : "pending";
-                        return (
-                          <AlgorithmStepToken
-                            key={`${move}-${index}`}
-                            move={move}
-                            index={index}
-                            status={stepStatus}
-                            active={smartSolveStatus === "active" && index === smartSolveIndex}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className={`sh-notice${smartSolveUndoExpected || smartSolveStatus === "error" ? " error" : ""}`}>
-                    {smartSolveUndoDisplay.length > 0 ? (
-                      <>
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...smartSolveUndoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </>
-                    ) : (
-                      smartSolveNotice
-                    )}
-                  </div>
-                </div>
-                )}
-                {phase === "scrambling" && (
-                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("打乱公式")}</div>
-                    {undoDisplay.length > 0 && (
-                      <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...undoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </div>
-                    )}
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{scrambleIndex + 1}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{scramble.length}</span>
-                      </div>
-                      <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>{t("取消")}</button>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {scramble.map((move, index) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === scrambleIndex && (scrambleWrong || undoExpected)
-                          ? "wrong"
-                          : scrambleStatus[index] === "correct"
-                            ? "correct"
-                            : scrambleStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === scrambleIndex}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                )}
-                {freePracticeVisible && (
-                <div className="stage-hint free-stage-hint" role="status" aria-label={t("自由练习状态")}>
-                  <div className="sh-head">
-                    <div className="sh-kicker">{t("自由练习")}</div>
-                    <div className="sh-actions">
-                      <button className="sh-cancel" onClick={cancelFreePractice} aria-label={t("取消自由练习")}>{t("取消")}</button>
-                      {(freeState === "scrambling" || freeState === "armed" || phase === "done") && (
-                        <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("重置自由练习")}>{t("重置")}</button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="free-state-grid">
-                    {[
-                      [t("状态同步"), freeState === "waitingSolved" ? "active" : freeState === "ready" || freeState === "scrambling" || freeState === "armed" ? "done" : ""],
-                      [t("自由打乱"), freeState === "scrambling" || freeState === "armed" ? "done" : ""],
-                      [t("静止 5 秒"), freeState === "scrambling" ? "filling" : freeState === "armed" ? "done" : ""],
-                      [t("开始复原"), freeState === "armed" ? "active" : ""],
-                    ].map(([label, status]) => (
-                      <span key={label} className={`free-state-cell ${status}`}>
-                        {label === t("静止 5 秒") && status === "filling" && (
-                          <span
-                            className="free-state-fill"
-                            style={{ width: `${freeIdleProgress * 100}%` }}
-                            aria-hidden="true"
-                          />
-                        )}
-                        <span className="free-state-label">{label}</span>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="sh-notice">
-                    {freeState === "scrambling" && !freeAwaitingIdleFaceletsRef.current
-                      ? t("自由打乱中。停手后静止5秒以开始复原。")
-                      : freeNotice}
-                  </div>
-                </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
         <section className="practice-right">
           <div className="stats">
             <div className="practice-card-head">
@@ -3590,8 +3172,8 @@ export function CubePracticeApp() {
               </div>
             </div>
             <div className="stat-grid">
-              <div className="st st-primary"><div className="st-l">{t("总次数 TOTAL")}</div><div className="st-v">{stats.count}</div></div>
-              <div className="st"><div className="st-l">{t("最佳 BEST")}</div><div className="st-v">{fmtShort(stats.best)}</div></div>
+              <div className="st st-primary"><div className="st-l">{t("总次数")}</div><div className="st-v">{stats.count}</div></div>
+              <div className="st"><div className="st-l">{t("最佳")}</div><div className="st-v">{fmtShort(stats.best)}</div></div>
               <div className="st"><div className="st-l">AO5</div><div className="st-v">{fmtShort(stats.avg5)}</div></div>
               <div className="st st-stable-score" tabIndex={0}>
                 <div className="st-l">{t("稳定成绩")}</div>
@@ -3853,6 +3435,282 @@ export function CubePracticeApp() {
               </div>
             ), document.body)}
           </div>
+          </div>
+        </section>
+        </div>
+
+        <section className="practice-center">
+          <div className="practice-stage">
+            {!isManualTimer && gyroCostNoticeVisible && (
+              <div
+                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
+                id="gyro-cost-notice"
+                role="status"
+              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
+            )}
+            {!isManualTimer && <div className="cube-mount" ref={cubeMountRef}></div>}
+
+            {isManualTimer && (
+              <div className={`manual-timer-stage${manualScrambleVisible ? " with-scramble" : ""}`}>
+                <div
+                  className={`manual-timer-surface arm-${manualTimerArmState} phase-${phase}${manualFallbackNotice ? " fallback" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={manualTimerPhaseLabel}
+                  onPointerDown={handleManualTimerPointerDown}
+                  onPointerUp={handleManualTimerPointerUp}
+                  onPointerCancel={handleManualTimerPointerCancel}
+                  onContextMenu={(event) => event.preventDefault()}
+                >
+                  <div className="manual-timer-content">
+                    <div className="manual-timer-value">{fmtTime(manualTimerDisplayMs)}</div>
+                    <div className="manual-timer-status" aria-live="polite">{manualTimerPhaseLabel}</div>
+                  </div>
+                </div>
+                {phase === "solving" && (
+                  <button
+                    type="button"
+                    className="practice-btn practice-btn-ghost manual-timer-cancel"
+                    onClick={() => resetAttempt()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                    onKeyUp={(event) => event.stopPropagation()}
+                  >{t("取消")}</button>
+                )}
+              </div>
+            )}
+
+            {!isManualTimer && !stageGuidanceVisible && (
+              <div className="stage-timer-stack">
+                <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
+                  {phase === "idle" && <div className="t-display">{fmtTime(0)}</div>}
+                  {phase === "inspect" && (
+                    <div className="t-display t-warn">
+                      {inspectionDurationMs === null ? (
+                        <svg
+                          className="practice-infinity-symbol"
+                          viewBox="0 0 72 40"
+                          role="img"
+                          aria-label={t("无限观察")}
+                        >
+                          <path d="M36 20C29 10 24 6 17 6C9 6 4 12 4 20C4 28 9 34 17 34C24 34 29 30 36 20C43 10 48 6 55 6C63 6 68 12 68 20C68 28 63 34 55 34C48 34 43 30 36 20Z" />
+                        </svg>
+                      ) : Math.ceil(inspectMs / 1000)}
+                      {inspectionDurationMs !== null && <span className="t-unit">s</span>}
+                    </div>
+                  )}
+                  {(phase === "solving" || phase === "done") && <div className="t-display t-active">{fmtTime(solveMs)}</div>}
+                  <div className="t-phase">{timerPhaseLabel}</div>
+                </div>
+
+                <div className="timer-controls">
+                  {!isConnected && phase !== "solving" && (
+                    <button className="practice-btn practice-btn-primary" onClick={startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
+                      <span>
+                        {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接魔方")}
+                      </span>
+                    </button>
+                  )}
+                  {isConnected && practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
+                    <button className="practice-btn practice-btn-primary" onClick={beginScramble} disabled={smartSolveBusy}>
+                      <span>
+                        {smartSolveBusy
+                          ? t("智能求解中")
+                          : dailyTest
+                          ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
+                          : phase === "done"
+                            ? t("下一次 · 开始打乱")
+                            : t(showKeyboardHints ? "开始打乱 · 按 SPACE" : "开始打乱")}
+                      </span>
+                    </button>
+                  )}
+                  {practiceMode === "scramble" && phase === "inspect" && (
+                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
+                      <span>{t(showKeyboardHints ? "取消本次复原 · 按 SPACE" : "取消本次复原")}</span>
+                    </button>
+                  )}
+                  {phase === "solving" && (
+                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
+                      <span>{t(showKeyboardHints ? "取消 · 按 SPACE" : "取消")}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {(stageGuidanceVisible || manualScrambleVisible) && (
+              <div className="stage-bottom-stack">
+                {manualScrambleVisible && (
+                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
+                  <div className="sh-head sh-head-scramble">
+                    <div className="sh-kicker">{t("打乱公式")}</div>
+                    <div className="sh-actions">
+                      {dailyTest && (
+                        <div className="sh-counter">
+                          <span className="sh-counter-num">{dailyTestProgress + 1}</span>
+                          <span className="sh-counter-sep">/</span>
+                          <span className="sh-counter-total">{DAILY_TEST_TARGET}</span>
+                        </div>
+                      )}
+                      <button
+                        className="sh-cancel"
+                        onClick={refreshManualScramble}
+                        disabled={manualTimerArmState !== "idle"}
+                        aria-label={t("更换打乱公式")}
+                      >{t("换一条")}</button>
+                    </div>
+                  </div>
+                  <div className="sh-grid">
+                    {scramble.map((move, index) => (
+                      <AlgorithmStepToken
+                        key={`${move}-${index}`}
+                        move={move}
+                        index={index}
+                        status="pending"
+                        active={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+                )}
+                {smartSolveVisible && (
+                <div className="stage-hint solve-stage-hint" role="status" aria-label={t("智能求解")}>
+                  <div className="sh-head">
+                    <div className="sh-kicker">{t("智能求解")}</div>
+                    {smartSolveSteps.length > 0 && (
+                      <div className="sh-counter">
+                        <span className="sh-counter-num">{smartSolveCounterValue}</span>
+                        <span className="sh-counter-sep">/</span>
+                        <span className="sh-counter-total">{smartSolveSteps.length}</span>
+                      </div>
+                    )}
+                    <button className="sh-cancel" onClick={cancelSmartSolve} aria-label={t("关闭智能求解")}>
+                      {smartSolveStatus === "active" || smartSolveStatus === "loading" ? t("取消") : t("关闭")}
+                    </button>
+                  </div>
+                  {smartSolveSteps.length > 0 && (
+                    <div className="sh-grid">
+                      {smartSolveSteps.map((move, index) => {
+                        const stepStatus: AlgorithmStepStatus =
+                          index === smartSolveIndex && (smartSolveWrong || smartSolveUndoExpected)
+                            ? "wrong"
+                            : smartSolveStepStatus[index] === "correct"
+                              ? "correct"
+                              : smartSolveStepStatus[index] === "partial"
+                                ? "partial"
+                                : "pending";
+                        return (
+                          <AlgorithmStepToken
+                            key={`${move}-${index}`}
+                            move={move}
+                            index={index}
+                            status={stepStatus}
+                            active={smartSolveStatus === "active" && index === smartSolveIndex}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className={`sh-notice${smartSolveUndoExpected || smartSolveStatus === "error" ? " error" : ""}`}>
+                    {smartSolveUndoDisplay.length > 0 ? (
+                      <>
+                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                        <span className="sh-undo-list">
+                          {[...smartSolveUndoDisplay].reverse().map((move, index) => (
+                            <MoveToken key={`${move}-${index}`} move={move} />
+                          ))}
+                        </span>
+                      </>
+                    ) : (
+                      smartSolveNotice
+                    )}
+                  </div>
+                </div>
+                )}
+                {phase === "scrambling" && (
+                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
+                  <div className="sh-head sh-head-scramble">
+                    <div className="sh-kicker">{t("打乱公式")}</div>
+                    {undoDisplay.length > 0 && (
+                      <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
+                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                        <span className="sh-undo-list">
+                          {[...undoDisplay].reverse().map((move, index) => (
+                            <MoveToken key={`${move}-${index}`} move={move} />
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    <div className="sh-actions">
+                      <div className="sh-counter">
+                        <span className="sh-counter-num">{scrambleIndex + 1}</span>
+                        <span className="sh-counter-sep">/</span>
+                        <span className="sh-counter-total">{scramble.length}</span>
+                      </div>
+                      <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>{t("取消")}</button>
+                    </div>
+                  </div>
+                  <div className="sh-grid">
+                    {scramble.map((move, index) => {
+                      const stepStatus: AlgorithmStepStatus =
+                        index === scrambleIndex && (scrambleWrong || undoExpected)
+                          ? "wrong"
+                          : scrambleStatus[index] === "correct"
+                            ? "correct"
+                            : scrambleStatus[index] === "partial"
+                              ? "partial"
+                              : "pending";
+                      return (
+                        <AlgorithmStepToken
+                          key={`${move}-${index}`}
+                          move={move}
+                          index={index}
+                          status={stepStatus}
+                          active={index === scrambleIndex}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+                )}
+                {freePracticeVisible && (
+                <div className="stage-hint free-stage-hint" role="status" aria-label={t("自由练习状态")}>
+                  <div className="sh-head">
+                    <div className="sh-kicker">{t("自由练习")}</div>
+                    <div className="sh-actions">
+                      <button className="sh-cancel" onClick={cancelFreePractice} aria-label={t("取消自由练习")}>{t("取消")}</button>
+                      {(freeState === "scrambling" || freeState === "armed" || phase === "done") && (
+                        <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("重置自由练习")}>{t("重置")}</button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="free-state-grid">
+                    {[
+                      [t("状态同步"), freeState === "waitingSolved" ? "active" : freeState === "ready" || freeState === "scrambling" || freeState === "armed" ? "done" : ""],
+                      [t("自由打乱"), freeState === "scrambling" || freeState === "armed" ? "done" : ""],
+                      [t("静止 5 秒"), freeState === "scrambling" ? "filling" : freeState === "armed" ? "done" : ""],
+                      [t("开始复原"), freeState === "armed" ? "active" : ""],
+                    ].map(([label, status]) => (
+                      <span key={label} className={`free-state-cell ${status}`}>
+                        {label === t("静止 5 秒") && status === "filling" && (
+                          <span
+                            className="free-state-fill"
+                            style={{ width: `${freeIdleProgress * 100}%` }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <span className="free-state-label">{label}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="sh-notice">
+                    {freeState === "scrambling" && !freeAwaitingIdleFaceletsRef.current
+                      ? t("自由打乱中。停手后静止5秒以开始复原。")
+                      : freeNotice}
+                  </div>
+                </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </main>

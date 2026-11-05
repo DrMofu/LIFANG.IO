@@ -1770,7 +1770,7 @@ function FormulaStage({
   );
 }
 
-const MOBILE_FORMULA_QUERY = "(max-width: 1240px)";
+const MOBILE_FORMULA_QUERY = "(width <= 1240px)";
 const isMobileFormulaLayout = () => window.matchMedia(MOBILE_FORMULA_QUERY).matches;
 const serverMobileFormulaLayout = () => false;
 

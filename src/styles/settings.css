@@ -1068,7 +1068,7 @@
   color: var(--tech-blue);
 }
 
-@media (max-width: 1120px) {
+@media (width <= 1240px) {
   .settings-main {
     grid-template-columns: 1fr;
     padding-right: 22px;
@@ -1088,7 +1088,7 @@
   }
 }
 
-@media (max-width: 980px) {
+@media (width <= 1240px) {
   .settings-main {
     padding: 12px;
   }
@@ -1127,7 +1127,7 @@
   }
 }
 
-@media (max-width: 620px) {
+@media (width <= 700px) {
   .settings-main {
     padding: 10px;
   }

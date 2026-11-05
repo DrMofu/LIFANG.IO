@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
+import { useKeyboardHints } from "@/lib/use-keyboard-hints";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
 import { CubeIdleFaceletsSync } from "@/lib/cube-idle-facelets-sync";
@@ -365,6 +366,7 @@ function averageTime(values: number[]) {
 
 function CfopTrainerClient() {
   const { t } = useLanguage();
+  const showKeyboardHints = useKeyboardHints();
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const stateRef = useRef<TrainerState>("idle");
@@ -1305,6 +1307,7 @@ function CfopTrainerClient() {
     <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
       <AppTopbar />
       <main className="practice-layout trainer-layout">
+        <div className="practice-info">
         <section className="practice-left trainer-left">
           <div className="practice-control-panel trainer-catalog-panel">
             <div className="practice-card-head practice-control-head">
@@ -1330,153 +1333,6 @@ function CfopTrainerClient() {
                   </span>
                 </button>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="practice-center">
-          <div className="practice-stage trainer-stage">
-            <div ref={cubeMountRef} className="cube-mount" />
-            {gyroCostNoticeVisible && (
-              <div
-                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
-                id="gyro-cost-notice"
-                role="status"
-              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
-            )}
-            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : formulaHintVisible ? " trainer-formula-timer-stack" : ""}`}>
-              {formulaHintVisible && (
-                <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
-                  <div className="ui-section-head">
-                    <div className="ui-section-title">{t("公式提示")}</div>
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{formulaHintCounter}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{formulaHintMoves.length}</span>
-                      </div>
-                    </div>
-                  </div>
-                  {formulaHintUndoDisplay.length > 0 && (
-                    <div className="sh-notice error">
-                      <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                      <span className="sh-undo-list">
-                        {[...formulaHintUndoDisplay].reverse().map((move, index) => (
-                          <MoveToken key={`${move}-${index}`} move={move} />
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                  <div className="sh-grid">
-                    {formulaHintMoves.map((move, index) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
-                          ? "wrong"
-                          : formulaHintStatus[index] === "correct"
-                            ? "correct"
-                            : formulaHintStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === formulaHintIndex && formulaHintIndex < formulaHintMoves.length}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {recognitionSequenceVisible ? (
-                <div className="stage-hint trainer-recognition-sequence" role="status" aria-live="polite" aria-label={t("转动序列")}>
-                  <div className="sh-head">
-                    <div className="sh-kicker">{t("转动序列")}</div>
-                  </div>
-                  <div className="sh-grid trainer-recognition-viewport">
-                    <div
-                      className="trainer-recognition-track"
-                      style={{ transform: `translateX(calc(var(--recognition-token-size) / -2 - ${recognitionIndex} * (var(--recognition-token-size) + var(--recognition-token-gap))))` }}
-                    >
-                      {recognitionMoves.map((move, index) => (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={recognitionStatuses[index] ?? "pending"}
-                          active={index === recognitionIndex}
-                          showIndex={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : !isRecognitionSpecialty ? (
-                <div className={`timer timer-${state}`}>
-                  <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
-                  <div className="t-phase" role={state === "error" ? "alert" : undefined}>
-                    {state === "error"
-                    ? t(trainerError ?? "本局加载失败，请重试本局")
-                    : autoNextPending
-                    ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
-                    : state === "cancelled"
-                    ? t("本组已取消")
-                    : state === "ended"
-                    ? t("本组测试已结束")
-                    : timerKind === "observe"
-                      ? t("观察 / 反应计时")
-                      : state === "solving"
-                        ? t("阶段复原计时")
-                        : sessionRoundCount >= sessionRoundLimit
-                          ? t(`${sessionRoundLimit} 局专项完成`)
-                          : t(`${sessionRoundLimit} 局专项计时器`)}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="timer-controls trainer-timer-controls">
-                <button
-                  className="practice-btn practice-btn-primary"
-                  type="button"
-                  onClick={startTraining}
-                  disabled={connecting}
-                  aria-keyshortcuts="Space"
-                >
-                  <span>{canCancelTrainerAction
-                    ? isRecognitionSpecialty ? t("结束 · 按 SPACE") : t("取消 · 按 SPACE")
-                    : connected ? t("开始 · 按 SPACE") : t("连接智能魔方")}</span>
-                </button>
-                {!isRecognitionSpecialty && sessionInProgress && state === "error" && (
-                  <button
-                    className="practice-btn practice-btn-ghost"
-                    type="button"
-                    onClick={retryTrainerRound}
-                    disabled={!connected || connecting}
-                  >
-                    <span>{t("重试本局")}</span>
-                  </button>
-                )}
-                {!isRecognitionSpecialty && roundInProgress && (
-                  <div className="trainer-round-actions">
-                    <button
-                      className="practice-btn practice-btn-ghost trainer-abandon-btn"
-                      type="button"
-                      onClick={abandonRound}
-                    >
-                      <span>{t("放弃本局")}</span>
-                    </button>
-                    <button
-                      className="practice-btn practice-btn-ghost"
-                      type="button"
-                      onClick={endTraining}
-                    >
-                      <span>{t("结束测试")}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </section>
@@ -1630,89 +1486,236 @@ function CfopTrainerClient() {
                 </>
               )}
 
-              <div className="stage-tools trainer-stage-tools">
+              <div className="practice-settings-tools trainer-stage-tools">
                 {canUseFocusMode && (
                   <button
-                    className={`tag tag-btn${f2lFocusMode ? " active" : ""}`}
+                    className={`practice-setting-button${f2lFocusMode ? " active" : ""}`}
                     type="button"
                     onClick={toggleF2lFocusMode}
                     disabled={settingsLocked}
                     aria-keyshortcuts="H"
                     aria-pressed={f2lFocusMode}
                   >
-                    <span className="tag-key" aria-hidden="true">H</span><span>{t("专注模式")}</span>
+                    <span>{t("专注模式")}</span>
                   </button>
                 )}
                 <button
-                  className={`tag tag-btn${gyroDisabled ? "" : " active"}`}
+                  className={`practice-setting-button${gyroDisabled ? "" : " active"}`}
                   type="button"
                   onClick={toggleGyroDisabled}
                   aria-keyshortcuts="L"
                   aria-pressed={!gyroDisabled}
                   aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
                 >
-                  <span className="tag-key" aria-hidden="true">L</span>
                   <span>{gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}</span>
                 </button>
                 <button
-                  className="tag tag-btn stage-reset-btn"
+                  className="practice-setting-button"
                   type="button"
                   onClick={resetDisplayOrientation}
                   disabled={!canResetDisplayOrientation}
                   aria-keyshortcuts="R"
                 >
-                  <span className="tag-key" aria-hidden="true">R</span><span>{t("视角归位")}</span>
+                  <span>{t("视角归位")}</span>
                 </button>
               </div>
             </div>
 
-          <div className="practice-control-panel trainer-results-panel" aria-live="polite">
+          <div className="stats trainer-results-panel" aria-live="polite">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
                 <div className="practice-kicker">SCORE</div>
               </div>
             </div>
-            <div className="solve-metrics">
               {isRecognitionSpecialty ? (
-                <div className="trainer-metric-grid">
-                  <div className="solve-phase-card trainer-metric-correct">
-                    <span>{t("正确")}</span>
-                    <b>{recognitionCorrect}</b>
+                <div className="stat-grid">
+                  <div className="st st-primary">
+                    <div className="st-l">{t("正确")}</div>
+                    <div className="st-v">{recognitionCorrect}</div>
                   </div>
-                  <div className="solve-phase-card trainer-metric-wrong">
-                    <span>{t("错误")}</span>
-                    <b>{recognitionWrong}</b>
+                  <div className="st">
+                    <div className="st-l">{t("错误")}</div>
+                    <div className="st-v">{recognitionWrong}</div>
                   </div>
-                  <div className="solve-phase-card">
-                    <span>{t("正确率")}</span>
-                    <b>{recognitionAccuracy}%</b>
+                  <div className="st">
+                    <div className="st-l">{t("正确率")}</div>
+                    <div className="st-v">{recognitionAccuracy}%</div>
                   </div>
-                  <div className="solve-phase-card">
-                    <span>{t("平均反应")}</span>
-                    <b>{fmtShort(recognitionAverageResponseMs)}</b>
+                  <div className="st">
+                    <div className="st-l">{t("平均反应")}</div>
+                    <div className="st-v">{fmtShort(recognitionAverageResponseMs)}</div>
                   </div>
                 </div>
               ) : (
-                <div className="trainer-metric-grid">
-                  <div className="solve-phase-card">
-                    <span>{t("平均观察")}</span>
-                    <b>{fmtShort(sessionAverageObserveMs)}</b>
+                <div className="stat-grid">
+                  <div className="st st-primary">
+                    <div className="st-l">{t("平均观察")}</div>
+                    <div className="st-v">{fmtShort(sessionAverageObserveMs)}</div>
                   </div>
-                  <div className="solve-phase-card">
-                    <span>{t("平均复原")}</span>
-                    <b>{fmtShort(sessionAverageSolveMs)}</b>
+                  <div className="st">
+                    <div className="st-l">{t("平均复原")}</div>
+                    <div className="st-v">{fmtShort(sessionAverageSolveMs)}</div>
                   </div>
-                  <div className="solve-phase-card">
-                    <span>{t("复原成功率")}</span>
-                    <b>{sessionSuccessRate === null ? "—" : `${sessionSuccessRate}%`}</b>
+                  <div className="st">
+                    <div className="st-l">{t("复原成功率")}</div>
+                    <div className="st-v">{sessionSuccessRate === null ? "—" : `${sessionSuccessRate}%`}</div>
                   </div>
-                  <div className="solve-phase-card">
-                    <span>{t("本组进度")}{sessionDnfCount > 0 ? ` · DNF ${sessionDnfCount}` : ""}</span>
-                    <b>{sessionRoundCount}/{sessionRoundLimit}</b>
+                  <div className="st">
+                    <div className="st-l">{t("本组进度")}{sessionDnfCount > 0 ? ` · DNF ${sessionDnfCount}` : ""}</div>
+                    <div className="st-v">{sessionRoundCount}/{sessionRoundLimit}</div>
                   </div>
                 </div>
               )}
+          </div>
+        </section>
+        </div>
+
+        <section className="practice-center">
+          <div className="practice-stage trainer-stage">
+            <div ref={cubeMountRef} className="cube-mount" />
+            {gyroCostNoticeVisible && (
+              <div
+                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
+                id="gyro-cost-notice"
+                role="status"
+              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
+            )}
+            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : formulaHintVisible ? " trainer-formula-timer-stack" : ""}`}>
+              {formulaHintVisible && (
+                <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
+                  <div className="ui-section-head">
+                    <div className="ui-section-title">{t("公式提示")}</div>
+                    <div className="sh-actions">
+                      <div className="sh-counter">
+                        <span className="sh-counter-num">{formulaHintCounter}</span>
+                        <span className="sh-counter-sep">/</span>
+                        <span className="sh-counter-total">{formulaHintMoves.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                  {formulaHintUndoDisplay.length > 0 && (
+                    <div className="sh-notice error">
+                      <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                      <span className="sh-undo-list">
+                        {[...formulaHintUndoDisplay].reverse().map((move, index) => (
+                          <MoveToken key={`${move}-${index}`} move={move} />
+                        ))}
+                      </span>
+                    </div>
+                  )}
+                  <div className="sh-grid">
+                    {formulaHintMoves.map((move, index) => {
+                      const stepStatus: AlgorithmStepStatus =
+                        index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
+                          ? "wrong"
+                          : formulaHintStatus[index] === "correct"
+                            ? "correct"
+                            : formulaHintStatus[index] === "partial"
+                              ? "partial"
+                              : "pending";
+                      return (
+                        <AlgorithmStepToken
+                          key={`${move}-${index}`}
+                          move={move}
+                          index={index}
+                          status={stepStatus}
+                          active={index === formulaHintIndex && formulaHintIndex < formulaHintMoves.length}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {recognitionSequenceVisible ? (
+                <div className="stage-hint trainer-recognition-sequence" role="status" aria-live="polite" aria-label={t("转动序列")}>
+                  <div className="sh-head">
+                    <div className="sh-kicker">{t("转动序列")}</div>
+                  </div>
+                  <div className="sh-grid trainer-recognition-viewport">
+                    <div
+                      className="trainer-recognition-track"
+                      style={{ transform: `translateX(calc(var(--recognition-token-size) / -2 - ${recognitionIndex} * (var(--recognition-token-size) + var(--recognition-token-gap))))` }}
+                    >
+                      {recognitionMoves.map((move, index) => (
+                        <AlgorithmStepToken
+                          key={`${move}-${index}`}
+                          move={move}
+                          index={index}
+                          status={recognitionStatuses[index] ?? "pending"}
+                          active={index === recognitionIndex}
+                          showIndex={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : !isRecognitionSpecialty ? (
+                <div className={`timer timer-${state}`}>
+                  <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
+                  <div className="t-phase" role={state === "error" ? "alert" : undefined}>
+                    {state === "error"
+                    ? t(trainerError ?? "本局加载失败，请重试本局")
+                    : autoNextPending
+                    ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
+                    : state === "cancelled"
+                    ? t("本组已取消")
+                    : state === "ended"
+                    ? t("本组测试已结束")
+                    : timerKind === "observe"
+                      ? t("观察 / 反应计时")
+                      : state === "solving"
+                        ? t("阶段复原计时")
+                        : sessionRoundCount >= sessionRoundLimit
+                          ? t(`${sessionRoundLimit} 局专项完成`)
+                          : t(`${sessionRoundLimit} 局专项计时器`)}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="timer-controls trainer-timer-controls">
+                <button
+                  className="practice-btn practice-btn-primary"
+                  type="button"
+                  onClick={startTraining}
+                  disabled={connecting}
+                  aria-keyshortcuts={showKeyboardHints ? "Space" : undefined}
+                >
+                  <span>{canCancelTrainerAction
+                    ? isRecognitionSpecialty
+                      ? t(showKeyboardHints ? "结束 · 按 SPACE" : "结束")
+                      : t(showKeyboardHints ? "取消 · 按 SPACE" : "取消")
+                    : connected ? t(showKeyboardHints ? "开始 · 按 SPACE" : "开始") : t("连接智能魔方")}</span>
+                </button>
+                {!isRecognitionSpecialty && sessionInProgress && state === "error" && (
+                  <button
+                    className="practice-btn practice-btn-ghost"
+                    type="button"
+                    onClick={retryTrainerRound}
+                    disabled={!connected || connecting}
+                  >
+                    <span>{t("重试本局")}</span>
+                  </button>
+                )}
+                {!isRecognitionSpecialty && roundInProgress && (
+                  <div className="trainer-round-actions">
+                    <button
+                      className="practice-btn practice-btn-ghost trainer-abandon-btn"
+                      type="button"
+                      onClick={abandonRound}
+                    >
+                      <span>{t("放弃本局")}</span>
+                    </button>
+                    <button
+                      className="practice-btn practice-btn-ghost"
+                      type="button"
+                      onClick={endTraining}
+                    >
+                      <span>{t("结束测试")}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>

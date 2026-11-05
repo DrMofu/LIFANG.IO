@@ -117,7 +117,6 @@ type CubeConnectionContextValue = {
   selectedCubeBrand: SmartCubeBrandId;
   telemetry: Telemetry;
   facelets: string | null;
-  moveHistory: CubeMoveRecord[];
   visualState: CubeVisualState;
   setSelectedCubeBrand(brandId: SmartCubeBrandId): void;
   openConnectionPrompt(): void;
@@ -126,7 +125,6 @@ type CubeConnectionContextValue = {
   disconnectCube(): Promise<void>;
   requestBattery(options?: RequestBatteryOptions): Promise<void>;
   requestFacelets(): Promise<void>;
-  resetTrackedCubeState(): void;
   getLatestGyro(): CubeQuaternion | null;
   subscribeMove(handler: MoveHandler): () => void;
   subscribeGyro(handler: GyroHandler): () => void;
@@ -254,7 +252,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   const [selectedCubeBrand, setSelectedCubeBrand] = useState<SmartCubeBrandId>(SMART_CUBE_BRANDS[0].id);
   const [telemetry, setTelemetry] = useState<Telemetry>(EMPTY_TELEMETRY);
   const [facelets, setFacelets] = useState<string | null>(null);
-  const [rawMoveHistory, setRawMoveHistory] = useState<Array<{ rawMove: string; t: number }>>([]);
   const [visualBaseFacelets, setVisualBaseFacelets] = useState<string | null>(storedVisualState.baseFacelets);
   const [rawVisualMovesSinceBase, setRawVisualMovesSinceBase] = useState<Array<{ rawMove: string; t: number }>>(
     storedVisualState.moves,
@@ -639,7 +636,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     localFaceletsRevisionRef.current += 1;
     pendingMoveBySerialRef.current.clear();
     localFaceletsProcessingRef.current = false;
-    setRawMoveHistory([]);
     setFacelets(null);
     setConnectionInfo(EMPTY_INFO);
     setTelemetry(EMPTY_TELEMETRY);
@@ -700,7 +696,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     localFaceletsRevisionRef.current += 1;
     pendingMoveBySerialRef.current.clear();
     localFaceletsProcessingRef.current = false;
-    setRawMoveHistory([]);
     setFacelets(null);
     setConnectionState("disconnected");
     setConnectionInfo(EMPTY_INFO);
@@ -772,7 +767,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
           const clockSkew = conn.calculateClockSkew(lastMovesRef.current);
           const skew = clockSkew === null ? "—" : `${clockSkew}%`;
           const mappedMove = mapMoveToOrientation(event.move, orientationRef.current);
-          setRawMoveHistory((prev) => [...prev, rawMoveEntry].slice(-64));
           setTelemetry((prev) => ({
             ...prev,
             clockSkew: skew,
@@ -879,10 +873,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     }
   }, [sendCubeCommand]);
 
-  const resetTrackedCubeState = useCallback(() => {
-    setRawMoveHistory([]);
-  }, []);
-
   const subscribeMove = useCallback((handler: MoveHandler) => {
     moveHandlersRef.current.add(handler);
     return () => moveHandlersRef.current.delete(handler);
@@ -897,15 +887,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     faceletsHandlersRef.current.add(handler);
     return () => faceletsHandlersRef.current.delete(handler);
   }, []);
-
-  const moveHistory = useMemo<CubeMoveRecord[]>(
-    () =>
-      rawMoveHistory.map((entry) => ({
-        ...entry,
-        move: mapMoveToOrientation(entry.rawMove, orientation),
-      })),
-    [orientation, rawMoveHistory],
-  );
 
   const visualState = useMemo<CubeVisualState>(
     () => ({
@@ -946,7 +927,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       selectedCubeBrand,
       telemetry,
       facelets,
-      moveHistory,
       visualState,
       setSelectedCubeBrand,
       openConnectionPrompt,
@@ -955,7 +935,6 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       disconnectCube,
       requestBattery,
       requestFacelets,
-      resetTrackedCubeState,
       getLatestGyro,
       subscribeMove,
       subscribeGyro,
@@ -972,10 +951,8 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       disconnectCube,
       facelets,
       getLatestGyro,
-      moveHistory,
       requestFacelets,
       requestBattery,
-      resetTrackedCubeState,
       subscribeFacelets,
       subscribeGyro,
       subscribeMove,

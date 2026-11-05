@@ -1012,7 +1012,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 980px) {
+@media (width <= 1240px) {
   .topbar {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 9px;
@@ -1064,7 +1064,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (width <= 700px) {
   .topbar {
     padding: 9px 12px;
   }
@@ -1130,7 +1130,7 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (width <= 700px) {
   .topnav-mobile {
     width: 100%;
     border-radius: 22px;
@@ -1162,17 +1162,5 @@
 
   .topnav-mobile .navitem small {
     display: none;
-  }
-}
-
-@media (max-width: 430px) {
-  .topnav-mobile .navitem {
-    gap: 2px;
-    font-size: 9px;
-  }
-
-  .topnav-mobile .nav-icon {
-    width: 13px;
-    height: 13px;
   }
 }

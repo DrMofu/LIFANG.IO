@@ -106,9 +106,36 @@
   box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.12);
 }
 
-.trainer-focus-app .trainer-stage-tools {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  padding-top: 2px;
+@media (width > 700px) and (width <= 1240px) {
+  .trainer-focus-app :is(.trainer-catalog-panel, .trainer-settings-panel) {
+    gap: 8px;
+  }
+
+  .trainer-focus-app .trainer-phase-list,
+  .trainer-focus-app .trainer-option-list {
+    gap: 4px;
+  }
+
+  .trainer-focus-app .trainer-phase-list .tag-btn {
+    min-height: 40px;
+    border-radius: 12px;
+    padding: 6px 8px;
+  }
+
+  .trainer-focus-app .trainer-phase-copy {
+    white-space: normal;
+  }
+
+  .trainer-focus-app :is(.trainer-round-setting, .trainer-variant-toggle) {
+    min-height: 44px;
+    gap: 7px;
+    border-radius: 12px;
+    padding: 6px 8px;
+  }
+
+  .trainer-focus-app .trainer-round-setting input {
+    height: 30px;
+  }
 }
 
 .trainer-focus-app .trainer-stage-tools > :only-child,
@@ -121,13 +148,11 @@
 }
 
 .trainer-focus-app .trainer-round-actions {
-  position: absolute;
-  top: 0;
-  left: calc(100% + 8px);
+  position: static;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  width: 172px;
+  width: 100%;
 }
 
 .trainer-focus-app .trainer-abandon-btn {
@@ -206,88 +231,6 @@
   font-size: 28px;
 }
 
-.trainer-focus-app .trainer-results-panel {
-  flex: 0 0 auto;
-}
-
-.trainer-focus-app .trainer-metric-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.trainer-focus-app .trainer-metric-grid .solve-phase-card {
-  display: block;
-  min-height: 58px;
-  border: 1px solid rgba(213, 226, 246, 0.72);
-  border-radius: 13px;
-  background: #ffffff;
-  padding: 9px 10px;
-}
-
-.trainer-focus-app .trainer-metric-grid .solve-phase-card::before {
-  display: none;
-}
-
-.trainer-focus-app .trainer-metric-grid .solve-phase-card span {
-  color: #7e90ad;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.trainer-focus-app .trainer-metric-grid .solve-phase-card b {
-  margin-top: 6px;
-  color: #1d62de;
-  font-family: var(--timer-number);
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.trainer-focus-app .trainer-metric-correct b {
-  color: var(--tech-green);
-}
-
-.trainer-focus-app .trainer-metric-wrong b {
-  color: #d43d31;
-}
-
-@media (max-width: 1280px) {
-  .trainer-focus-app .trainer-stage-tools {
-    grid-template-columns: 1fr;
-  }
-
-  .trainer-focus-app .trainer-stage-tools > * {
-    grid-column: 1;
-  }
-}
-
-@media (max-width: 1060px) {
-  .trainer-focus-app .trainer-stage-tools {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 1320px) {
-  .trainer-focus-app .trainer-round-actions {
-    position: static;
-    width: 100%;
-  }
-}
-
-@media (max-width: 420px) {
-  .trainer-focus-app .trainer-stage-tools {
-    grid-template-columns: 1fr;
-  }
-
-  .trainer-focus-app .trainer-stage-tools > * {
-    grid-column: 1;
-  }
-}
-
 .trainer-focus-app .trainer-library-button {
   grid-template-columns: minmax(0, 1fr) auto;
   width: 100%;
@@ -362,7 +305,7 @@
 .formula-library-case input { position: absolute; top: 7px; right: 7px; }
 .formula-library-dialog input { accent-color: #3979de; }
 
-@media (max-width: 480px) {
+@media (width <= 700px) {
   .formula-library-dialog { padding: 16px; border-radius: 20px; }
   .formula-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

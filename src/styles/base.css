@@ -88,6 +88,6 @@ button {
   mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 74%);
 }
 
-@media (max-width: 980px) {
+@media (width <= 1240px) {
   body { overflow: auto; }
   .app { min-height: 100vh; height: auto; } }

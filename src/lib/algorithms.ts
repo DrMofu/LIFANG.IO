@@ -153,15 +153,6 @@ export function compressMoveSequence(moves: unknown[]) {
   return moves.reduce<string[]>((history, move) => appendCompressedMove(history, move), []);
 }
 
-export function normalizeMoveLogSequence(moves: unknown[]) {
-  let coordinateState = createMoveCoordinateState();
-  return moves.reduce<string[]>((history, move) => {
-    const next = appendNormalizedMoveLogMove(history, move, coordinateState);
-    coordinateState = next.coordinateState;
-    return next.history;
-  }, []);
-}
-
 export function appendNormalizedMoveLogMove(history: string[], move: unknown, coordinateState: MoveCoordinateState) {
   const parsed = parseMoveNotation(move);
   if (!parsed) return { history, coordinateState };
@@ -172,12 +163,6 @@ export function appendNormalizedMoveLogMove(history: string[], move: unknown, co
     history: next.history,
     coordinateState: rotation ? rotateCoordinateState(coordinateState, rotation) : coordinateState,
   };
-}
-
-export function appendFixedViewMoveLogMove(history: string[], move: unknown) {
-  const parsed = parseMoveNotation(move);
-  if (!parsed) return history;
-  return appendCompressedMoveWithCoordinateEvent(history, parsed.notation).history;
 }
 
 export function createMoveCoordinateState(): MoveCoordinateState {

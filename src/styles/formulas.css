@@ -1365,7 +1365,7 @@
   text-align: left;
 }
 
-@media (max-width: 1240px) {
+@media (width <= 1240px) {
   .lf-tech-app {
     overflow: auto;
   }
@@ -1553,7 +1553,7 @@
 
 }
 
-@media (min-width: 701px) and (max-width: 1240px) {
+@media (width > 700px) and (width <= 1240px) {
   .app.lf-tech-app {
     height: 100dvh;
     min-height: 0;
@@ -1626,7 +1626,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (width <= 700px) {
   .lf-tech-app .fm-grid {
     gap: 10px;
     padding: 10px;

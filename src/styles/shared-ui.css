@@ -1,25 +1,17 @@
-@media (max-width: 1240px), (hover: none) and (pointer: coarse) {
-  .app :is(.stage-tools, .stage-controls).stage-touch-controls {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .app .stage-tools.stage-touch-controls > button:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
-  }
-
+@media (width <= 1240px) {
   .app .stage-controls.stage-touch-controls {
+    display: grid;
     grid-template-columns: none;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
+    gap: 8px;
   }
 
   .app .stage-controls.stage-touch-controls > button {
     padding-inline: 6px;
   }
 
-  .app .stage-touch-controls :is(.tag-key, .sc-key) {
+  .app .stage-touch-controls .sc-key {
     display: none;
   }
 
@@ -40,22 +32,6 @@
     text-align: center;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-  }
-
-  .app .stage-touch-controls > button > span:last-child {
-    text-align: center;
-  }
-
-  .app .stage-tools.stage-touch-controls {
-    gap: 6px;
-  }
-
-  .app .stage-tools.stage-touch-controls > button {
-    min-height: 44px;
-    border-radius: 12px;
-    box-shadow: none;
-    padding: 7px 10px;
-    font-size: 11px;
   }
 
   .app .stage-touch-controls > button.active {
@@ -762,7 +738,7 @@ html[lang="en"] .ui-section-kicker {
   }
 }
 
-@media (max-width: 560px) {
+@media (width <= 700px) {
   .system-notice-backdrop {
     align-items: center;
     padding:
