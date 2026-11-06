@@ -272,6 +272,9 @@ export function hardwareFaceletsToDisplayFacelets(facelets: string, orientation:
   return next.join("");
 }
 
+export const DEFAULT_TPS_ENABLED = true;
+export const CUBE_TPS_ENABLED_KEY = "cube-tps-enabled";
+
 export const CUBE_APPEARANCE_KEY = "cube-appearance";
 export const CUBE_COLOR_PALETTE_KEY = "cube-color-palette";
 export const CUBE_RENDER_FPS_KEY = "cube-render-fps-limit";
@@ -414,6 +417,25 @@ export function saveBackFaceProjectionDistance(distance: number) {
       getArchiveScopedStorageKey(CUBE_BACK_FACE_PROJECTION_DISTANCE_KEY),
       JSON.stringify(normalizeBackFaceProjectionDistance(distance)),
     );
+  } catch {
+    // local storage might be unavailable in private contexts
+  }
+}
+
+export function loadTpsEnabled(): boolean {
+  if (typeof window === "undefined") return DEFAULT_TPS_ENABLED;
+  try {
+    const raw = window.localStorage.getItem(getArchiveScopedStorageKey(CUBE_TPS_ENABLED_KEY));
+    return raw === null ? DEFAULT_TPS_ENABLED : JSON.parse(raw) !== false;
+  } catch {
+    return DEFAULT_TPS_ENABLED;
+  }
+}
+
+export function saveTpsEnabled(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(getArchiveScopedStorageKey(CUBE_TPS_ENABLED_KEY), JSON.stringify(enabled));
   } catch {
     // local storage might be unavailable in private contexts
   }

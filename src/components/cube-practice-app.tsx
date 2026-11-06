@@ -1,8 +1,9 @@
 "use client";
 
-import { type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
+import { SolveHistoryDialog } from "@/components/solve-history-dialog";
 import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/solve-record-details";
@@ -295,15 +296,6 @@ type HistoryCfopTip = {
   top: number;
   arrowLeft: number;
   placement: "above" | "below";
-};
-type PendingHistoryDelete = {
-  historyIndex: number;
-  entryTs: number;
-  historyNumber: number;
-  ms: number;
-  left: number;
-  top: number;
-  arrowLeft: number;
 };
 type FormulaRecognitionModule = typeof import("@/lib/formula-recognition");
 
@@ -686,8 +678,7 @@ export function CubePracticeApp() {
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
   const [historyRows, setHistoryRows] = useState(HISTORY_FALLBACK_ROWS);
   const [historyScrolling, setHistoryScrolling] = useState(false);
-  const [historyEditing, setHistoryEditing] = useState(false);
-  const [pendingHistoryDelete, setPendingHistoryDelete] = useState<PendingHistoryDelete | null>(null);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const {
     connectionState,
@@ -711,15 +702,6 @@ export function CubePracticeApp() {
   );
   const inspectionNoticeLabel = inspectionDurationMs === null ? t("无限观察") : t(`${inspectionSettings.seconds} 秒观察`);
 
-
-  useEffect(() => {
-    if (!pendingHistoryDelete) return;
-    function closePendingDelete() {
-      setPendingHistoryDelete(null);
-    }
-    window.addEventListener("pointerdown", closePendingDelete);
-    return () => window.removeEventListener("pointerdown", closePendingDelete);
-  }, [pendingHistoryDelete]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -2372,7 +2354,7 @@ export function CubePracticeApp() {
       const key = event.key.toLowerCase();
       if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (dailyTestResult || isTextEntryTarget(event.target)) return;
+      if (dailyTestResult || historyDialogOpen || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
       if (key === " " && event.target instanceof HTMLElement) {
@@ -2414,7 +2396,7 @@ export function CubePracticeApp() {
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if (dailyTestResult || event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
+      if (dailyTestResult || historyDialogOpen || event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
       event.preventDefault();
       releaseManualTimerHold();
     };
@@ -2466,54 +2448,11 @@ export function CubePracticeApp() {
     }, 900);
   }
 
-  function requestDeleteHistoryEntry(
-    historyIndex: number,
-    entry: SolveHistoryEntry,
-    historyNumber: number,
-    event: MouseEvent<HTMLButtonElement>,
-  ) {
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    const popoverWidth = 220;
-    const margin = 12;
-    const left = Math.min(
-      window.innerWidth - popoverWidth - margin,
-      Math.max(margin, rect.right - popoverWidth),
-    );
-    setHistoryCfopTip(null);
-    setPendingHistoryDelete({
-      historyIndex,
-      entryTs: entry.ts,
-      historyNumber,
-      ms: entry.ms,
-      left,
-      top: rect.bottom + 12,
-      arrowLeft: Math.min(popoverWidth - 22, Math.max(22, rect.left + rect.width / 2 - left)),
-    });
-  }
-
-  function cancelPendingHistoryDelete() {
-    setPendingHistoryDelete(null);
-  }
-
-  function confirmPendingHistoryDelete() {
-    const pending = pendingHistoryDelete;
-    if (!pending) return;
-    setHistoryCfopTip(null);
+  function deleteHistoryEntry(historyIndex: number, entry: SolveHistoryEntry) {
     const currentHistory = historyRef.current;
-    if (currentHistory[pending.historyIndex]?.ts !== pending.entryTs) {
-      setPendingHistoryDelete(null);
-      return;
-    }
-    if (currentHistory.length <= 1) setHistoryEditing(false);
-    commitSolveHistory(currentHistory.filter((_, index) => index !== pending.historyIndex));
-    setPendingHistoryDelete(null);
-  }
-
-  function toggleHistoryEditing() {
+    if (currentHistory[historyIndex] !== entry) return;
     setHistoryCfopTip(null);
-    setHistoryEditing((current) => !current);
+    commitSolveHistory(currentHistory.filter((_, index) => index !== historyIndex));
   }
 
   function resetDisplayOrientation() {
@@ -3094,7 +3033,7 @@ export function CubePracticeApp() {
             <div className={`solve-current-grid${isManualTimer ? " timer-only" : ""}`}>
               <div
                 className="solve-metric-main"
-                aria-label={isManualTimer ? fmtShort(solveMs) : `${fmtShort(solveMs)} / ${solveMoveCount} ${t("步")}`}
+                aria-label={isManualTimer ? fmtShort(solveMs) : `${fmtShort(solveMs)}, ${solveMoveCount} ${t("步")}, ${formatTps(calculateTps(solveMoveCount, solveMs))} TPS`}
               >
                 <span
                   className="solve-timeline-trigger"
@@ -3109,12 +3048,10 @@ export function CubePracticeApp() {
                 {isManualTimer ? (
                   <b className="solve-source-label">{t("纯计时器")}</b>
                 ) : (
-                  <>
-                    <span className="solve-score-separator" aria-hidden="true">/</span>
-                    <b>{solveMoveCount} {t("步")}</b>
-                    <span className="solve-score-separator" aria-hidden="true">·</span>
+                  <div className="solve-metric-secondary">
+                    <b className="score-moves">{solveMoveCount} <small>{t("步")}</small></b>
                     <b className="score-tps">{formatTps(calculateTps(solveMoveCount, solveMs))} <small>TPS</small></b>
-                  </>
+                  </div>
                 )}
               </div>
               {!isManualTimer && <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
@@ -3193,17 +3130,17 @@ export function CubePracticeApp() {
               </div>
               {history.length > 0 && (
                 <button
-                  className={`hist-edit-btn${historyEditing ? " active" : ""}`}
+                  className="hist-more-btn"
                   type="button"
-                  aria-label={historyEditing ? t("隐藏历史记录删除按钮") : t("编辑历史记录")}
-                  aria-pressed={historyEditing}
-                  onClick={toggleHistoryEditing}
+                  aria-label={t("查看更多")}
+                  aria-haspopup="dialog"
+                  aria-expanded={historyDialogOpen}
+                  onClick={() => {
+                    setHistoryCfopTip(null);
+                    setHistoryDialogOpen(true);
+                  }}
                 >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M5 19l4.1-1 9.3-9.3-3.1-3.1L6 14.9 5 19z" />
-                    <path d="M14.6 6.3l3.1 3.1" />
-                    <path d="M5 19h14" />
-                  </svg>
+                  {t("更多")}
                 </button>
               )}
             </div>
@@ -3224,7 +3161,7 @@ export function CubePracticeApp() {
                   return (
                     <div
                       key={`${entry.ts}-${index}`}
-                      className={`hist-row${isBest ? " best" : ""}${historyEditing ? " editing" : ""}`}
+                      className={`hist-row${isBest ? " best" : ""}`}
                       tabIndex={0}
                       aria-label={t(`历史记录 #${historyNumber}，${
                         fmtShort(entry.ms)
@@ -3242,24 +3179,11 @@ export function CubePracticeApp() {
                       <span className="hr-track" aria-hidden="true">
                         <span className="hr-bar" style={{ width: barWidth }}></span>
                       </span>
-                      <span className="hr-t">{fmtShort(entry.ms)}</span>
                       <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
                         {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
                       </span>
                       <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>
-                      {historyEditing && (
-                        <button
-                          className="hr-delete"
-                          type="button"
-                          aria-label={t(`删除历史记录 #${historyNumber}`)}
-                          aria-haspopup="dialog"
-                          aria-expanded={pendingHistoryDelete?.historyIndex === index && pendingHistoryDelete.entryTs === entry.ts}
-                          onPointerDown={(event) => event.stopPropagation()}
-                          onClick={(event) => requestDeleteHistoryEntry(index, entry, historyNumber, event)}
-                        >
-                          ×
-                        </button>
-                      )}
+                      <span className="hr-t">{fmtShort(entry.ms)}</span>
                     </div>
                   );
                 })}
@@ -3282,29 +3206,13 @@ export function CubePracticeApp() {
                 <SolveRecordDetails entry={historyCfopTip.entry} />
               </div>
             ), document.body)}
-            {portalReady && pendingHistoryDelete && createPortal((
-              <div
-                className="top-disconnect-popover history-delete-popover"
-                role="dialog"
-                aria-label={t("确认删除历史记录")}
-                style={{
-                  left: pendingHistoryDelete.left,
-                  top: pendingHistoryDelete.top,
-                  "--history-delete-arrow-left": `${pendingHistoryDelete.arrowLeft}px`,
-                } as CSSProperties}
-                onPointerDown={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-              >
-                <div className="top-disconnect-title">{t("删除本次数据？")}</div>
-                <div className="top-disconnect-text">
-                  #{String(pendingHistoryDelete.historyNumber).padStart(3, "0")} · {fmtShort(pendingHistoryDelete.ms)}
-                </div>
-                <div className="top-disconnect-actions">
-                  <button type="button" onClick={cancelPendingHistoryDelete}>{t("取消")}</button>
-                  <button type="button" className="danger" onClick={confirmPendingHistoryDelete}>{t("确认删除")}</button>
-                </div>
-              </div>
-            ), document.body)}
+            {historyDialogOpen && (
+              <SolveHistoryDialog
+                history={history}
+                onClose={() => setHistoryDialogOpen(false)}
+                onDelete={deleteHistoryEntry}
+              />
+            )}
           </div>
           </div>
         </section>

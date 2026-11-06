@@ -12,6 +12,7 @@ import {
   type AverageTimeSettings,
 } from "@/lib/average-time";
 import { fmtShort } from "@/lib/format";
+import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/tps";
 import { useClientReady } from "@/lib/client-ready";
 import {
   getDailyTestDateKey,
@@ -29,7 +30,7 @@ import {
 
 type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
 type CfopAverageSize = 5 | 20 | 100;
-type TrendMetric = "time" | "moves";
+type TrendMetric = "time" | "moves" | "tps";
 type TrendPhaseFilter = "all" | CfopPhaseKey;
 type TrendRangeFilter = "all" | "100" | "500" | "1000";
 type DailyLevelRangeFilter = "all" | "100" | "30" | "7";
@@ -52,6 +53,7 @@ const TREND_PHASE_FILTERS: Array<{ key: TrendPhaseFilter; label: string }> = [
 const TREND_METRIC_FILTERS: Array<{ key: TrendMetric; label: string }> = [
   { key: "time", label: "用时" },
   { key: "moves", label: "步数" },
+  { key: "tps", label: "TPS" },
 ];
 const TREND_RANGE_LIMITS: Array<{ key: Exclude<TrendRangeFilter, "all">; label: string; count: number }> = [
   { key: "100", label: "最近100次", count: 100 },
@@ -148,6 +150,7 @@ const TREND_RANGE_PADDING_RATIO = 0.01;
 const TREND_MIN_PADDING: Record<TrendMetric, number> = {
   time: 80,
   moves: 2,
+  tps: 0.2,
 };
 
 function getTrendChartWidthForRect(rect: { width: number; height: number }) {
@@ -167,6 +170,7 @@ function fmtStatsTime(ms: number | null) {
 
 function fmtTrendValue(value: number | null, metric: TrendMetric) {
   if (value == null || Number.isNaN(value)) return "—";
+  if (metric === "tps") return `${formatTps(value)} TPS`;
   if (metric === "moves") {
     const displayValue = Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, "");
     return `${displayValue}步`;
@@ -175,6 +179,7 @@ function fmtTrendValue(value: number | null, metric: TrendMetric) {
 }
 
 function fmtTrendAxisValue(value: number, metric: TrendMetric) {
+  if (metric === "tps") return `${formatTps(value)} TPS`;
   if (metric === "moves") return `${Math.round(value)}步`;
   return `${Math.round(value / 1000)}s`;
 }
@@ -225,13 +230,16 @@ function trendAxisScale(min: number, max: number, metric: TrendMetric) {
   const unit = metric === "time" ? 1000 : 1;
   const displayMin = min / unit;
   const displayMax = max / unit;
-  const displayRange = Math.max(1, displayMax - displayMin);
-  const step = trendAxisStep(displayRange);
+  const displayRange = Math.max(metric === "tps" ? 0.1 : 1, displayMax - displayMin);
+  const roughStep = displayRange / 5;
+  const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+  const tpsStep = ([1, 2, 5, 10].find((factor) => factor * magnitude >= roughStep) ?? 10) * magnitude;
+  const step = metric === "tps" ? Math.max(0.1, tpsStep) : trendAxisStep(displayRange);
   const first = Math.floor(displayMin / step) * step;
   const last = Math.ceil(displayMax / step) * step;
   const ticks: number[] = [];
   for (let tick = first; tick <= last + step * 0.001; tick += step) {
-    ticks.push(Math.round(tick * unit));
+    ticks.push(Number((tick * unit).toFixed(metric === "tps" ? 6 : 0)));
   }
   const fallbackTicks = [Math.floor(displayMin) * unit, Math.ceil(displayMax) * unit]
     .filter((value, index, values) => index === 0 || value !== values[index - 1]);
@@ -387,6 +395,11 @@ function phaseMoveCount(entry: SolveHistoryEntry, key: CfopPhaseKey) {
 }
 
 function trendPointValue(entry: SolveHistoryEntry, metric: TrendMetric, phaseFilter: TrendPhaseFilter) {
+  if (metric === "tps") {
+    return phaseFilter === "all"
+      ? calculateTps(entry.moves, entry.ms)
+      : calculatePhaseTps(phaseMoveCount(entry, phaseFilter), phaseDuration(entry, phaseFilter) ?? 0, phaseFilter);
+  }
   if (phaseFilter !== "all") {
     return metric === "moves" ? phaseMoveCount(entry, phaseFilter) : phaseDuration(entry, phaseFilter);
   }
@@ -586,13 +599,14 @@ export function StatsApp() {
     const points = entries.map((entry) => trendPointValue(entry, trendMetric, trendPhaseFilter));
     const domainPoints = points.filter((point): point is number => typeof point === "number");
     if (domainPoints.length === 0) return { entries, points, min: 0, max: 0, stableScore: [] as Array<number | null>, best: null as number | null };
-    const stableScore = rollingAverageValues(points, averageSettings);
-    const best = domainPoints.reduce((currentBest, value) => Math.min(currentBest, value), domainPoints[0]);
+    const trendAverageSettings = trendMetric === "tps" && averageSettings.method === "trimmed"
+      ? { ...averageSettings, trimBest: averageSettings.trimWorst, trimWorst: averageSettings.trimBest }
+      : averageSettings;
+    const stableScore = rollingAverageValues(points, trendAverageSettings);
+    const best = domainPoints.reduce((currentBest, value) => trendMetric === "tps" ? Math.max(currentBest, value) : Math.min(currentBest, value), domainPoints[0]);
     const { min, max } = trendDomain(domainPoints, trendMetric);
     return { entries, points, min, max, stableScore, best };
   }, [averageSettings, effectiveTrendRange, history, trendMetric, trendPhaseFilter]);
-  const trendNeedsSmartCubeData = trendMetric === "moves" || trendPhaseFilter !== "all";
-  const trendEligibleCount = trend.points.filter((point) => typeof point === "number").length;
   const showTrendPb = trendPhaseFilter === "all";
 
   useEffect(() => {
@@ -621,7 +635,7 @@ export function StatsApp() {
         const height = TREND_CHART_HEIGHT;
         const rect = svg.getBoundingClientRect();
         const width = getTrendChartWidthForRect(rect);
-        const padLeft = TREND_CHART_PAD_LEFT;
+        const padLeft = trendMetric === "tps" ? Math.max(68, TREND_CHART_PAD_LEFT) : TREND_CHART_PAD_LEFT;
         const padRight = TREND_CHART_PAD_RIGHT;
         const padTop = TREND_CHART_PAD_TOP;
         const padBottom = TREND_CHART_PAD_BOTTOM;
@@ -630,7 +644,7 @@ export function StatsApp() {
         const viewTop = rect.top + (rect.height - height * scale) / 2;
         const x = padLeft + (width - padLeft - padRight) * (trend.points.length === 1 ? 0.5 : current.pointIndex / (trend.points.length - 1));
         const axis = trendAxisScale(trend.min, trend.max, trendMetric);
-        const y = height - padBottom - (height - padTop - padBottom) * ((value - axis.min) / Math.max(1, axis.max - axis.min));
+        const y = height - padBottom - (height - padTop - padBottom) * ((value - axis.min) / Math.max(trendMetric === "tps" ? 0.1 : 1, axis.max - axis.min));
         const anchorX = viewLeft + x * scale;
         const anchorY = viewTop + y * scale;
         const maxLeft = window.innerWidth - TREND_TIP_WIDTH - TREND_TIP_MARGIN;
@@ -987,7 +1001,7 @@ export function StatsApp() {
   const renderTrendChart = () => {
     const width = trendViewBoxWidth;
     const height = TREND_CHART_HEIGHT;
-    const padLeft = TREND_CHART_PAD_LEFT;
+    const padLeft = trendMetric === "tps" ? Math.max(68, TREND_CHART_PAD_LEFT) : TREND_CHART_PAD_LEFT;
     const padRight = TREND_CHART_PAD_RIGHT;
     const padTop = TREND_CHART_PAD_TOP;
     const padBottom = TREND_CHART_PAD_BOTTOM;
@@ -998,14 +1012,14 @@ export function StatsApp() {
 
     const hasTrendPoints = points.some((value) => value != null);
     const trendPhaseName = TREND_PHASE_FILTER_NAMES[trendPhaseFilter];
-    const trendMetricName = trendMetric === "moves" ? t("步数") : t("用时");
+    const trendMetricName = trendMetric === "tps" ? "TPS" : trendMetric === "moves" ? t("步数") : t("用时");
     const trendSubjectName = trendPhaseFilter === "all" ? trendMetricName : t(`${trendPhaseName}阶段${trendMetricName}`);
     if (!hasTrendPoints) return <div className="chart-empty">{trendPhaseFilter === "all" ? (trendMetric === "moves" ? t("暂无步数数据") : t("无数据")) : t(`暂无${trendSubjectName}数据`)}</div>;
     const plotWidth = width - padLeft - padRight;
     const x = (index: number) => padLeft + plotWidth * (points.length === 1 ? 0.5 : index / (points.length - 1));
     const y = (value: number | null) => {
       if (value == null) return height - padBottom;
-      return height - padBottom - (height - padTop - padBottom) * ((value - axisMin) / Math.max(1, axisMax - axisMin));
+      return height - padBottom - (height - padTop - padBottom) * ((value - axisMin) / Math.max(trendMetric === "tps" ? 0.1 : 1, axisMax - axisMin));
     };
     const yTicks = axis.ticks;
     const xTickIndexes = sampledTickIndexes(points.length, TREND_X_TICK_TARGET_COUNT);
@@ -1042,6 +1056,9 @@ export function StatsApp() {
         onMouseLeave={clearTrendPoint}
       >
         <defs>
+          <clipPath id="trendPlotClip">
+            <rect x={padLeft} y={padTop} width={plotWidth} height={height - padTop - padBottom} />
+          </clipPath>
           <linearGradient id="trendStableScoreGradient" x1={padLeft} x2={width - padRight} y1="0" y2="0" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#78aaff" />
             <stop offset="54%" stopColor="#3475f6" />
@@ -1078,7 +1095,7 @@ export function StatsApp() {
             strokeDasharray="3 7"
           />
         ))}
-        {showTrendPb && best != null && (
+        {showTrendPb && best != null && best >= axisMin && best <= axisMax && (
           <>
             <line x1={padLeft} x2={width - padRight} y1={y(best)} y2={y(best)} stroke="rgba(201, 53, 42, 0.72)" strokeWidth="1.1" strokeDasharray="4 6" />
             <text x={width - padRight - 64} y={Math.max(14, y(best) - 6)} fontSize="9" fill="#C9352A" fontFamily="JetBrains Mono">BEST {fmtTrendValue(best, trendMetric)}</text>
@@ -1116,6 +1133,7 @@ export function StatsApp() {
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#trendLineGlow)"
+            clipPath="url(#trendPlotClip)"
           />
         )}
         {guideIndex >= 0 && (
@@ -1133,9 +1151,7 @@ export function StatsApp() {
               y={padTop + 12}
               textAnchor="middle"
             >
-              {trendMetric === "moves"
-                ? t(`成绩走势 ${guideStableScore == null ? "--" : fmtTrendValue(guideStableScore, trendMetric)}`)
-                : t(`成绩走势 ${guideStableScore == null ? "--" : fmtShort(guideStableScore)}`)}
+              {t(`成绩走势 ${guideStableScore == null ? "--" : fmtTrendValue(guideStableScore, trendMetric)}`)}
             </text>
           </>
         )}
@@ -1147,7 +1163,7 @@ export function StatsApp() {
           const isBest = showTrendPb && best != null && value === best;
           const pointColor = isBest ? "#C9352A" : "#8291A8";
           return (
-            <g key={pointKey} className={`trend-point-group${isActive ? " active" : ""}`}>
+            <g key={pointKey} className={`trend-point-group${isActive ? " active" : ""}`} clipPath="url(#trendPlotClip)">
               {isActive && (
                 <circle
                   className="trend-active-ring"
@@ -1163,7 +1179,7 @@ export function StatsApp() {
                 cx={x(index)}
                 cy={y(value)}
                 r="9"
-                tabIndex={0}
+                tabIndex={value >= axisMin && value <= axisMax ? 0 : -1}
                 aria-label={t(`第 ${index + 1} 次${trendSubjectName} ${fmtTrendValue(value, trendMetric)}`)}
                 onBlur={() => setTrendCfopTip(null)}
                 onPointerEnter={(event) => {
@@ -1730,11 +1746,7 @@ export function StatsApp() {
                 })}
               </div>
             </div>
-            {trendNeedsSmartCubeData && (
-              <div className="trend-data-note">
-                {t(`当前指标仅显示有智能魔方数据的成绩 · ${trendEligibleCount}/${trend.entries.length} 次`)}
-              </div>
-            )}
+
             <div className="trend-chart-shell">
               <div className="st-chart">{renderTrendChart()}</div>
             </div>

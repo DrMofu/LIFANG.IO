@@ -5,6 +5,7 @@ import { useAuth } from "@/components/auth-provider";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { PaletteSelectField } from "@/components/palette-select-field";
 import { ColorSelectField } from "@/components/color-select-field";
+import { TurnSpeed } from "@/components/turn-speed";
 import { CubeColorLegend } from "@/components/cube-color-legend";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useLanguage } from "@/components/language-provider";
@@ -20,7 +21,7 @@ import {
   type CubeRenderMaxFps,
   type CubeColor,
 } from "@/lib/cube-appearance";
-import { mountSmartCube, type CubeDisplayState, type SmartCubeApi } from "@/lib/smart-cube";
+import { mountSmartCube, type SmartCubeApi } from "@/lib/smart-cube";
 import {
   STATISTICS_ARCHIVE_CHANGE_EVENT,
   createStatisticsArchive,
@@ -143,6 +144,8 @@ export function SettingsApp() {
     colorPaletteId,
     faceColors,
     renderMaxFps,
+    tpsEnabled,
+    setTpsEnabled,
     backFaceProjectionEnabled,
     backFaceProjectionDistance,
     setOrientation,
@@ -177,7 +180,6 @@ export function SettingsApp() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
-  const cubeDisplayStateRef = useRef<CubeDisplayState | null>(null);
   const statusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -205,19 +207,13 @@ export function SettingsApp() {
       maxFps: renderMaxFps,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
-      initialDisplayState: cubeDisplayStateRef.current,
+      interactionLocked: true,
       wheelZoomEnabled: false,
       pinchZoomEnabled: false,
-      onDisplayOrientationChange: () => {
-        if (cubeApiRef.current) cubeDisplayStateRef.current = cubeApiRef.current.getDisplayState();
-      },
     });
     return () => {
       const api = cubeApiRef.current;
-      if (api) {
-        cubeDisplayStateRef.current = api.getDisplayState();
-        api.dispose();
-      }
+      api?.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
   }, [backFaceProjectionEnabled, faceColors, orientation, renderMaxFps]);
@@ -302,6 +298,7 @@ export function SettingsApp() {
       orientation,
       colorPaletteId,
       renderMaxFps,
+      tpsEnabled,
       backFaceProjectionEnabled,
       backFaceProjectionDistance,
       averageSettings,
@@ -327,6 +324,7 @@ export function SettingsApp() {
     setDailyLevels(applied.dailyLevels);
     setDailyPractice(applied.dailyPractice);
     setHasFormulaData(applied.hasFormulaData);
+    setTpsEnabled(imported.preferences.appearance.tpsEnabled);
     setOrientation(imported.preferences.appearance.orientation);
     setColorPaletteId(imported.preferences.appearance.palette);
     setRenderMaxFps(imported.preferences.appearance.fps);
@@ -349,10 +347,6 @@ export function SettingsApp() {
   function handleFrontChange(front: CubeColor) {
     if (!isValidOrientation(orientation.top, front)) return;
     setOrientation({ top: orientation.top, front });
-  }
-
-  function resetPreviewDisplayOrientation() {
-    cubeApiRef.current?.resetDisplayOrientation();
   }
 
   async function sendAuthCode() {
@@ -741,6 +735,14 @@ export function SettingsApp() {
                   />
                 </div>
               </div>
+              <label className="settings-projection-toggle">
+                <input
+                  type="checkbox"
+                  checked={tpsEnabled}
+                  onChange={(event) => setTpsEnabled(event.target.checked)}
+                />
+                <span>{t("settings.showTps")}</span>
+              </label>
               <div className="settings-projection-box">
                 <label className="settings-projection-toggle">
                   <input
@@ -769,9 +771,7 @@ export function SettingsApp() {
             </div>
             <div className="settings-preview">
               <div className="cube-mount" ref={cubeMountRef}></div>
-              <button type="button" className="settings-preview-tag" onClick={resetPreviewDisplayOrientation}>
-                {t("settings.resetView")}
-              </button>
+              <TurnSpeed preview />
             </div>
           </div>
         </section>

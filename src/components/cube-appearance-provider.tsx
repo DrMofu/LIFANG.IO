@@ -15,6 +15,9 @@ import {
   DEFAULT_COLOR_PALETTE_ID,
   DEFAULT_ORIENTATION,
   DEFAULT_RENDER_MAX_FPS,
+  DEFAULT_TPS_ENABLED,
+  loadTpsEnabled,
+  saveTpsEnabled,
   getFaceHexColors,
   isValidOrientation,
   loadBackFaceProjectionDistance,
@@ -41,6 +44,8 @@ type CubeAppearanceContextValue = {
   colorPaletteId: CubeColorPaletteId;
   faceColors: Record<CubeFace, string>;
   renderMaxFps: CubeRenderMaxFps;
+  tpsEnabled: boolean;
+  setTpsEnabled(next: boolean): void;
   backFaceProjectionEnabled: boolean;
   backFaceProjectionDistance: number;
   setOrientation(next: CubeOrientation): void;
@@ -55,6 +60,7 @@ type CubeAppearanceContextValue = {
 const CubeAppearanceContext = createContext<CubeAppearanceContextValue | null>(null);
 
 export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
+  const [tpsEnabled, setTpsEnabledState] = useState(DEFAULT_TPS_ENABLED);
   const [orientation, setOrientationState] = useState<CubeOrientation>(DEFAULT_ORIENTATION);
   const [colorPaletteId, setColorPaletteIdState] = useState<CubeColorPaletteId>(DEFAULT_COLOR_PALETTE_ID);
   const [renderMaxFps, setRenderMaxFpsState] = useState<CubeRenderMaxFps>(DEFAULT_RENDER_MAX_FPS);
@@ -73,6 +79,7 @@ export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
           ? current
           : nextOrientation
       ));
+      setTpsEnabledState(loadTpsEnabled());
       setColorPaletteIdState(loadCubeColorPaletteId());
       setRenderMaxFpsState(loadCubeRenderMaxFps());
       setBackFaceProjectionEnabledState(loadBackFaceProjectionEnabled());
@@ -127,6 +134,12 @@ export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
     touchLocalUserDataPackageUpdatedAt();
   }, []);
 
+  const setTpsEnabled = useCallback((next: boolean) => {
+    setTpsEnabledState(next);
+    saveTpsEnabled(next);
+    touchLocalUserDataPackageUpdatedAt();
+  }, []);
+
   const faceColors = useMemo(() => getFaceHexColors(orientation, colorPaletteId), [orientation, colorPaletteId]);
 
   const value = useMemo<CubeAppearanceContextValue>(
@@ -135,6 +148,8 @@ export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
       colorPaletteId,
       faceColors,
       renderMaxFps,
+      tpsEnabled,
+      setTpsEnabled,
       backFaceProjectionEnabled,
       backFaceProjectionDistance,
       setOrientation,
@@ -150,6 +165,8 @@ export function CubeAppearanceProvider({ children }: { children: ReactNode }) {
       colorPaletteId,
       faceColors,
       renderMaxFps,
+      tpsEnabled,
+      setTpsEnabled,
       backFaceProjectionEnabled,
       backFaceProjectionDistance,
       setOrientation,

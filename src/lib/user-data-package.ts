@@ -2,6 +2,7 @@
 
 import {
   CUBE_APPEARANCE_KEY,
+  CUBE_TPS_ENABLED_KEY,
   CUBE_BACK_FACE_PROJECTION_DISTANCE_KEY,
   CUBE_BACK_FACE_PROJECTION_KEY,
   CUBE_COLOR_PALETTE_KEY,
@@ -70,6 +71,7 @@ export type PreferencesExportData = {
     palette: CubeColorPaletteId;
     orientation: CubeOrientation;
     fps: CubeRenderMaxFps;
+    tpsEnabled: boolean;
     backFaceProjection: boolean;
     backFaceProjectionDistance: number;
   };
@@ -722,6 +724,7 @@ function parsePreferencesExportData(value: unknown): PreferencesExportData | nul
     !isCubeRenderMaxFpsValue(appearance.fps) ||
     !isAverageSettingsTuple(practice.average) ||
     !isInspectionSettingsTuple(practice.inspection) ||
+    (appearance.tpsEnabled !== undefined && typeof appearance.tpsEnabled !== "boolean") ||
     typeof appearance.backFaceProjection !== "boolean" ||
     (
       appearance.backFaceProjectionDistance !== undefined &&
@@ -737,6 +740,7 @@ function parsePreferencesExportData(value: unknown): PreferencesExportData | nul
       palette: appearance.palette,
       orientation: appearance.orientation,
       fps: appearance.fps,
+      tpsEnabled: appearance.tpsEnabled !== false,
       backFaceProjection: appearance.backFaceProjection,
       backFaceProjectionDistance: normalizeBackFaceProjectionDistance(appearance.backFaceProjectionDistance),
     },
@@ -750,6 +754,7 @@ function parsePreferencesExportData(value: unknown): PreferencesExportData | nul
 }
 
 export function writePreferencesExportData(preferences: PreferencesExportData) {
+  writeScopedJson(CUBE_TPS_ENABLED_KEY, preferences.appearance.tpsEnabled);
   writeScopedJson(CUBE_APPEARANCE_KEY, preferences.appearance.orientation);
   writeScopedJson(CUBE_COLOR_PALETTE_KEY, preferences.appearance.palette);
   writeScopedJson(CUBE_RENDER_FPS_KEY, preferences.appearance.fps);
@@ -778,6 +783,7 @@ export function buildPreferencesExportData(args: {
   orientation: CubeOrientation;
   colorPaletteId: CubeColorPaletteId;
   renderMaxFps: CubeRenderMaxFps;
+  tpsEnabled: boolean;
   backFaceProjectionEnabled: boolean;
   backFaceProjectionDistance: number;
   averageSettings: AverageTimeSettings;
@@ -789,6 +795,7 @@ export function buildPreferencesExportData(args: {
       palette: args.colorPaletteId,
       orientation: args.orientation,
       fps: args.renderMaxFps,
+      tpsEnabled: args.tpsEnabled,
       backFaceProjection: args.backFaceProjectionEnabled,
       backFaceProjectionDistance: normalizeBackFaceProjectionDistance(args.backFaceProjectionDistance),
     },
@@ -810,6 +817,7 @@ export function buildUserDataExportPayload(args: {
   orientation: CubeOrientation;
   colorPaletteId: CubeColorPaletteId;
   renderMaxFps: CubeRenderMaxFps;
+  tpsEnabled: boolean;
   backFaceProjectionEnabled: boolean;
   backFaceProjectionDistance: number;
   averageSettings: AverageTimeSettings;

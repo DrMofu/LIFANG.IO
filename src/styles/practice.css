@@ -655,33 +655,19 @@
   border-top: 0;
   padding-top: 18px;
 }
-.lf-practice-app .hist-edit-btn {
-  display: inline-grid;
-  place-items: center;
+.lf-practice-app .hist-more-btn {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
   border: 0;
-  border-radius: 0;
   background: transparent;
-  padding: 0;
+  padding: 2px 0;
   color: var(--tech-muted);
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
 }
-.lf-practice-app .hist-edit-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-.lf-practice-app .hist-edit-btn:hover,
-.lf-practice-app .hist-edit-btn:focus-visible,
-.lf-practice-app .hist-edit-btn.active {
+.lf-practice-app .hist-more-btn:hover,
+.lf-practice-app .hist-more-btn:focus-visible {
   color: var(--tech-blue);
-  outline: none;
 }
 .lf-practice-app .solve-metric-main,
 .lf-practice-app .solve-phase-card,
@@ -759,7 +745,6 @@
   white-space: nowrap;
 }
 .lf-practice-app .solve-metric-main b {
-  grid-row: 5;
   margin-top: 0;
   margin-bottom: 0;
   color: var(--tech-blue);
@@ -767,7 +752,6 @@
 }
 .lf-practice-app .solve-metric-main em {
   display: block;
-  grid-row: 3;
   margin-top: 0;
   color: var(--tech-blue);
   font-size: 18px;
@@ -857,9 +841,6 @@
   padding: 6px 8px;
   color: var(--tech-ink-2);
 }
-:is(.lf-practice-app, .lf-tech-app) .hist-row.editing {
-  grid-template-columns: 40px minmax(0, 1fr) 54px 40px 22px;
-}
 :is(.lf-practice-app, .lf-tech-app) .hist-row > * {
   min-width: 0;
 }
@@ -902,34 +883,6 @@
   font-weight: 900;
   overflow: visible;
   white-space: nowrap;
-}
-.lf-practice-app .hr-delete {
-  display: inline-grid;
-  place-items: center;
-  justify-self: end;
-  width: 18px;
-  height: 18px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: var(--tech-muted);
-  font-size: 16px;
-  font-weight: 900;
-  line-height: 1;
-  cursor: pointer;
-}
-.lf-practice-app .hr-delete:hover,
-.lf-practice-app .hr-delete:focus-visible {
-  color: var(--accent);
-  outline: none;
-}
-.history-delete-popover {
-  position: fixed;
-  right: auto;
-}
-.history-delete-popover::before {
-  right: auto;
-  left: var(--history-delete-arrow-left);
 }
 @media (width <= 1240px) {
   .lf-practice-app {
@@ -1712,6 +1665,10 @@
   flex: 1 1 auto;
 }
 
+.practice-focus-app .practice-history-panel .practice-card-head {
+  margin-bottom: 8px;
+}
+
 .practice-focus-app .solve-metrics,
 .practice-focus-app .hist {
   border: 0;
@@ -1724,6 +1681,11 @@
 
 .practice-focus-app .solve-metrics {
   flex: 0 0 auto;
+  gap: 6px;
+}
+
+.practice-focus-app .practice-score-panel .practice-card-head {
+  margin-bottom: 0;
 }
 
 .practice-focus-app .solve-current-grid {
@@ -1731,10 +1693,6 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
   gap: 6px;
-}
-
-.practice-focus-app .solve-current-grid.timer-only .solve-metric-main {
-  justify-content: space-between;
 }
 
 .practice-focus-app .solve-metric-main .solve-source-label {
@@ -1816,12 +1774,12 @@
 }
 
 .practice-focus-app .solve-metric-main {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-rows: auto;
   min-height: 42px;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
   grid-column: 1;
   grid-row: 1;
   border: 0;
@@ -1840,21 +1798,22 @@
   line-height: 1;
 }
 
-.practice-focus-app .solve-metric-main .solve-score-separator {
-  display: inline;
-  color: #8a9bb4;
-  font-family: var(--mono);
-  font-size: 24px;
-  font-weight: 800;
+.practice-focus-app .solve-metric-secondary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: end;
+  align-content: center;
+  gap: 5px;
 }
 
 .practice-focus-app .solve-metric-main b {
   margin: 0;
   color: #8292aa;
   font-family: var(--mono);
-  font-size: 26px;
+  font-size: 16px;
   font-weight: 900;
-  line-height: 1;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .practice-focus-app .f2l-subphase-popover,
@@ -2000,8 +1959,7 @@
   flex: 1 1 auto;
   height: calc(
     var(--history-row-size) * var(--history-rows) +
-    var(--history-row-gap) * (var(--history-rows) - 1) +
-    1px
+    var(--history-row-gap) * (var(--history-rows) - 1)
   );
   min-height: 0;
   max-height: none;
@@ -2009,7 +1967,6 @@
 }
 
 :is(.practice-focus-app, .lf-tech-app) .hist-row {
-  grid-template-columns: 30px minmax(12px, 1fr) 62px 38px 68px;
   column-gap: 5px;
   border-bottom: 1px solid rgba(213, 226, 246, 0.62);
   border-radius: 0;
@@ -2017,16 +1974,30 @@
   padding: 7px 2px;
 }
 
-:is(.practice-focus-app, .lf-tech-app) .hist-row.editing {
-  grid-template-columns: 30px minmax(12px, 1fr) 62px 38px 68px 20px;
+.lf-tech-app .hist-row {
+  grid-template-columns: 30px minmax(12px, 1fr) max-content repeat(2, minmax(0, 60px));
 }
 
-:is(.practice-focus-app, .lf-tech-app) .hr-i,
-:is(.practice-focus-app, .lf-tech-app) .hr-m {
+.practice-focus-app .hist-list {
+  grid-template-columns: max-content minmax(12px, 1fr) repeat(3, max-content);
+  column-gap: 5px;
+}
+
+.practice-focus-app .hist-row {
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+
+.practice-focus-app .hist-row :is(.hr-tps, .hr-t) {
+  padding-left: 7px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hr-i {
   font-weight: 800;
 }
 
-:is(.practice-focus-app, .lf-tech-app) .hr-t {
+:is(.practice-focus-app, .lf-tech-app) :is(.hr-t, .hr-m, .hr-tps) {
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2202,25 +2173,9 @@
     line-height: 1.15;
   }
 
-  .practice-focus-app .practice-score-panel .practice-card-head {
-    margin-bottom: 6px;
-  }
-
-  .practice-focus-app .practice-score-panel .solve-metrics {
-    gap: 4px;
-  }
-
   .practice-focus-app .solve-metric-main {
     min-height: 36px;
     padding: 0;
-  }
-
-  .practice-focus-app .solve-metric-main em {
-    font-size: 32px;
-  }
-
-  .practice-focus-app .solve-metric-main :is(b, .solve-score-separator) {
-    font-size: 18px;
   }
 
   .practice-focus-app .solve-phase-card {

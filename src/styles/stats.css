@@ -362,12 +362,7 @@
   background: transparent;
 }
 
-.trend-data-note {
-  margin: -2px 4px 8px;
-  color: #7285a2;
-  font-size: 10px;
-  font-weight: 750;
-}
+
 
 .st-trend .st-chart {
   display: flex;
@@ -652,9 +647,9 @@
 
 .stats-cfop-floating-tip .hcf-row {
   display: grid;
-  grid-template-columns: 50px minmax(0, 1fr) 42px 42px;
+  grid-template-columns: 50px repeat(3, minmax(0, 1fr));
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   min-height: 25px;
   border-radius: 10px;
   padding: 4px 6px;
@@ -706,11 +701,12 @@
 
 .stats-cfop-floating-tip .hcf-f2l-subline {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   margin-top: -3px;
   border-block: 1px solid rgba(47, 111, 242, 0.16);
   background: rgba(234, 242, 255, 0.35);
-  padding-block: 3px;
+  padding-block: 4px;
 }
 
 .stats-cfop-floating-tip .hcf-subrow span {
@@ -1301,6 +1297,172 @@
 
 .dl-history-table tbody tr:hover {
   background: rgba(230, 239, 255, 0.58);
+}
+
+.solve-history-dialog {
+  --solve-history-inset: clamp(12px, 2vw, 24px);
+  --solve-history-cell-padding: clamp(8px, 2vw, 16px);
+  width: min(1120px, calc(100% - 32px));
+  margin: auto;
+  padding: 0;
+}
+
+.solve-history-dialog::backdrop {
+  background: rgba(20, 34, 62, 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.solve-history-dialog .dl-history-table-wrap {
+  overflow-x: auto;
+  touch-action: pan-x pan-y;
+}
+
+.solve-history-dialog .solve-history-table {
+  table-layout: auto;
+  font-family: var(--mono);
+}
+
+.solve-history-dialog .solve-history-table th:nth-child(n) {
+  width: auto;
+}
+
+.solve-history-dialog .solve-history-table :is(th, td) {
+  padding: 12px var(--solve-history-cell-padding);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.solve-history-dialog .solve-history-table :is(th, td):nth-child(-n + 2) {
+  text-align: left;
+}
+
+.solve-history-dialog .solve-history-table :is(th, td):first-child {
+  padding-left: calc(var(--solve-history-cell-padding) + var(--solve-history-inset));
+}
+
+.solve-history-dialog .solve-history-table :is(th, td):last-child {
+  width: calc(44px + var(--solve-history-inset));
+  padding-left: 6px;
+  padding-right: calc(6px + var(--solve-history-inset));
+  text-align: center;
+}
+
+.solve-history-table time small {
+  display: block;
+  margin-top: 3px;
+  color: var(--tech-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.solve-history-table .solve-history-number {
+  color: var(--tech-muted);
+  font-size: 10px;
+  font-weight: var(--ui-weight-support);
+}
+
+.solve-history-table .dl-history-date {
+  color: var(--tech-ink-2);
+  font-weight: 600;
+}
+
+.solve-history-table .solve-history-moves {
+  color: var(--tech-muted);
+  font-weight: 700;
+}
+
+.solve-history-table .solve-history-tps {
+  color: #3265b0;
+  font-weight: var(--ui-weight-support);
+}
+
+.solve-history-table .dl-history-score {
+  font-weight: var(--ui-weight-emphasis);
+}
+
+.solve-history-table tbody tr:nth-child(even) {
+  background: rgba(234, 242, 255, 0.52);
+}
+
+.solve-history-table tbody tr:hover,
+.solve-history-table tbody tr:focus-within {
+  background: rgba(216, 231, 255, 0.7);
+}
+
+.solve-history-phase-value {
+  display: inline-block;
+  border-radius: 7px;
+  background: rgba(224, 233, 249, 0.56);
+  padding: 4px 6px;
+  color: var(--tech-ink-2);
+  font-weight: 700;
+}
+
+.solve-history-table [data-missing="true"] {
+  background: transparent;
+  color: var(--tech-muted);
+  font-weight: 500;
+}
+
+.solve-history-dialog :is(.solve-history-cfop-column, .solve-history-phase-column) {
+  display: none;
+}
+
+.solve-history-cfop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 5px 12px;
+}
+
+.solve-history-cfop-grid > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.solve-history-cfop-grid > span > span {
+  color: var(--tech-muted);
+  font-size: 10px;
+}
+
+.solve-history-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+@media (width > 700px) and (width <= 1240px) {
+  .solve-history-dialog .solve-history-cfop-column {
+    display: table-cell;
+  }
+
+  .solve-history-dialog {
+    --solve-history-cell-padding: 8px;
+  }
+}
+
+@media (width > 1240px) {
+  .solve-history-dialog .solve-history-phase-column {
+    display: table-cell;
+  }
+}
+
+.solve-history-delete {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--tech-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.solve-history-delete:hover,
+.solve-history-delete:focus-visible {
+  background: rgba(213, 62, 75, 0.08);
+  color: #b9293b;
 }
 
 .dl-history-date,

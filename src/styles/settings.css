@@ -474,31 +474,6 @@
   inset: 0;
 }
 
-.settings-preview-tag {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  border: 1px solid var(--tech-line);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--tech-shadow-soft);
-  padding: 6px 9px;
-  color: var(--tech-muted);
-  font-family: var(--mono);
-  font-size: var(--ui-type-xs);
-  font-weight: var(--ui-weight-support);
-  letter-spacing: 0.12em;
-  cursor: pointer;
-}
-
-.settings-preview-tag:hover,
-.settings-preview-tag:focus-visible {
-  border-color: rgba(47, 111, 242, 0.28);
-  background: var(--tech-blue-soft);
-  color: var(--tech-blue);
-  outline: none;
-}
-
 .settings-segmented {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

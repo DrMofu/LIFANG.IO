@@ -66,10 +66,42 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
   const brandTitleRef = useRef<HTMLSpanElement | null>(null);
   const brandDomainRef = useRef<HTMLSpanElement | null>(null);
   const topRightRef = useRef<HTMLDivElement | null>(null);
+  const topbarRef = useRef<HTMLElement | null>(null);
+  const inlineNavRef = useRef<HTMLElement | null>(null);
+  const [navigationCollapsed, setNavigationCollapsed] = useState(false);
   const [mobileDomainVisible, setMobileDomainVisible] = useState(false);
   const routePracticeItem = PRACTICE_NAV.find((item) => navItemActive(pathname, item.href)) ?? null;
   const activePracticeItem = routePracticeItem ?? PRACTICE_NAV.find((item) => item.href === rememberedPracticeHref) ?? PRACTICE_NAV[0];
   const practiceGroupActive = Boolean(routePracticeItem);
+
+  useLayoutEffect(() => {
+    const topbar = topbarRef.current;
+    const nav = inlineNavRef.current;
+    const brand = brandTitleRef.current?.closest(".brand-link");
+    const controls = topRightRef.current;
+    if (!topbar || !nav || !brand || !controls) return;
+    const measure = () => {
+      if (!window.matchMedia("(width > 700px) and (width <= 1240px)").matches) {
+        setNavigationCollapsed(false);
+        return;
+      }
+      const style = getComputedStyle(topbar);
+      const gap = parseFloat(style.columnGap) || 0;
+      const inlineControls = Array.from(controls.children).filter((element) => !element.classList.contains("mobile-nav-trigger"));
+      const controlsWidth = inlineControls.reduce((width, element) => width + element.getBoundingClientRect().width, 0)
+        + Math.max(0, inlineControls.length - 1) * (parseFloat(getComputedStyle(controls).columnGap) || 0);
+      const available = topbar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      setNavigationCollapsed(brand.getBoundingClientRect().width + nav.getBoundingClientRect().width + controlsWidth + gap * 2 > available);
+    };
+    const observer = new ResizeObserver(measure);
+    [topbar, brand, nav, ...Array.from(controls.children)].forEach((element) => observer.observe(element));
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [showCompactConnection]);
 
   useLayoutEffect(() => {
     const title = brandTitleRef.current;
@@ -134,7 +166,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
   };
 
   return (
-    <header className="topbar">
+    <header ref={topbarRef} className="topbar" data-navigation-collapsed={navigationCollapsed}>
       <div className="brand">
         <Link href="/" className="brand-link" aria-label={t("nav.home")}>
           <BrandMark />
@@ -203,7 +235,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
           );
         })}
       </nav>
-      <nav className="topnav topnav-mobile" aria-label={t("nav.main")}>
+      <nav ref={inlineNavRef} className="topnav topnav-mobile" aria-label={t("nav.main")} inert={navigationCollapsed}>
         <div
           ref={mobilePracticeGroupRef}
           className={`navgroup${practiceMenuOpen ? " open" : ""}`}
@@ -259,13 +291,13 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
       <div ref={topRightRef} className="topright">
         {showCompactConnection && <CompactConnectButton />}
         <LanguageToggleButton />
-        <MobileNavigation />
+        <MobileNavigation compactNavigation={navigationCollapsed} />
       </div>
     </header>
   );
 }
 
-function MobileNavigation() {
+function MobileNavigation({ compactNavigation = false }: { compactNavigation?: boolean }) {
   const { t, locale, setLocale } = useLanguage();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -304,8 +336,9 @@ function MobileNavigation() {
     });
     measureBrand();
     const query = window.matchMedia("(width <= 700px)");
-    const handleResize = () => { if (!query.matches) close(); };
+    const handleResize = () => { if (!query.matches && !compactNavigation) close(); };
     query.addEventListener("change", handleResize);
+    handleResize();
     return () => {
       query.removeEventListener("change", handleResize);
       observer.disconnect();
@@ -315,7 +348,7 @@ function MobileNavigation() {
         trigger.focus({ preventScroll: true });
       }
     };
-  }, [close, open]);
+  }, [close, compactNavigation, open]);
 
   const renderLink = (item: (typeof NAV)[number]) => (
     <Link

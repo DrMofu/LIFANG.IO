@@ -31,7 +31,7 @@ export class TurnCounter {
   }
 }
 
-export const LIVE_TPS_WINDOW_MS = 3000;
+export const LIVE_TPS_WINDOW_MS = 2000;
 
 export class RollingTps {
   private counter = new TurnCounter();
@@ -64,7 +64,12 @@ export class RollingTps {
 
   value(now: number) {
     this.prune(now);
-    return this.turns.reduce((sum, turn) => sum + turn.moves, 0) * 1000 / LIVE_TPS_WINDOW_MS;
+    const first = this.turns[0];
+    if (!first || this.turns.length < 2 || now <= first.at) return 0;
+    // The first turn anchors the measured interval; its own duration is unknown.
+    // Include time since the latest turn so the rate also falls while idle.
+    const moves = this.turns.reduce((sum, turn) => sum + turn.moves, 0) - first.moves;
+    return moves * 1000 / (now - first.at);
   }
 
   private prune(now: number) {
@@ -75,6 +80,17 @@ export class RollingTps {
 export function calculateTps(moves: number | null | undefined, durationMs: number): number | null {
   if (moves == null || !Number.isFinite(moves) || moves <= 0 || !Number.isFinite(durationMs) || durationMs <= 0) return null;
   return moves * 1000 / durationMs;
+}
+
+export function calculatePhaseTps(
+  moves: number | null | undefined,
+  durationMs: number,
+  phase: "cross" | "f2l" | "oll" | "pll",
+) {
+  // The solve clock starts on receipt of the first move. A Cross completed by
+  // that move has no measured turning interval; its timestamp is dispatch delay.
+  if (phase === "cross" && moves === 1) return null;
+  return calculateTps(moves, durationMs);
 }
 
 export function formatTps(value: number | null) {

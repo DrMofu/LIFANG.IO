@@ -836,24 +836,26 @@ html[lang="en"] .ui-section-kicker {
   top: 14px;
   right: 14px;
   margin: 0;
-  border: 1px solid rgba(205, 220, 242, 0.72);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 4px 14px rgba(65, 94, 142, 0.07);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   padding: 9px 12px;
   font-size: 16px;
   line-height: 1.2;
-  backdrop-filter: blur(12px);
 }
 
 .turn-speed small,
 .score-tps small,
-.hr-tps small {
+.score-moves small {
   font-size: 10px;
   font-weight: 700;
 }
 
 .hr-tps {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 2px;
   color: #3265b0;
   font-family: var(--mono);
   font-size: 12px;
@@ -861,6 +863,10 @@ html[lang="en"] .ui-section-kicker {
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+
+.hr-tps small {
+  font: inherit;
 }
 
 .trainer-tps-history {

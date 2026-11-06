@@ -3,11 +3,11 @@
 import { Fragment } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { fmtShort } from "@/lib/format";
-import { calculateTps, formatTps } from "@/lib/tps";
-import type { HistoryMetricValue, SolveHistoryEntry } from "@/lib/solve-history";
+import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/tps";
+import type { CfopPhaseMetrics, HistoryMetricValue, SolveHistoryEntry } from "@/lib/solve-history";
 
 export const SOLVE_RECORD_TIP_WIDTH = 286;
-export const SOLVE_RECORD_TIP_HEIGHT = 360;
+export const SOLVE_RECORD_TIP_HEIGHT = 376;
 const PHASES = ["cross", "f2l", "oll", "pll"] as const;
 const PHASE_NAMES = ["Cross", "F2L", "OLL", "PLL"];
 const SUBPHASES = ["one", "two", "three", "four"] as const;
@@ -17,19 +17,23 @@ function delta(current: HistoryMetricValue | undefined, previous: HistoryMetricV
   return current - previous;
 }
 
-function RecordRow({ label, ms, moves, className = "" }: {
+function RecordRow({ label, ms, moves, className = "", phase }: {
   label: string;
   ms: number | null;
   moves: number | null | undefined;
   className?: string;
+  phase?: keyof CfopPhaseMetrics;
 }) {
   const { t } = useLanguage();
+  const speed = formatTps(phase ? calculatePhaseTps(moves, ms ?? 0, phase) : calculateTps(moves, ms ?? 0));
+  const moveValue = <b>{moves == null ? "—" : `${moves}${t("步")}`}</b>;
+  const tpsValue = <strong className="hcf-tps" aria-label={`${speed} TPS`}>{speed}</strong>;
   return (
     <div className={`hcf-row ${className}`}>
       <span>{label}</span>
+      {moveValue}
+      {tpsValue}
       <em>{fmtShort(ms)}</em>
-      <b>{moves == null ? "—" : `${moves} ${t("步")}`}</b>
-      <strong className="hcf-tps">{formatTps(calculateTps(moves, ms ?? 0))}</strong>
     </div>
   );
 }
@@ -40,9 +44,9 @@ export function SolveRecordDetails({ entry }: { entry: SolveHistoryEntry }) {
     <>
       <div className="hcf-row hcf-columns">
         <span>{t("阶段")}</span>
-        <em>{t("用时")}</em>
         <b>{t("步数")}</b>
         <strong>TPS</strong>
+        <em>{t("用时")}</em>
       </div>
       {entry.source === "timer" ? (
         <div className="manual-history-tip">
@@ -55,6 +59,7 @@ export function SolveRecordDetails({ entry }: { entry: SolveHistoryEntry }) {
           <Fragment key={phase}>
             <RecordRow
               label={PHASE_NAMES[index]}
+              phase={phase}
               ms={delta(entry.cfop?.[phase], previous ? entry.cfop?.[previous] : 0)}
               moves={delta(entry.cfopMoves?.[phase], previous ? entry.cfopMoves?.[previous] : 0)}
               className={index % 2 === 0 ? "hcf-row-alt" : ""}

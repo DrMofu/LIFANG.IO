@@ -76,6 +76,7 @@ const ARCHIVE_SCOPED_STORAGE_KEYS = [
   DAILY_LEVELS_KEY,
   DAILY_PRACTICE_SECONDS_KEY,
   "cube-appearance",
+  "cube-tps-enabled",
   "cube-color-palette",
   "cube-render-fps-limit",
   "cube-back-face-projection",
