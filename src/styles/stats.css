@@ -625,8 +625,7 @@
   border-bottom: 0;
 }
 
-.stats-cfop-floating-tip .hcf-head,
-.stats-cfop-floating-tip .hcf-row {
+.stats-cfop-floating-tip .hcf-head {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr) 58px;
   align-items: center;
@@ -652,6 +651,10 @@
 }
 
 .stats-cfop-floating-tip .hcf-row {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) 42px 42px;
+  align-items: center;
+  gap: 6px;
   min-height: 25px;
   border-radius: 10px;
   padding: 4px 6px;
@@ -670,7 +673,8 @@
 }
 
 .stats-cfop-floating-tip .hcf-row b,
-.stats-cfop-floating-tip .hcf-row em {
+.stats-cfop-floating-tip .hcf-row em,
+.stats-cfop-floating-tip .hcf-row strong {
   overflow: hidden;
   color: var(--tech-ink-2);
   font-family: var(--mono);
@@ -690,55 +694,29 @@
   color: var(--tech-ink-2);
 }
 
+.stats-cfop-floating-tip .hcf-columns :is(span, em, b, strong) {
+  color: var(--tech-muted);
+  font-size: var(--ui-type-xs);
+  font-weight: var(--ui-weight-support);
+}
+
+.stats-cfop-floating-tip .hcf-row .hcf-tps {
+  color: var(--tech-blue);
+}
+
 .stats-cfop-floating-tip .hcf-f2l-subline {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+  gap: 2px;
   margin-top: -3px;
-  border: 1px solid rgba(47, 111, 242, 0.16);
-  border-radius: 10px;
-  background: rgba(234, 242, 255, 0.62);
-  padding: 5px;
+  border-block: 1px solid rgba(47, 111, 242, 0.16);
+  background: rgba(234, 242, 255, 0.35);
+  padding-block: 3px;
 }
 
-.stats-cfop-floating-tip .hcf-f2l-subline span {
-  min-width: 0;
+.stats-cfop-floating-tip .hcf-subrow span {
+  padding-left: 8px;
   color: var(--tech-muted);
-  font-family: var(--mono);
   font-size: var(--ui-type-xs);
-  font-weight: var(--ui-weight-support);
-  line-height: 1.25;
-  text-align: center;
-}
-
-.stats-cfop-floating-tip .hcf-f2l-subline strong,
-.stats-cfop-floating-tip .hcf-f2l-subline b,
-.stats-cfop-floating-tip .hcf-f2l-subline em {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stats-cfop-floating-tip .hcf-f2l-subline strong {
-  color: var(--tech-ink);
-  font-weight: var(--ui-weight-emphasis);
-}
-
-.stats-cfop-floating-tip .hcf-f2l-subline b,
-.stats-cfop-floating-tip .hcf-f2l-subline em {
-  color: var(--tech-ink-2);
-  font-size: var(--ui-type-xs);
-  font-style: normal;
-  font-weight: var(--ui-weight-support);
-}
-
-.stats-cfop-floating-tip .hcf-f2l-subline b {
-  color: var(--tech-muted);
-}
-
-.stats-cfop-floating-tip .hcf-f2l-subline em {
-  color: var(--tech-ink-2);
 }
 
 .stats-cfop-floating-tip .hcf-total {
@@ -749,7 +727,8 @@
 
 .stats-cfop-floating-tip .hcf-total span,
 .stats-cfop-floating-tip .hcf-total b,
-.stats-cfop-floating-tip .hcf-total em {
+.stats-cfop-floating-tip .hcf-total em,
+.stats-cfop-floating-tip .hcf-total strong {
   color: var(--tech-blue);
 }
 

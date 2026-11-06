@@ -8,6 +8,7 @@
 }
 
 .lf-tech-app .fm-grid {
+  --formula-info-width: 376px;
   position: relative;
   z-index: 1;
   flex: 1;
@@ -670,6 +671,10 @@
   inset: 55px 0 165px;
 }
 
+.lf-tech-app .fm-stage > .turn-speed-overlay {
+  right: calc(var(--formula-info-width) + 28px);
+}
+
 .lf-tech-app .formula-stage-timer-stack {
   bottom: 92px;
   width: min(430px, calc(100% - 790px));
@@ -753,7 +758,7 @@
   z-index: 6;
   inset: 14px 14px 14px auto;
   display: flex;
-  width: calc(376px + 2 * var(--formula-shadow-space));
+  width: calc(var(--formula-info-width) + 2 * var(--formula-shadow-space));
   min-height: 0;
   flex-direction: column;
   gap: 14px;
@@ -1332,7 +1337,7 @@
 
 .lf-tech-app .fm-stat-row {
   --history-row-size: 36px;
-  grid-template-columns: minmax(40px, auto) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(40px, auto) minmax(12px, 1fr) auto 68px;
   column-gap: 12px;
   padding: 7px 8px;
 }
@@ -1446,6 +1451,10 @@
     min-height: 560px;
   }
 
+  .lf-tech-app .fm-stage > .turn-speed-overlay {
+    right: 14px;
+  }
+
   .lf-tech-app .fm-stage .cube-mount {
     inset: 24px 0 200px;
   }
@@ -1495,7 +1504,7 @@
     position: absolute;
     z-index: 8;
     top: 14px;
-    right: 0;
+    left: 0;
     min-height: 36px;
     padding: 8px 10px;
     font-size: 12px;
@@ -1786,8 +1795,8 @@
   .lf-tech-app .formula-stage-timer-stack {
     bottom: 18px;
     width: 94%;
-    /* Reserve the practice timer's status row and action area. */
-    padding-bottom: calc(7px + 15.4px + 8px + 36px);
+    /* Keep the timer above the action buttons. */
+    padding-bottom: calc(8px + 36px);
   }
 
   .lf-tech-app .stage-controls {

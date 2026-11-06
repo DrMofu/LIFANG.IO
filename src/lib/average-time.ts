@@ -109,11 +109,10 @@ export function averageSettingsEqual(a: AverageTimeSettings, b: AverageTimeSetti
 export function describeAverageTimeSettings(settings: AverageTimeSettings) {
   const normalized = normalizeAverageTimeSettings(settings);
   if (normalized.method === "trimmed") {
-    const minimumCount = normalized.trimBest + normalized.trimWorst + 1;
-    return `当前使用${AVERAGE_TIME_METHOD_LABELS.trimmed}：最多取最近 ${normalized.sampleSize} 次练习时间，删除最快 ${normalized.trimBest} 次和最慢 ${normalized.trimWorst} 次，对剩余成绩求平均。少于 ${minimumCount} 条有效记录时显示 --。`;
+    return `当前使用${AVERAGE_TIME_METHOD_LABELS.trimmed}：最近 ${normalized.sampleSize} 次练习，去掉最快 ${normalized.trimBest} 次、最慢 ${normalized.trimWorst} 次，剩余取平均。`;
   }
   if (normalized.method === "arithmetic") {
-    return `当前使用${AVERAGE_TIME_METHOD_LABELS.arithmetic}：最多取最近 ${normalized.sampleSize} 次练习时间，直接计算算术平均值。暂无有效记录时显示 --。`;
+    return `当前使用${AVERAGE_TIME_METHOD_LABELS.arithmetic}：最近 ${normalized.sampleSize} 次练习取平均。`;
   }
-  return `当前使用${AVERAGE_TIME_METHOD_LABELS.median}：最多取最近 ${normalized.sampleSize} 次练习时间，按用时排序后取中间值作为平均参考。暂无有效记录时显示 --。`;
+  return `当前使用${AVERAGE_TIME_METHOD_LABELS.median}：最近 ${normalized.sampleSize} 次练习，按用时排序后取中位数。`;
 }

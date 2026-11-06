@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
@@ -42,7 +42,8 @@ import {
   applyMovesToFormulaFacelets,
 } from "@/lib/facelets-pattern";
 import { fmtShort, fmtTime } from "@/lib/format";
-import { isSameSolveMoveCountGroup, solveMoveCountGroup } from "@/lib/scramble";
+import { TurnCounter, calculateTps, formatTps } from "@/lib/tps";
+import { TurnSpeed } from "@/components/turn-speed";
 import { getArchiveScopedStorageKey } from "@/lib/solve-history";
 import { useClientReady } from "@/lib/client-ready";
 import { CUBE_CAMERA_PRESETS } from "@/lib/cube-camera-presets";
@@ -61,14 +62,12 @@ type TrainerSpecialty = CfopTrainerPhase | "turn-recognition";
 const TRAINER_SPECIALTIES: Array<{
   key: TrainerSpecialty;
   name: string;
-  description: string;
 }> = [
   ...CFOP_TRAINER_PHASES.map((phase) => ({
     key: phase.key,
-    name: `${phase.short}专项`,
-    description: `练习${phase.label}公式`,
+    name: `${phase.label}专项`,
   })),
-  { key: "turn-recognition", name: "转动专项", description: "练习转动识别" },
+  { key: "turn-recognition", name: "转动专项" },
 ];
 
 const TRAINER_MOVE_ANIMATION_MS = 100;
@@ -378,7 +377,7 @@ function CfopTrainerClient() {
   const observeStartRef = useRef(0);
   const solveStartRef = useRef(0);
   const solveMoveCountRef = useRef(0);
-  const solveMoveGroupRef = useRef<ReturnType<typeof solveMoveCountGroup>>(null);
+  const turnCounterRef = useRef(new TurnCounter());
   const formulaHintMovesRef = useRef<string[]>([]);
   const formulaHintIndexRef = useRef(0);
   const formulaHintPendingMovesRef = useRef<string[]>([]);
@@ -388,8 +387,6 @@ function CfopTrainerClient() {
   const gyroDisabledRef = useRef(loadPracticeGyroDisabled());
   const visualPendingMoveRef = useRef<string | null>(null);
   const visualPendingTimerRef = useRef<number | null>(null);
-  const gyroCostNoticeFadeTimerRef = useRef<number | null>(null);
-  const gyroCostNoticeTimerRef = useRef<number | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
   const moveQueueRef = useRef(Promise.resolve());
   const mountedRef = useRef(false);
@@ -435,8 +432,6 @@ function CfopTrainerClient() {
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
   const [sessionRoundLimit, setSessionRoundLimit] = useState(readStoredTrainerSessionRounds);
   const [sessionInProgress, setSessionInProgress] = useState(false);
-  const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
-  const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
   const [recognitionIncludeSlices, setRecognitionIncludeSlices] = useState(() => readStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY));
   const [recognitionIncludeWideMoves, setRecognitionIncludeWideMoves] = useState(() => readStoredTrainerBoolean(TRAINER_RECOGNITION_WIDE_KEY));
@@ -487,6 +482,11 @@ function CfopTrainerClient() {
     [sessionResults],
   );
 
+  const validTpsResults = sessionResults.filter((entry) => !entry.dnf && calculateTps(entry.moves, entry.solveMs) !== null);
+  const sessionTps = validTpsResults.length > 0
+    ? calculateTps(validTpsResults.reduce((sum, entry) => sum + entry.moves, 0), validTpsResults.reduce((sum, entry) => sum + entry.solveMs, 0))
+    : null;
+
   const updateTrainerState = useCallback((next: TrainerState) => {
     if (next !== "error") setTrainerError(null);
     stateRef.current = next;
@@ -524,16 +524,6 @@ function CfopTrainerClient() {
     [renderFacelets],
   );
 
-  useEffect(() => {
-    return () => {
-      if (gyroCostNoticeFadeTimerRef.current !== null) {
-        window.clearTimeout(gyroCostNoticeFadeTimerRef.current);
-      }
-      if (gyroCostNoticeTimerRef.current !== null) {
-        window.clearTimeout(gyroCostNoticeTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     stateRef.current = state;
@@ -545,14 +535,13 @@ function CfopTrainerClient() {
 
   useEffect(() => {
     if (state !== "observe" && state !== "solving") return;
-    if (selectedPhase === "turn-recognition") return;
     const timer = window.setInterval(() => {
       const now = performance.now();
       if (stateRef.current === "observe") setObserveMs(Math.max(0, now - observeStartRef.current));
       if (stateRef.current === "solving") setSolveMs(Math.max(0, now - solveStartRef.current));
     }, 33);
     return () => window.clearInterval(timer);
-  }, [selectedPhase, state]);
+  }, [state]);
 
   useEffect(() => {
     const mount = cubeMountRef.current;
@@ -834,7 +823,7 @@ function CfopTrainerClient() {
       ? focusSolvedFaceletsForPhase(selectedPhaseRef.current)
       : null;
     solveMoveCountRef.current = 0;
-    solveMoveGroupRef.current = null;
+    turnCounterRef.current.reset();
     setObserveMs(0);
     setSolveMs(0);
     setTimerKind("solve");
@@ -862,6 +851,17 @@ function CfopTrainerClient() {
     updateTrainerState("cancelled");
     setSessionInProgress(false);
   }, [clearAutoNextTimer, flushVisualPendingMove, resetSessionResults, updateTrainerState]);
+
+  const handleDisconnect = useEffectEvent(() => {
+    if (sessionInProgress) {
+      cancelRun();
+    }
+  });
+  useEffect(() => {
+    if (connected) return;
+    const timer = window.setTimeout(() => handleDisconnect(), 0);
+    return () => window.clearTimeout(timer);
+  }, [connected]);
 
   const completeRound = useCallback((result: TrainerRoundResult, facelets = currentFaceletsRef.current) => {
     const phase = selectedPhaseRef.current;
@@ -918,12 +918,7 @@ function CfopTrainerClient() {
   }, [clearVisualPendingTimer, completeRound, roundInProgress, sessionInProgress]);
 
   const recordSolveMove = useCallback((move: string) => {
-    const nextGroup = solveMoveCountGroup(move);
-    if (!nextGroup) return;
-    if (!isSameSolveMoveCountGroup(solveMoveGroupRef.current, nextGroup)) {
-      solveMoveCountRef.current += 1;
-    }
-    solveMoveGroupRef.current = nextGroup;
+    solveMoveCountRef.current = turnCounterRef.current.push(move);
   }, []);
 
   const processSolveMove = useCallback(
@@ -1049,7 +1044,7 @@ function CfopTrainerClient() {
       const now = performance.now();
       solveStartRef.current = now;
       solveMoveCountRef.current = 0;
-      solveMoveGroupRef.current = null;
+      turnCounterRef.current.reset();
       setSolveMs(0);
       setTimerKind("solve");
       updateTrainerState("solving");
@@ -1142,38 +1137,6 @@ function CfopTrainerClient() {
     return clearAutoNextTimer;
   }, [autoNextPending, beginTrainerRound, clearAutoNextTimer]);
 
-  const clearGyroCostNoticeTimers = useCallback(() => {
-    if (gyroCostNoticeFadeTimerRef.current !== null) {
-      window.clearTimeout(gyroCostNoticeFadeTimerRef.current);
-      gyroCostNoticeFadeTimerRef.current = null;
-    }
-    if (gyroCostNoticeTimerRef.current !== null) {
-      window.clearTimeout(gyroCostNoticeTimerRef.current);
-      gyroCostNoticeTimerRef.current = null;
-    }
-  }, []);
-
-  const hideGyroCostNotice = useCallback(() => {
-    clearGyroCostNoticeTimers();
-    setGyroCostNoticeFading(false);
-    setGyroCostNoticeVisible(false);
-  }, [clearGyroCostNoticeTimers]);
-
-  const showGyroCostNotice = useCallback(() => {
-    clearGyroCostNoticeTimers();
-    setGyroCostNoticeFading(false);
-    setGyroCostNoticeVisible(true);
-    gyroCostNoticeFadeTimerRef.current = window.setTimeout(() => {
-      gyroCostNoticeFadeTimerRef.current = null;
-      setGyroCostNoticeFading(true);
-    }, 2000);
-    gyroCostNoticeTimerRef.current = window.setTimeout(() => {
-      gyroCostNoticeTimerRef.current = null;
-      setGyroCostNoticeFading(false);
-      setGyroCostNoticeVisible(false);
-    }, 4000);
-  }, [clearGyroCostNoticeTimers]);
-
   const toggleGyroDisabled = useCallback(() => {
     const next = !gyroDisabledRef.current;
     gyroDisabledRef.current = next;
@@ -1182,11 +1145,9 @@ function CfopTrainerClient() {
       const displayState = cubeApiRef.current?.getDisplayState();
       cubeApiRef.current?.resetGyroOrientation();
       setViewResetEnabled(displayState ? !isDefaultDisplayState(displayState) : false);
-      hideGyroCostNotice();
     }
-    if (!next) showGyroCostNotice();
     savePracticeGyroDisabled(next);
-  }, [hideGyroCostNotice, showGyroCostNotice]);
+  }, []);
 
   const toggleF2lFocusMode = useCallback(() => {
     if (settingsLocked) return;
@@ -1313,7 +1274,6 @@ function CfopTrainerClient() {
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("专项列表")}</div>
-                <div className="practice-kicker">LIST</div>
               </div>
             </div>
             <div className="stage-tools trainer-phase-list" aria-label={t("专项阶段选择")}>
@@ -1328,8 +1288,6 @@ function CfopTrainerClient() {
                 >
                   <span className="trainer-phase-copy">
                     <strong>{t(phase.name)}</strong>
-                    <span>：</span>
-                    <span>{t(phase.description)}</span>
                   </span>
                 </button>
               ))}
@@ -1342,7 +1300,6 @@ function CfopTrainerClient() {
               <div className="practice-card-head practice-control-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("专项设置")}</div>
-                  <div className="practice-kicker">SETTINGS</div>
                 </div>
               </div>
               <label className="trainer-round-setting">
@@ -1368,7 +1325,6 @@ function CfopTrainerClient() {
                     <input type="checkbox" checked readOnly tabIndex={-1} aria-hidden="true" />
                     <span>
                       <b>{t("基础面转动")}</b>
-                      <small>{t("U / D / F / B / L / R，包含顺时针与逆时针。")}</small>
                     </span>
                   </div>
                   <label className="trainer-variant-toggle">
@@ -1384,7 +1340,6 @@ function CfopTrainerClient() {
                     />
                     <span>
                       <b>{t("加入中层转动")}</b>
-                      <small>{t("M / E / S，包含顺时针与逆时针。")}</small>
                     </span>
                   </label>
                   <label className="trainer-variant-toggle">
@@ -1400,7 +1355,6 @@ function CfopTrainerClient() {
                     />
                     <span>
                       <b>{t("加入宽层转动")}</b>
-                      <small>{t("u / d / f / b / l / r，包含顺时针与逆时针。")}</small>
                     </span>
                   </label>
                   <label className="trainer-variant-toggle">
@@ -1415,8 +1369,7 @@ function CfopTrainerClient() {
                       }}
                     />
                     <span>
-                      <b>{t("开启公式提示")}</b>
-                      <small>{t("开启后在魔方上显示当前步骤的旋转箭头。")}</small>
+                      <b>{t("显示旋转箭头")}</b>
                     </span>
                   </label>
                 </div>
@@ -1444,7 +1397,6 @@ function CfopTrainerClient() {
                         />
                         <span>
                           <b>{t("仅判定目标棱")}</b>
-                          <small>{t("只要本次棱块归位，即算完成。")}</small>
                         </span>
                       </label>
                     )}
@@ -1462,7 +1414,6 @@ function CfopTrainerClient() {
                       />
                       <span>
                         <b>{t("开启公式提示")}</b>
-                        <small>{t("开启后在训练状态栏显示当前公式。")}</small>
                       </span>
                     </label>
                     <label className="trainer-variant-toggle">
@@ -1479,7 +1430,6 @@ function CfopTrainerClient() {
                       />
                       <span>
                         <b>{t("显示旋转箭头")}</b>
-                        <small>{formulaHintEnabled ? t("开启后在魔方上显示当前步骤的旋转箭头。") : t("开启公式提示后可操作。")}</small>
                       </span>
                     </label>
                   </div>
@@ -1505,7 +1455,7 @@ function CfopTrainerClient() {
                   onClick={toggleGyroDisabled}
                   aria-keyshortcuts="L"
                   aria-pressed={!gyroDisabled}
-                  aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
+
                 >
                   <span>{gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}</span>
                 </button>
@@ -1525,7 +1475,6 @@ function CfopTrainerClient() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
-                <div className="practice-kicker">SCORE</div>
               </div>
             </div>
               {isRecognitionSpecialty ? (
@@ -1558,6 +1507,10 @@ function CfopTrainerClient() {
                     <div className="st-v">{fmtShort(sessionAverageSolveMs)}</div>
                   </div>
                   <div className="st">
+                    <div className="st-l">{t("平均 TPS")}</div>
+                    <div className="st-v">{formatTps(sessionTps)}</div>
+                  </div>
+                  <div className="st">
                     <div className="st-l">{t("复原成功率")}</div>
                     <div className="st-v">{sessionSuccessRate === null ? "—" : `${sessionSuccessRate}%`}</div>
                   </div>
@@ -1567,6 +1520,17 @@ function CfopTrainerClient() {
                   </div>
                 </div>
               )}
+              {!isRecognitionSpecialty && sessionResults.length > 0 && (
+                <ol className="trainer-tps-history" aria-label={t("最近记录")}>
+                  {sessionResults.slice(-5).toReversed().map((entry, index) => (
+                    <li key={sessionResults.length - index}>
+                      <span>#{sessionResults.length - index}</span>
+                      <b>{entry.dnf ? "DNF" : fmtShort(entry.solveMs)}</b>
+                      <span className="hr-tps">{formatTps(entry.dnf ? null : calculateTps(entry.moves, entry.solveMs))} <small>TPS</small></span>
+                    </li>
+                  ))}
+                </ol>
+              )}
           </div>
         </section>
         </div>
@@ -1574,13 +1538,8 @@ function CfopTrainerClient() {
         <section className="practice-center">
           <div className="practice-stage trainer-stage">
             <div ref={cubeMountRef} className="cube-mount" />
-            {gyroCostNoticeVisible && (
-              <div
-                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
-                id="gyro-cost-notice"
-                role="status"
-              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
-            )}
+            <TurnSpeed />
+
             <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : formulaHintVisible ? " trainer-formula-timer-stack" : ""}`}>
               {formulaHintVisible && (
                 <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
@@ -1650,28 +1609,10 @@ function CfopTrainerClient() {
                     </div>
                   </div>
                 </div>
-              ) : !isRecognitionSpecialty ? (
-                <div className={`timer timer-${state}`}>
-                  <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
-                  <div className="t-phase" role={state === "error" ? "alert" : undefined}>
-                    {state === "error"
-                    ? t(trainerError ?? "本局加载失败，请重试本局")
-                    : autoNextPending
-                    ? t(`第 ${sessionRoundCount + 1}/${sessionRoundLimit} 局即将开始`)
-                    : state === "cancelled"
-                    ? t("本组已取消")
-                    : state === "ended"
-                    ? t("本组测试已结束")
-                    : timerKind === "observe"
-                      ? t("观察 / 反应计时")
-                      : state === "solving"
-                        ? t("阶段复原计时")
-                        : sessionRoundCount >= sessionRoundLimit
-                          ? t(`${sessionRoundLimit} 局专项完成`)
-                          : t(`${sessionRoundLimit} 局专项计时器`)}
-                  </div>
-                </div>
               ) : null}
+              <div className={`timer timer-${state}`}>
+                <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
+              </div>
 
               <div className="timer-controls trainer-timer-controls">
                 <button
@@ -1694,7 +1635,7 @@ function CfopTrainerClient() {
                     onClick={retryTrainerRound}
                     disabled={!connected || connecting}
                   >
-                    <span>{t("重试本局")}</span>
+                    <span>{t(trainerError ?? "重试本局")}</span>
                   </button>
                 )}
                 {!isRecognitionSpecialty && roundInProgress && (

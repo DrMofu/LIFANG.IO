@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
+import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/solve-record-details";
 import { useLanguage } from "@/components/language-provider";
 import {
   useCubeConnection,
@@ -32,6 +33,8 @@ import { getInitialCubeVisualState } from "@/lib/cube-visual-state";
 import { detectCfopMilestones, detectF2lSolvedSlotCount, isSolvedFacelets } from "@/lib/cube-state";
 import { solveFacelets } from "@/lib/cubing-solver";
 import { fmtShort, fmtTime } from "@/lib/format";
+import { TurnCounter, calculateTps, formatTps } from "@/lib/tps";
+import { TurnSpeed } from "@/components/turn-speed";
 import {
   DEFAULT_AVERAGE_TIME_SETTINGS,
   calculateAverageTime,
@@ -106,8 +109,6 @@ const HISTORY_ROW_SIZE = 32;
 const HISTORY_ROW_GAP = 7;
 const HISTORY_FALLBACK_ROWS = 1;
 const MAX_UNDO_HINT_QUEUE_LENGTH = 20;
-const HISTORY_CFOP_TIP_WIDTH = 286;
-const HISTORY_CFOP_TIP_HEIGHT = 260;
 const HISTORY_CFOP_TIP_GAP = 12;
 const HISTORY_CFOP_TIP_MARGIN = 14;
 const INSPECTION_AUDIO_CUE_SECONDS = [5, 4, 3, 2, 1] as const;
@@ -332,13 +333,6 @@ const EMPTY_F2L_SUBPHASES: LiveF2lSubphaseMetrics = {
   four: null,
 };
 
-const CFOP_PHASES: Array<{ key: CfopPhaseKey; name: string }> = [
-  { key: "cross", name: "Cross" },
-  { key: "f2l", name: "F2L" },
-  { key: "oll", name: "OLL" },
-  { key: "pll", name: "PLL" },
-];
-
 const F2L_SUBPHASES: Array<{ key: F2lSubphaseKey; name: string }> = [
   { key: "one", name: "F2L 1/4" },
   { key: "two", name: "F2L 2/4" },
@@ -545,18 +539,6 @@ function splitInvalidPendingMoves(pendingMoves: string[], expectedMove: string) 
   return { retainedMoves: [], wrongMoves: pendingMoves };
 }
 
-function solveMoveCountGroup(move: string) {
-  const parsed = parseMoveNotation(move);
-  return parsed ? { layer: parsed.layer, dir: parsed.dir } : null;
-}
-
-function isSameSolveMoveCountGroup(
-  a: ReturnType<typeof solveMoveCountGroup>,
-  b: ReturnType<typeof solveMoveCountGroup>,
-) {
-  return Boolean(a && b && a.layer === b.layer && a.dir === b.dir);
-}
-
 function solveHistoryEntryKey(entry: SolveHistoryEntry) {
   return `${entry.ts}:${entry.ms}:${entry.mode ?? ""}:${entry.dailyTest?.id ?? ""}:${entry.dailyTest?.index ?? ""}`;
 }
@@ -613,7 +595,7 @@ export function CubePracticeApp() {
   const solveTimelineMovesRef = useRef<SolveTimelineRecord["moves"]>([]);
   const timelineArchiveStorageKeyRef = useRef<string | null>(null);
   const [completedSolveTimeline, setCompletedSolveTimeline] = useState<SolveTimelineRecord | null>(null);
-  const solveMoveCountGroupRef = useRef<ReturnType<typeof solveMoveCountGroup>>(null);
+  const turnCounterRef = useRef(new TurnCounter());
   const freeScrambleMoveCountRef = useRef(0);
   const freeAwaitingIdleFaceletsRef = useRef(false);
   const lastFreeMoveAtRef = useRef(0);
@@ -654,8 +636,6 @@ export function CubePracticeApp() {
   const hasRealtimeMovesRef = useRef(false);
   const suppressSolvedTrailingMoveUntilRef = useRef(0);
   const postSolveMoveGateRef = useRef<{ faceletsSerial: number } | null>(null);
-  const gyroCostNoticeFadeTimerRef = useRef<number | null>(null);
-  const gyroCostNoticeTimerRef = useRef<number | null>(null);
   const formulaRecognitionEnabledRef = useRef(false);
   const formulaRecognitionModuleRef = useRef<FormulaRecognitionModule | null>(null);
   const formulaRecognitionLoadRef = useRef<Promise<FormulaRecognitionModule> | null>(null);
@@ -668,10 +648,8 @@ export function CubePracticeApp() {
   const [freeState, setFreeState] = useState<FreePracticeState>("waitingSolved");
   const [freeIdleMsLeft, setFreeIdleMsLeft] = useState(FREE_SCRAMBLE_IDLE_MS);
   const [, setFreeScrambleMoveCount] = useState(0);
-  const [freeNotice, setFreeNotice] = useState(t("切换到自由练习后，请先连接并复原魔方。"));
+  const [freeNotice, setFreeNotice] = useState<string | null>(null);
   const [gyroDisabled, setGyroDisabled] = useState(false);
-  const [gyroCostNoticeVisible, setGyroCostNoticeVisible] = useState(false);
-  const [gyroCostNoticeFading, setGyroCostNoticeFading] = useState(false);
   const [formulaRecognitionEnabled, setFormulaRecognitionEnabled] = useState(false);
   const [recognizedFormula, setRecognizedFormula] = useState<FormulaRecognitionResult | null>(null);
   const [formulaLearningStatuses, setFormulaLearningStatuses] = useState<Record<string, FormulaLearningStatus>>({});
@@ -733,16 +711,6 @@ export function CubePracticeApp() {
   );
   const inspectionNoticeLabel = inspectionDurationMs === null ? t("无限观察") : t(`${inspectionSettings.seconds} 秒观察`);
 
-  useEffect(() => {
-    return () => {
-      if (gyroCostNoticeFadeTimerRef.current !== null) {
-        window.clearTimeout(gyroCostNoticeFadeTimerRef.current);
-      }
-      if (gyroCostNoticeTimerRef.current !== null) {
-        window.clearTimeout(gyroCostNoticeTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     if (!pendingHistoryDelete) return;
@@ -1158,7 +1126,7 @@ export function CubePracticeApp() {
 
       if (!nextFacelets) {
         setFreeIdleMsLeft(0);
-        setFreeNotice(t("未收到 facelets，无法确认打乱完成；请再转一下或重新同步魔方状态。"));
+        setFreeNotice(t("未能同步魔方状态，请转动一下面或重新连接。"));
         return true;
       }
 
@@ -1167,13 +1135,13 @@ export function CubePracticeApp() {
         setFreeScrambleMoveCount(0);
         setFreeIdleMsLeft(FREE_SCRAMBLE_IDLE_MS);
         setFreePracticeState("ready");
-        setFreeNotice(t("检测到魔方仍为复原态，可继续自由打乱。"));
+        setFreeNotice(null);
         return true;
       }
 
       setFreePracticeState("armed");
       setFreeIdleMsLeft(0);
-      setFreeNotice(t("打乱完成。转第一下开始复原计时。"));
+      setFreeNotice(null);
       return true;
     },
     [setFreePracticeState, t],
@@ -1204,13 +1172,13 @@ export function CubePracticeApp() {
       freeIdleTimerRef.current = null;
       setFreeIdleMsLeft(0);
       freeAwaitingIdleFaceletsRef.current = true;
-      setFreeNotice(t("5 秒静止，正在确认打乱状态。"));
+      setFreeNotice(null);
       void requestFacelets();
       freeFaceletsFallbackTimerRef.current = setTimeout(() => {
         confirmFreeScrambleIdle(faceletsRef.current);
       }, 700);
     }, FREE_SCRAMBLE_IDLE_MS);
-  }, [confirmFreeScrambleIdle, requestFacelets, t]);
+  }, [confirmFreeScrambleIdle, requestFacelets]);
 
   const resetFreeReadiness = useCallback(
     (nextFacelets = faceletsRef.current) => {
@@ -1222,14 +1190,14 @@ export function CubePracticeApp() {
 
       if (isSolvedFacelets(nextFacelets)) {
         setFreePracticeState("ready");
-        setFreeNotice(t("魔方已复原。可直接自由打乱，停手后静止进度会自动推进。"));
+        setFreeNotice(null);
       } else if (nextFacelets) {
         setFreeIdleMsLeft(0);
         setFreePracticeState("armed");
-        setFreeNotice(t("当前为非复原态，转任意面开始复原计时。"));
+        setFreeNotice(null);
       } else {
         setFreePracticeState("waitingSolved");
-        setFreeNotice(t("等待魔方状态，同步后可自由打乱或直接开始复原。"));
+        setFreeNotice(t("请连接魔方并复原。"));
       }
     },
     [clearFreeTimers, clearPostSolveMoveGate, setFreePracticeState, t],
@@ -1238,14 +1206,13 @@ export function CubePracticeApp() {
   const beginSolveTimer = useCallback(
     (initialMove: string | null = null) => {
       solveSourceRef.current = timingModeRef.current;
-      const initialMoveGroup = initialMove ? solveMoveCountGroup(initialMove) : null;
+      turnCounterRef.current.reset();
       suppressSolvedTrailingMoveUntilRef.current = 0;
       const start = performance.now();
       solveStartRef.current = start;
       solveStartedAtEpochRef.current = Date.now();
       solveMsRef.current = 0;
-      solveMoveCountRef.current = initialMoveGroup ? 1 : 0;
-      solveMoveCountGroupRef.current = initialMoveGroup;
+      solveMoveCountRef.current = initialMove ? turnCounterRef.current.push(initialMove) : 0;
       solveTimelineMovesRef.current = solveSourceRef.current === "smart-cube" && initialMove
         ? [{ notation: initialMove, elapsedMs: 0 }]
         : [];
@@ -1282,12 +1249,7 @@ export function CubePracticeApp() {
         elapsedMs: Math.max(0, Math.round(performance.now() - solveStartRef.current)),
       });
     }
-    const nextMoveGroup = solveMoveCountGroup(move);
-    if (!nextMoveGroup) return;
-    if (!isSameSolveMoveCountGroup(solveMoveCountGroupRef.current, nextMoveGroup)) {
-      solveMoveCountRef.current += 1;
-    }
-    solveMoveCountGroupRef.current = nextMoveGroup;
+    solveMoveCountRef.current = turnCounterRef.current.push(move);
     setSolveMoveCount(solveMoveCountRef.current);
   }, []);
 
@@ -1415,6 +1377,7 @@ export function CubePracticeApp() {
               ollCase: solveFormulasRef.current.oll?.id,
               pllCase: solveFormulasRef.current.pll?.id,
               moves: solveMoveCountRef.current,
+              moveMetric: "HTM",
               cfop: toHistoryCfopMetrics(finalCfop),
               cfopMoves: toHistoryCfopMetrics(finalCfopMoves),
               cfopF2l: toHistoryF2lSubphaseMetrics(f2lSubTimesRef.current),
@@ -1456,7 +1419,7 @@ export function CubePracticeApp() {
         setFreeScrambleMoveCount(0);
         setFreeIdleMsLeft(FREE_SCRAMBLE_IDLE_MS);
         setFreePracticeState("ready");
-        setFreeNotice(t("复原完成。保持复原态后可直接开始下一次自由打乱。"));
+        setFreeNotice(null);
       }
 
       if (source === "auto" && recordingSource === "smart-cube") {
@@ -1993,7 +1956,7 @@ export function CubePracticeApp() {
       if (freeStateRef.current === "waitingSolved") {
         queueVisualMove(parsed.notation);
         requestFaceletsThrottled();
-        setFreeNotice(t("仍需先确认复原态；如果已经复原，请稍等 facelets 同步。"));
+        setFreeNotice(t("请先复原魔方，等待状态同步。"));
         return;
       }
 
@@ -2004,7 +1967,7 @@ export function CubePracticeApp() {
         freeScrambleMoveCountRef.current = 1;
         setFreeScrambleMoveCount(1);
         setFreePracticeState("scrambling");
-        setFreeNotice(t("自由打乱中。停手后静止进度会自动推进。"));
+        setFreeNotice(null);
         queueVisualMove(parsed.notation);
         requestFaceletsThrottled();
         scheduleFreeIdleCheck();
@@ -2015,7 +1978,7 @@ export function CubePracticeApp() {
         freeScrambleMoveCountRef.current += 1;
         setFreeScrambleMoveCount(freeScrambleMoveCountRef.current);
         setFreePracticeState("scrambling");
-        setFreeNotice(t("自由打乱中。停手后静止进度会自动推进。"));
+        setFreeNotice(null);
         queueVisualMove(parsed.notation);
         requestFaceletsThrottled();
         scheduleFreeIdleCheck();
@@ -2025,7 +1988,7 @@ export function CubePracticeApp() {
       flushVisualPendingMove();
       queueVisualMove(parsed.notation);
       clearFreeTimers();
-      setFreeNotice(t("自由复原计时中。复原成功后自动结束。"));
+      setFreeNotice(null);
       beginSolveTimer(parsed.notation);
     },
     [
@@ -2150,28 +2113,28 @@ export function CubePracticeApp() {
           if (solved) {
             setFreeIdleMsLeft(FREE_SCRAMBLE_IDLE_MS);
             setFreePracticeState("ready");
-            setFreeNotice(t("魔方已复原。可自由打乱，停手后静止进度会自动推进。"));
+            setFreeNotice(null);
           } else {
             setFreeIdleMsLeft(0);
             setFreePracticeState("armed");
-            setFreeNotice(t("当前为非复原态，转任意面开始复原计时。"));
+            setFreeNotice(null);
           }
         } else if (freeStateRef.current === "ready" && !solved) {
           if (freeScrambleMoveCountRef.current > 0) {
             setFreePracticeState("armed");
             setFreeIdleMsLeft(0);
-            setFreeNotice(t("打乱完成。转第一下开始复原计时。"));
+            setFreeNotice(null);
           } else {
             setFreePracticeState("armed");
             setFreeIdleMsLeft(0);
-            setFreeNotice(t("当前为非复原态，转任意面开始复原计时。"));
+            setFreeNotice(null);
           }
         } else if (freeStateRef.current === "armed" && solved) {
           freeScrambleMoveCountRef.current = 0;
           setFreeScrambleMoveCount(0);
           setFreeIdleMsLeft(FREE_SCRAMBLE_IDLE_MS);
           setFreePracticeState("ready");
-          setFreeNotice(t("检测到魔方已复原，本次自由练习未开始计时。"));
+          setFreeNotice(null);
         }
         return;
       }
@@ -2559,38 +2522,6 @@ export function CubePracticeApp() {
     setViewResetEnabled(false);
   }
 
-  function clearGyroCostNoticeTimers() {
-    if (gyroCostNoticeFadeTimerRef.current !== null) {
-      window.clearTimeout(gyroCostNoticeFadeTimerRef.current);
-      gyroCostNoticeFadeTimerRef.current = null;
-    }
-    if (gyroCostNoticeTimerRef.current !== null) {
-      window.clearTimeout(gyroCostNoticeTimerRef.current);
-      gyroCostNoticeTimerRef.current = null;
-    }
-  }
-
-  function hideGyroCostNotice() {
-    clearGyroCostNoticeTimers();
-    setGyroCostNoticeFading(false);
-    setGyroCostNoticeVisible(false);
-  }
-
-  function showGyroCostNotice() {
-    clearGyroCostNoticeTimers();
-    setGyroCostNoticeFading(false);
-    setGyroCostNoticeVisible(true);
-    gyroCostNoticeFadeTimerRef.current = window.setTimeout(() => {
-      gyroCostNoticeFadeTimerRef.current = null;
-      setGyroCostNoticeFading(true);
-    }, 2000);
-    gyroCostNoticeTimerRef.current = window.setTimeout(() => {
-      gyroCostNoticeTimerRef.current = null;
-      setGyroCostNoticeFading(false);
-      setGyroCostNoticeVisible(false);
-    }, 4000);
-  }
-
   function toggleGyroDisabled() {
     const next = !gyroDisabledRef.current;
     gyroDisabledRef.current = next;
@@ -2599,9 +2530,7 @@ export function CubePracticeApp() {
       const displayState = cubeApiRef.current?.getDisplayState();
       cubeApiRef.current?.resetGyroOrientation();
       setViewResetEnabled(displayState ? !isDefaultDisplayState(displayState) : false);
-      hideGyroCostNotice();
     }
-    if (!next) showGyroCostNotice();
     savePracticeGyroDisabled(next);
   }
 
@@ -2919,31 +2848,6 @@ export function CubePracticeApp() {
           ),
         )
       : 0;
-  const freeStateLabel: Record<FreePracticeState, string> = {
-    waitingSolved: t("同步状态 · SYNC STATE"),
-    ready: t("自由打乱待命 · FREE READY"),
-    scrambling: t("自由打乱中 · IDLE CHECK"),
-    armed: t("等待第一步 · FREE ARMED"),
-  };
-  const timerPhaseLabel = !isConnected && !isManualTimer
-    ? t("准备 · READY")
-    : smartSolveBusy
-    ? t("智能求解 · SMART SOLVE")
-    : practiceMode === "free"
-    ? phase === "solving"
-      ? t("自由复原 · SOLVING")
-      : phase === "done"
-        ? t("完成 · FREE COMPLETE")
-        : freeStateLabel[freeState]
-    : phase === "idle"
-      ? t("准备 · READY")
-      : phase === "scrambling"
-        ? t("打乱校验 · SCRAMBLING")
-        : phase === "inspect"
-          ? t("观察 · INSPECTION")
-          : phase === "solving"
-            ? t("解算中 · SOLVING")
-            : t("完成 · COMPLETE");
   const manualTimerPhaseLabel = manualFallbackNotice && phase === "solving"
     ? t(showKeyboardHints ? "连接已断开 · 按空格结束并仅保存总用时" : "连接已断开 · 点击计时器结束并仅保存总用时")
     : phase === "solving"
@@ -2979,7 +2883,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("每日测试")}</div>
-                <div className="practice-kicker">DAILY TEST</div>
               </div>
               <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
                 {dailyTestDisplayDate}
@@ -3034,7 +2937,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("练习设置")}</div>
-                <div className="practice-kicker">SETTINGS</div>
               </div>
             </div>
             <div className="practice-mode-switch" aria-label={t("练习模式")}>
@@ -3073,7 +2975,7 @@ export function CubePracticeApp() {
                 onClick={toggleGyroDisabled}
                 aria-keyshortcuts="L"
                 aria-pressed={!gyroDisabled}
-                aria-describedby={gyroCostNoticeVisible ? "gyro-cost-notice" : undefined}
+
               >
                 <span>{gyroDisabled ? t("陀螺仪禁用中") : t("陀螺仪启用中")}</span>
               </button>
@@ -3099,7 +3001,6 @@ export function CubePracticeApp() {
               <div className="practice-card-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("公式识别")}</div>
-                  <div className="practice-kicker">RECOGNITION</div>
                 </div>
               </div>
               {recognizedFormula ? (
@@ -3155,7 +3056,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("色彩对照")}</div>
-                <div className="practice-kicker">COLORS</div>
               </div>
             </div>
             <CubeColorLegend faceColors={faceColors} />
@@ -3168,7 +3068,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("统计摘要")}</div>
-                <div className="practice-kicker">SUMMARY</div>
               </div>
             </div>
             <div className="stat-grid">
@@ -3190,7 +3089,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
-                <div className="practice-kicker">SCORE</div>
               </div>
             </div>
             <div className={`solve-current-grid${isManualTimer ? " timer-only" : ""}`}>
@@ -3214,6 +3112,8 @@ export function CubePracticeApp() {
                   <>
                     <span className="solve-score-separator" aria-hidden="true">/</span>
                     <b>{solveMoveCount} {t("步")}</b>
+                    <span className="solve-score-separator" aria-hidden="true">·</span>
+                    <b className="score-tps">{formatTps(calculateTps(solveMoveCount, solveMs))} <small>TPS</small></b>
                   </>
                 )}
               </div>
@@ -3290,7 +3190,6 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("历史成绩")}</div>
-                <div className="practice-kicker">HISTORY</div>
               </div>
               {history.length > 0 && (
                 <button
@@ -3347,6 +3246,7 @@ export function CubePracticeApp() {
                       <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
                         {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
                       </span>
+                      <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>
                       {historyEditing && (
                         <button
                           className="hr-delete"
@@ -3379,36 +3279,7 @@ export function CubePracticeApp() {
                   <span>#{String(historyCfopTip.historyNumber).padStart(3, "0")}</span>
                   <b>{fmtSolveDate(historyCfopTip.entry.ts)}</b>
                 </div>
-                {historyCfopTip.entry.source === "timer" ? (
-                  <div className="manual-history-tip">
-                    <strong>{t("纯计时器成绩")}</strong>
-                    <span>{t("本次仅记录总用时，没有步数和 CFOP 阶段数据。")}</span>
-                  </div>
-                ) : CFOP_PHASES.map((phase, index) => (
-                    <Fragment key={phase.key}>
-                      <div className={`hcf-row${index % 2 === 0 ? " hcf-row-alt" : ""}`}>
-                        <span>{phase.name}</span>
-                        <em>{formatPhaseTimeDelta(historyCfopTip.entry.cfop, phase.key)}</em>
-                        <b>{formatPhaseMoveDelta(historyCfopTip.entry.cfopMoves, phase.key)}</b>
-                      </div>
-                      {phase.key === "f2l" && (
-                        <div className="hcf-f2l-subline" aria-label={t("F2L 子阶段用时和步数")}>
-                          {F2L_SUBPHASES.map((subphase, index) => (
-                            <span key={subphase.key}>
-                              <strong>{index + 1}/4</strong>
-                              <em>{formatF2lSubphaseTimeDelta(historyCfopTip.entry.cfop, historyCfopTip.entry.cfopF2l, subphase.key)}</em>
-                              <b>{formatF2lSubphaseMoveDelta(historyCfopTip.entry.cfopMoves, historyCfopTip.entry.cfopF2lMoves, subphase.key)}</b>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </Fragment>
-                  ))}
-                <div className="hcf-row hcf-total">
-                  <span>{t("总计")}</span>
-                  <em>{fmtShort(historyCfopTip.entry.ms)}</em>
-                  <b>{historyCfopTip.entry.moves == null ? MISSING_HISTORY_VALUE : t(`${historyCfopTip.entry.moves}步`)}</b>
-                </div>
+                <SolveRecordDetails entry={historyCfopTip.entry} />
               </div>
             ), document.body)}
             {portalReady && pendingHistoryDelete && createPortal((
@@ -3441,14 +3312,11 @@ export function CubePracticeApp() {
 
         <section className="practice-center">
           <div className="practice-stage">
-            {!isManualTimer && gyroCostNoticeVisible && (
-              <div
-                className={`gyro-cost-notice${gyroCostNoticeFading ? " fading" : ""}`}
-                id="gyro-cost-notice"
-                role="status"
-              >{t("开启陀螺仪功能会导致较大计算开销")}</div>
-            )}
+
             {!isManualTimer && <div className="cube-mount" ref={cubeMountRef}></div>}
+            {!isManualTimer && (
+              <TurnSpeed />
+            )}
 
             {isManualTimer && (
               <div className={`manual-timer-stage${manualScrambleVisible ? " with-scramble" : ""}`}>
@@ -3499,14 +3367,13 @@ export function CubePracticeApp() {
                     </div>
                   )}
                   {(phase === "solving" || phase === "done") && <div className="t-display t-active">{fmtTime(solveMs)}</div>}
-                  <div className="t-phase">{timerPhaseLabel}</div>
                 </div>
 
                 <div className="timer-controls">
                   {!isConnected && phase !== "solving" && (
                     <button className="practice-btn practice-btn-primary" onClick={startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
                       <span>
-                        {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接魔方")}
+                        {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接智能魔方")}
                       </span>
                     </button>
                   )}
@@ -3610,20 +3477,22 @@ export function CubePracticeApp() {
                       })}
                     </div>
                   )}
-                  <div className={`sh-notice${smartSolveUndoExpected || smartSolveStatus === "error" ? " error" : ""}`}>
-                    {smartSolveUndoDisplay.length > 0 ? (
-                      <>
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...smartSolveUndoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </>
-                    ) : (
-                      smartSolveNotice
-                    )}
-                  </div>
+                  {(smartSolveUndoDisplay.length > 0 || smartSolveStatus === "error" || smartSolveStatus === "loading") && (
+                    <div className={`sh-notice${smartSolveUndoExpected || smartSolveStatus === "error" ? " error" : ""}`}>
+                      {smartSolveUndoDisplay.length > 0 ? (
+                        <>
+                          <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                          <span className="sh-undo-list">
+                            {[...smartSolveUndoDisplay].reverse().map((move, index) => (
+                              <MoveToken key={`${move}-${index}`} move={move} />
+                            ))}
+                          </span>
+                        </>
+                      ) : (
+                        smartSolveNotice
+                      )}
+                    </div>
+                  )}
                 </div>
                 )}
                 {phase === "scrambling" && (
@@ -3702,11 +3571,7 @@ export function CubePracticeApp() {
                       </span>
                     ))}
                   </div>
-                  <div className="sh-notice">
-                    {freeState === "scrambling" && !freeAwaitingIdleFaceletsRef.current
-                      ? t("自由打乱中。停手后静止5秒以开始复原。")
-                      : freeNotice}
-                  </div>
+                  {freeNotice && <div className="sh-notice">{freeNotice}</div>}
                 </div>
                 )}
               </div>

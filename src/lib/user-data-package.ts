@@ -53,7 +53,7 @@ type CompactDailyLevelTuple = [string, string, number, number, CompactDailySolve
 type CompactDailyPracticeTuple = [string, number, number];
 type FormulaLearningStatus = "unpracticed" | "learning" | "mastered";
 type FormulaLearningTuple = [string, FormulaLearningStatus];
-type FormulaStatTuple = [string, number, number[], number | null, string | null, number | null];
+type FormulaStatTuple = [string, number, number[], number | null, string | null, number | null, (number | null)[]?];
 type CompactAverageSettingsTuple = [AverageTimeMethod, number, number, number];
 type CompactInspectionSettingsTuple = [PracticeInspectionMode, number];
 
@@ -124,11 +124,11 @@ const FORMULA_SCOPED_DATA_KEYS = [
 ] as const;
 
 export const USER_DATA_EXPORT_SCHEMA = {
-  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves", "source", "ollCase", "pllCase"],
+  solve: ["ms", "ts", "mode", "moves", "daily", "cfopTime", "cfopMoves", "f2lTime", "f2lMoves", "source", "ollCase", "pllCase", "moveMetric"],
   daily: ["id", "date", "completedAt", "avg", "solves"],
   dailySolve: ["ms", "ts", "moves", "source"],
   dailyPractice: ["date", "seconds", "updatedAt"],
-  formulaStat: ["key", "count", "times", "best", "today", "todayCount"],
+  formulaStat: ["key", "count", "times", "best", "today", "todayCount", "moveCounts"],
   console: ["enabled", "logSentCommands", "logMove", "logGyro", "logFacelets", "logBattery", "logHardware", "logDisconnect"],
 } as const;
 
@@ -345,6 +345,7 @@ function serializeCompactSolveHistoryEntry(entry: SolveHistoryEntry): CompactSol
     compactSource(entry.source),
     entry.ollCase ?? null,
     entry.pllCase ?? null,
+    entry.moveMetric ?? null,
   ]);
 }
 
@@ -353,11 +354,12 @@ function parseCompactSolveHistoryEntry(value: unknown): SolveHistoryEntry | null
   const [ms] = value;
   if (typeof ms !== "number") return null;
   const legacyHasScramble = typeof value[1] === "string";
-  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves, source, ollCase, pllCase] = legacyHasScramble
+  const [ts, mode, moves, dailyTest, cfopTime, cfopMoves, cfopF2lTime, cfopF2lMoves, source, ollCase, pllCase, moveMetric] = legacyHasScramble
     ? value.slice(2)
     : value.slice(1);
   if (typeof ts !== "number") return null;
   const parsed: SolveHistoryEntry = { ms, ts };
+  if (moveMetric === "HTM" || moveMetric === "STM") parsed.moveMetric = moveMetric;
   if (typeof ollCase === "string" && ollCase) parsed.ollCase = ollCase;
   if (typeof pllCase === "string" && pllCase) parsed.pllCase = pllCase;
   const parsedSource = expandSource(source);
@@ -473,14 +475,15 @@ function isFormulaLearningStatus(value: unknown): value is FormulaLearningStatus
 function isFormulaStatTuple(value: unknown): value is FormulaStatTuple {
   return (
     Array.isArray(value) &&
-    value.length === 6 &&
+    (value.length === 6 || value.length === 7) &&
     typeof value[0] === "string" &&
     typeof value[1] === "number" &&
     Array.isArray(value[2]) &&
     value[2].every((time) => typeof time === "number" && Number.isFinite(time) && time > 0) &&
     (value[3] == null || typeof value[3] === "number") &&
     (value[4] == null || typeof value[4] === "string") &&
-    (value[5] == null || typeof value[5] === "number")
+    (value[5] == null || typeof value[5] === "number") &&
+    (value[6] == null || (Array.isArray(value[6]) && value[6].length === value[2].length && value[6].every((moves) => moves === null || (Number.isInteger(moves) && moves > 0))))
   );
 }
 
@@ -497,7 +500,7 @@ export function readFormulaExportData(): FormulaExportData {
     : [];
   const stats = isRecord(rawStats)
     ? Object.entries(rawStats)
-        .map(([key, value]) => {
+        .map(([key, value]): FormulaStatTuple | null => {
           if (!isRecord(value) || typeof value.count !== "number" || !Array.isArray(value.times)) return null;
           const times = value.times
             .filter((time): time is number => typeof time === "number" && Number.isFinite(time) && time > 0)
@@ -509,6 +512,11 @@ export function readFormulaExportData(): FormulaExportData {
             typeof value.bestMs === "number" ? roundMs(value.bestMs) : null,
             typeof value.todayKey === "string" ? value.todayKey : null,
             typeof value.todayCount === "number" ? value.todayCount : null,
+            value.times.flatMap((time, index) => {
+              if (typeof time !== "number" || !Number.isFinite(time) || time <= 0) return [];
+              const moves = Array.isArray(value.moveCounts) ? value.moveCounts[index] : null;
+              return [typeof moves === "number" && Number.isInteger(moves) && moves > 0 ? moves : null];
+            }),
           ] satisfies FormulaStatTuple;
         })
         .filter((entry): entry is FormulaStatTuple => entry !== null)
@@ -643,7 +651,7 @@ export function cleanupDeprecatedFormulaLocalStorage(): DeprecatedFormulaDataCle
 
 export function writeFormulaExportData(formulas: FormulaExportData) {
   const stats = Object.fromEntries(
-    formulas.stats.map(([key, count, times, bestMs, todayKey, todayCount]) => [
+    formulas.stats.map(([key, count, times, bestMs, todayKey, todayCount, moveCounts]) => [
       key,
       {
         count,
@@ -651,6 +659,7 @@ export function writeFormulaExportData(formulas: FormulaExportData) {
         ...(bestMs == null ? {} : { bestMs }),
         ...(todayKey == null ? {} : { todayKey }),
         ...(todayCount == null ? {} : { todayCount }),
+        ...(moveCounts == null ? {} : { moveCounts }),
       },
     ]),
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
+import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as TREND_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as TREND_TIP_HEIGHT } from "@/components/solve-record-details";
 import { useLanguage } from "@/components/language-provider";
 import {
   DEFAULT_AVERAGE_TIME_SETTINGS,
@@ -23,12 +24,10 @@ import {
   type CfopPhaseMetrics,
   type DailyLevelEntry,
   type DailyPracticeEntry,
-  type F2lSubphaseMetrics,
   type SolveHistoryEntry,
 } from "@/lib/solve-history";
 
 type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
-type F2lSubphaseKey = "one" | "two" | "three" | "four";
 type CfopAverageSize = 5 | 20 | 100;
 type TrendMetric = "time" | "moves";
 type TrendPhaseFilter = "all" | CfopPhaseKey;
@@ -43,20 +42,6 @@ const DAILY_LEVEL_RANGE_OPTIONS: Array<{ key: DailyLevelRangeFilter; label: stri
 ];
 
 const CFOP_AVERAGE_SIZES: CfopAverageSize[] = [5, 20, 100];
-const CFOP_PHASES: Array<{ key: CfopPhaseKey; name: string }> = [
-  { key: "cross", name: "Cross" },
-  { key: "f2l", name: "F2L" },
-  { key: "oll", name: "OLL" },
-  { key: "pll", name: "PLL" },
-];
-
-const F2L_SUBPHASES: Array<{ key: F2lSubphaseKey; name: string }> = [
-  { key: "one", name: "F2L 1/4" },
-  { key: "two", name: "F2L 2/4" },
-  { key: "three", name: "F2L 3/4" },
-  { key: "four", name: "F2L 4/4" },
-];
-
 const TREND_PHASE_FILTERS: Array<{ key: TrendPhaseFilter; label: string }> = [
   { key: "all", label: "全部" },
   { key: "cross", label: "C" },
@@ -138,8 +123,6 @@ type DailyLevelSummary = {
   };
 };
 
-const TREND_TIP_WIDTH = 286;
-const TREND_TIP_HEIGHT = 260;
 const TREND_TIP_GAP = 12;
 const TREND_TIP_MARGIN = 14;
 const TREND_CHART_WIDTH = 800;
@@ -382,67 +365,6 @@ function createSegmentedMonotoneCubicPath(
   });
   if (segment.length > 0) paths.push(createMonotoneCubicPath(segment));
   return paths.join(" ");
-}
-
-function formatPhaseTimeDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
-  if (!metrics) return MISSING_HISTORY_VALUE;
-  const current = metrics[key];
-  if (typeof current !== "number") return MISSING_HISTORY_VALUE;
-  if (key === "cross") return fmtShort(current);
-  const previousKey = key === "f2l" ? "cross" : key === "oll" ? "f2l" : "oll";
-  const previous = metrics[previousKey];
-  if (typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return fmtShort(current - previous);
-}
-
-function formatPhaseMoveDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
-  if (!metrics) return MISSING_HISTORY_VALUE;
-  const current = metrics[key];
-  if (typeof current !== "number") return MISSING_HISTORY_VALUE;
-  if (key === "cross") return `${current}步`;
-  const previousKey = key === "f2l" ? "cross" : key === "oll" ? "f2l" : "oll";
-  const previous = metrics[previousKey];
-  if (typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return `${current - previous}步`;
-}
-
-function getF2lSubphasePrevious(
-  cfopMetrics: CfopPhaseMetrics | undefined,
-  f2lMetrics: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  if (key === "one") return cfopMetrics?.cross;
-  const previousKey = key === "two" ? "one" : key === "three" ? "two" : "three";
-  return f2lMetrics?.[previousKey];
-}
-
-function f2lSubphaseDelta(
-  cfopMetrics: CfopPhaseMetrics | undefined,
-  f2lMetrics: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  const current = f2lMetrics?.[key];
-  const previous = getF2lSubphasePrevious(cfopMetrics, f2lMetrics, key);
-  if (typeof current !== "number" || typeof previous !== "number" || current < previous) return null;
-  return current - previous;
-}
-
-function formatF2lSubphaseTimeDelta(
-  cfopMetrics: CfopPhaseMetrics | undefined,
-  f2lMetrics: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  const delta = f2lSubphaseDelta(cfopMetrics, f2lMetrics, key);
-  return delta == null ? MISSING_HISTORY_VALUE : fmtShort(delta);
-}
-
-function formatF2lSubphaseMoveDelta(
-  cfopMoves: CfopPhaseMetrics | undefined,
-  f2lMoves: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  const delta = f2lSubphaseDelta(cfopMoves, f2lMoves, key);
-  return delta == null ? MISSING_HISTORY_VALUE : `${delta}步`;
 }
 
 function phaseMetricDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
@@ -1830,36 +1752,7 @@ export function StatsApp() {
                   <span>#{String(trendCfopTip.pointNumber).padStart(3, "0")}</span>
                   <b>{fmtSolveDate(trendCfopTip.entry.ts)}</b>
                 </div>
-                {trendCfopTip.entry.source === "timer" ? (
-                  <div className="manual-history-tip">
-                    <strong>{t("纯计时器成绩")}</strong>
-                    <span>{t("本次仅记录总用时，没有步数和 CFOP 阶段数据。")}</span>
-                  </div>
-                ) : CFOP_PHASES.map((phase, index) => (
-                  <Fragment key={phase.key}>
-                    <div className={`hcf-row${index % 2 === 0 ? " hcf-row-alt" : ""}`}>
-                      <span>{phase.name}</span>
-                      <b>{formatPhaseTimeDelta(trendCfopTip.entry.cfop, phase.key)}</b>
-                      <em>{formatPhaseMoveDelta(trendCfopTip.entry.cfopMoves, phase.key)}</em>
-                    </div>
-                    {phase.key === "f2l" && (
-                      <div className="hcf-f2l-subline" aria-label={t("F2L 子阶段用时和步数")}>
-                        {F2L_SUBPHASES.map((subphase, index) => (
-                          <span key={subphase.key}>
-                            <strong>{index + 1}/4</strong>
-                            <b>{formatF2lSubphaseTimeDelta(trendCfopTip.entry.cfop, trendCfopTip.entry.cfopF2l, subphase.key)}</b>
-                            <em>{formatF2lSubphaseMoveDelta(trendCfopTip.entry.cfopMoves, trendCfopTip.entry.cfopF2lMoves, subphase.key)}</em>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </Fragment>
-                ))}
-                <div className="hcf-row hcf-total">
-                  <span>{t("总计")}</span>
-                  <b>{fmtShort(trendCfopTip.entry.ms)}</b>
-                  <em>{trendCfopTip.entry.moves == null ? MISSING_HISTORY_VALUE : t(`${trendCfopTip.entry.moves}步`)}</em>
-                </div>
+                <SolveRecordDetails entry={trendCfopTip.entry} />
               </div>
             ), document.body)}
           </div>

@@ -39,6 +39,7 @@ import {
   type PendingPracticeSession,
 } from "@/lib/solve-history";
 import { touchLocalUserDataPackageUpdatedAt } from "@/lib/user-data-package";
+import { RollingTps } from "@/lib/tps";
 import {
   SMART_CUBE_BRANDS,
   connectSmartCube,
@@ -126,6 +127,7 @@ type CubeConnectionContextValue = {
   requestBattery(options?: RequestBatteryOptions): Promise<void>;
   requestFacelets(): Promise<void>;
   getLatestGyro(): CubeQuaternion | null;
+  getLiveTps(): number;
   subscribeMove(handler: MoveHandler): () => void;
   subscribeGyro(handler: GyroHandler): () => void;
   subscribeFacelets(handler: FaceletsHandler): () => void;
@@ -258,6 +260,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   );
 
   const connRef = useRef<SmartCubeConnection | null>(null);
+  const liveTpsRef = useRef(new RollingTps());
   const orientationRef = useRef(orientation);
   const subscriptionRef = useRef<Subscription | null>(null);
   const batteryRetryTimerRef = useRef<number | null>(null);
@@ -373,6 +376,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const getLatestGyro = useCallback(() => latestGyroRef.current, []);
+  const getLiveTps = useCallback(() => liveTpsRef.current.value(performance.now()), []);
 
   const publishFacelets = useCallback((nextFacelets: string, signal: CubeFaceletsSignal) => {
     faceletsHandlersRef.current.forEach((handler) => handler(nextFacelets, signal));
@@ -683,6 +687,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   );
 
   const handleDisconnectEvent = useCallback(() => {
+    liveTpsRef.current.reset();
     flushStoredVisualState();
     clearBatteryRetryTimer();
     clearBatteryPollTimer();
@@ -703,6 +708,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
   }, [clearBatteryPollTimer, clearBatteryRetryTimer, flushStoredVisualState, hideConnectionPrompt]);
 
   const disconnectCube = useCallback(async () => {
+    liveTpsRef.current.reset();
     const conn = connRef.current;
     connRef.current = null;
     subscriptionRef.current?.unsubscribe();
@@ -740,6 +746,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
     }
 
     setConnectionState("connecting");
+    liveTpsRef.current.reset();
     setConnectionInfo({ ...EMPTY_INFO, protocol: brand.protocol, error: null });
     setTelemetry(EMPTY_TELEMETRY);
 
@@ -761,6 +768,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
         logReceivedEvent(event);
 
         if (event.type === "MOVE") {
+          liveTpsRef.current.record(event.move, performance.now());
           trackPracticeMove(Date.now());
           lastMovesRef.current = [...lastMovesRef.current, event].slice(-256);
           const rawMoveEntry = { rawMove: event.move, t: event.localTimestamp ?? performance.now() };
@@ -936,6 +944,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       requestBattery,
       requestFacelets,
       getLatestGyro,
+      getLiveTps,
       subscribeMove,
       subscribeGyro,
       subscribeFacelets,
@@ -951,6 +960,7 @@ export function CubeConnectionProvider({ children }: { children: ReactNode }) {
       disconnectCube,
       facelets,
       getLatestGyro,
+      getLiveTps,
       requestFacelets,
       requestBattery,
       subscribeFacelets,

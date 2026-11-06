@@ -1,4 +1,3 @@
-import { parseMoveNotation } from "@/lib/algorithms";
 import type { CubeFace } from "@/lib/smart-cube";
 
 export const SCRAMBLE_LENGTH = 20;
@@ -30,16 +29,4 @@ export function generateScramble(len = SCRAMBLE_LENGTH) {
     prev = move;
   }
   return out;
-}
-
-export function solveMoveCountGroup(move: string) {
-  const parsed = parseMoveNotation(move);
-  return parsed ? { layer: parsed.layer, dir: parsed.dir } : null;
-}
-
-export function isSameSolveMoveCountGroup(
-  a: ReturnType<typeof solveMoveCountGroup>,
-  b: ReturnType<typeof solveMoveCountGroup>,
-) {
-  return Boolean(a && b && a.layer === b.layer && a.dir === b.dir);
 }

@@ -809,3 +809,81 @@ html[lang="en"] .ui-section-kicker {
     animation: none;
   }
 }
+
+
+.turn-speed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px 8px;
+  margin-top: 10px;
+  color: #607594;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-speed-value,
+.score-tps {
+  color: var(--tech-blue, #2464df);
+}
+
+.turn-speed-overlay {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  right: 14px;
+  margin: 0;
+  border: 1px solid rgba(205, 220, 242, 0.72);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 4px 14px rgba(65, 94, 142, 0.07);
+  padding: 9px 12px;
+  font-size: 16px;
+  line-height: 1.2;
+  backdrop-filter: blur(12px);
+}
+
+.turn-speed small,
+.score-tps small,
+.hr-tps small {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.hr-tps {
+  color: #3265b0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.trainer-tps-history {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(213, 226, 246, 0.62);
+  list-style: none;
+}
+
+.trainer-tps-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 80px;
+  align-items: baseline;
+  gap: 8px;
+  color: #607594;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.practice-focus-app .solve-metric-main .score-tps {
+  color: var(--tech-blue, #2464df);
+  font-size: 16px;
+  white-space: nowrap;
+}

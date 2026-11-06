@@ -22,6 +22,7 @@ export type SolveHistoryEntry = {
   mode?: "scramble" | "free";
   source?: SolveSource;
   moves?: number;
+  moveMetric?: "HTM" | "STM";
   dailyTest?: {
     id: string;
     localDate: string;
@@ -401,6 +402,7 @@ export function normalizeSolveHistoryEntry(entry: SolveHistoryEntry): SolveHisto
   return {
     ...rest,
     source: entry.source === "timer" ? "timer" : "smart-cube",
+    moveMetric: entry.moveMetric === "HTM" || entry.moveMetric === "STM" ? entry.moveMetric : undefined,
     ollCase: typeof entry.ollCase === "string" && entry.ollCase ? entry.ollCase : undefined,
     pllCase: typeof entry.pllCase === "string" && entry.pllCase ? entry.pllCase : undefined,
     cfop: normalizeCfopPhaseMetrics(entry.cfop),
