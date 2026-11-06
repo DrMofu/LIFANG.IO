@@ -82,6 +82,14 @@ type FormulaVariantItem = FormulaVariantData & {
 };
 
 const FORMULAS_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.formulas;
+const SMALL_FORMULA_QUERY = "(width <= 700px)";
+const isSmallFormulaLayout = () => window.matchMedia(SMALL_FORMULA_QUERY).matches;
+const serverSmallFormulaLayout = () => false;
+const subscribeSmallFormulaLayout = (onChange: () => void) => {
+  const query = window.matchMedia(SMALL_FORMULA_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
 type FormulaCaseItem = FormulaItem & {
   sourceCat: FormulaKey;
   sourceName: string;
@@ -101,6 +109,7 @@ type FormulaTip = {
 
 const FAV_KEY = "formula-favs";
 const STATE_KEY = "formula-state";
+const METHOD_PREFERENCES_KEY = "formula-method-preferences";
 const STATS_KEY = "formula-practice-stats";
 const FOCUS_MODE_KEY = "formula-focus-mode";
 const FORMULA_PLAY_START_DELAY_MS = 0;
@@ -377,6 +386,20 @@ function findVariantByKey(cases: FormulaCaseItem[], key: string) {
     if (variant) return variant;
   }
   return null;
+}
+
+function readMethodPreferences(): Record<string, string> {
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(METHOD_PREFERENCES_KEY) || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+  } catch {
+    return {};
+  }
+}
+
+function preferredCaseVariant(item: FormulaCaseItem, preferences: Record<string, string>) {
+  return item.variants.find((variant) => variant.key === preferences[variant.caseId]) ?? item.variants[0];
 }
 
 function caseHasVariantKey(item: FormulaCaseItem, key: string) {
@@ -755,6 +778,9 @@ function groupAlgorithmRows(algo: string) {
 
 function FormulaStage({
   active,
+  compactLayout,
+  methods,
+  onMethodChange,
   shouldSolveToReset,
   onStatsChange,
   learningStatus,
@@ -764,6 +790,9 @@ function FormulaStage({
   onChooseFormula,
 }: {
   active: FormulaVariantItem;
+  compactLayout: boolean;
+  methods: FormulaVariantItem[];
+  onMethodChange(key: string): void;
   shouldSolveToReset: boolean;
   onStatsChange(id: string, stats: FormulaStats): void;
   learningStatus: LearningStatus;
@@ -773,6 +802,7 @@ function FormulaStage({
   onChooseFormula(): void;
 }) {
   const { t } = useLanguage();
+  const smallScreen = useSyncExternalStore(subscribeSmallFormulaLayout, isSmallFormulaLayout, serverSmallFormulaLayout);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const playingRef = useRef(false);
@@ -833,11 +863,21 @@ function FormulaStage({
   const [researchMoves, setResearchMoves] = useState<string[]>([]);
   const [playbackActive, setPlaybackActive] = useState(false);
   const [learningMenuOpen, setLearningMenuOpen] = useState(false);
+  const [methodMenuOpen, setMethodMenuOpen] = useState(false);
+  const methodMenuRef = useRef<HTMLDivElement | null>(null);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!methodMenuOpen) return;
+    const dismiss = (event: PointerEvent) => {
+      if (event.target instanceof Node && !methodMenuRef.current?.contains(event.target)) setMethodMenuOpen(false);
+    };
+    window.addEventListener("pointerdown", dismiss);
+    return () => window.removeEventListener("pointerdown", dismiss);
+  }, [methodMenuOpen]);
 
   const {
     connectionState,
-    connectRealCube,
     subscribeMove,
   } = useCubeConnection();
   const { orientation, faceColors, renderMaxFps, backFaceProjectionEnabled, backFaceProjectionDistance } = useCubeAppearance();
@@ -848,7 +888,7 @@ function FormulaStage({
   const canUseFocusMode = active.sourceCat === "oll" || active.sourceCat === "pll";
   const canUseTransparentDisplay = active.sourceCat === "cross";
   const showVariantTag = active.name !== "主公式";
-  const formulaTitle = showVariantTag ? `${t(active.caseName)} · ${t(active.name)}` : t(active.caseName);
+  const formulaTitle = showVariantTag && !compactLayout ? `${t(active.caseName)} · ${t(active.name)}` : t(active.caseName);
   const formulaAverage = calculateAverageTime(practiceStats.times, averageSettings);
   const formulaAverageLabel = formulaAverage ? fmtShort(formulaAverage.valueMs) : "--";
   const formulaAverageDescription = t(describeAverageTimeSettings(averageSettings));
@@ -1119,6 +1159,13 @@ function FormulaStage({
     setPreviewStartState();
   }
 
+  const exitMobileResearch = useEffectEvent(() => {
+    if (researchModeRef.current) exitResearchMode();
+  });
+  useEffect(() => {
+    if (smallScreen) exitMobileResearch();
+  }, [smallScreen]);
+
   function toggleResearchMode() {
     if (researchModeRef.current) {
       exitResearchMode();
@@ -1216,7 +1263,9 @@ function FormulaStage({
       transparentFormulaFacelets: transparentDisplayRef.current,
       showBackFaceProjection: backFaceProjectionEnabled,
       backFaceProjectionDistance,
-      defaultDisplayState: FORMULAS_CUBE_CAMERA_PRESET.displayState,
+      defaultDisplayState: compactLayout ? CUBE_CAMERA_PRESETS.practice.displayState : FORMULAS_CUBE_CAMERA_PRESET.displayState,
+      cameraDistanceRange: compactLayout ? CUBE_CAMERA_PRESETS.practice.distanceRange : undefined,
+      sceneOffset: compactLayout ? CUBE_CAMERA_PRESETS.practice.sceneOffset : undefined,
       onDisplayOrientationChange: () => setViewResetEnabled(true),
     });
     cubeApiRef.current = api;
@@ -1238,7 +1287,7 @@ function FormulaStage({
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [algoMoves, backFaceProjectionEnabled, canUseFocusMode, displayFacelets, faceColors, orientation, renderMaxFps, setupMoves, shouldSolveToReset]);
+  }, [algoMoves, backFaceProjectionEnabled, canUseFocusMode, compactLayout, displayFacelets, faceColors, orientation, renderMaxFps, setupMoves, shouldSolveToReset]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -1611,6 +1660,61 @@ function FormulaStage({
                 >{t("切换公式")}</button>
               </div>
               <div className="formula-hero-tags" aria-label={t("公式信息")}>
+                <div className="formula-selection-tags">
+                {compactLayout && methods.length > 1 && (
+                  <div
+                    ref={methodMenuRef}
+                    className="formula-status-menu-wrap"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget)) setMethodMenuOpen(false);
+                    }}
+                    onKeyDown={(event) => {
+                      event.stopPropagation();
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setMethodMenuOpen(false);
+                        event.currentTarget.querySelector<HTMLButtonElement>(".formula-method-select")?.focus();
+                      }
+                      if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+                      event.preventDefault();
+                      setMethodMenuOpen(true);
+                      const wrapper = event.currentTarget;
+                      const key = event.key;
+                      requestAnimationFrame(() => {
+                        const options = Array.from(wrapper.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+                        const current = options.indexOf(document.activeElement as HTMLButtonElement);
+                        const index = key === "Home" ? 0 : key === "End" ? options.length - 1 : current < 0 ? (key === "ArrowUp" ? options.length - 1 : 0) : (current + (key === "ArrowUp" ? -1 : 1) + options.length) % options.length;
+                        options[index]?.focus();
+                      });
+                    }}
+                    onKeyUp={(event) => event.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className="formula-hero-tag formula-method-select"
+                      aria-label={t("切换公式方法")}
+                      aria-haspopup="menu"
+                      aria-expanded={methodMenuOpen}
+                      onClick={() => { setLearningMenuOpen(false); setMethodMenuOpen((open) => !open); }}
+                    >
+                      <span>{t(active.name)}</span><span className="formula-status-caret" aria-hidden="true" />
+                    </button>
+                    {methodMenuOpen && (
+                      <div className="formula-status-menu formula-method-menu" role="menu" aria-label={t("切换公式方法")}>
+                        {methods.map((method) => (
+                          <button
+                            key={method.key}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={active.key === method.key}
+                            className={`formula-status-menu-option${active.key === method.key ? " active" : ""}`}
+                            onClick={() => { setMethodMenuOpen(false); onMethodChange(method.key); }}
+                          >{t(method.name)}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div
                   className="formula-status-menu-wrap"
                   onBlur={(event) => {
@@ -1654,6 +1758,8 @@ function FormulaStage({
                     </div>
                   )}
                 </div>
+                </div>
+                <div className="formula-performance-tags">
                 <span className="formula-stat-text formula-detail-stat">
                   <span>{t("最佳")}</span>{" "}{bestPracticeValue}
                 </span>
@@ -1663,6 +1769,7 @@ function FormulaStage({
                     {formulaAverageDescription}
                   </span>
                 </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1702,7 +1809,7 @@ function FormulaStage({
               ))}
             </div>
           )}
-          <div className="formula-practice-actions">
+          {(canRotateF2lVariant || researchMode || connected) && <div className="formula-practice-actions">
             {canRotateF2lVariant && !researchMode && (
               <>
                 <button
@@ -1719,14 +1826,12 @@ function FormulaStage({
             )}
             {researchMode ? (
               <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => void copyResearchMoves()} disabled={researchMoves.length === 0}>{t("复制记录")}</button>
-            ) : !connected ? (
-              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => void connectRealCube()}>{t("连接魔方")}</button>
-            ) : practiceActive ? (
+            ) : !connected ? null : practiceActive ? (
               <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => resetPractice()}>{t("停止练习")}</button>
             ) : (
               <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={beginPractice}>{t("开始练习")}</button>
             )}
-          </div>
+          </div>}
           </div>
         </div>
         </div>
@@ -1820,6 +1925,7 @@ export function FormulasApp() {
   const initialFormulaState = useMemo(() => getDefaultFormulaState(), []);
   const [cat, setCat] = useState<FormulaViewKey>(initialFormulaState.cat);
   const [activeKey, setActiveKey] = useState<string>(initialFormulaState.activeKey);
+  const [methodPreferences, setMethodPreferences] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState("");
   const [favs, setFavs] = useState<string[]>([]);
   const [formulaStats, setFormulaStats] = useState<Record<string, FormulaStats>>({});
@@ -1887,6 +1993,7 @@ export function FormulasApp() {
       const saved = readFormulaState() ?? getDefaultFormulaState();
       setCat(saved.cat);
       setActiveKey(saved.activeKey);
+      setMethodPreferences(readMethodPreferences());
       setShowFavOnly(saved.showFavOnly);
       setStatusFilter(saved.statusFilter);
       setOllShapeFilter(saved.ollShapeFilter);
@@ -2000,6 +2107,7 @@ export function FormulasApp() {
     ? findVariantByKey(favoriteCases, activeKey) || favoriteCases[0]?.variants[0] || null
     : findVariantByKey(categoryCases, activeKey) || categoryCases[0]?.variants[0] || null;
   const resolvedActiveKey = active?.key ?? activeKey;
+  const activeMethods = formulaCases.find((item) => item.id === active?.caseId)?.variants ?? [];
   const activeCatKey = active?.sourceCat ?? cat;
   const activeLearningStatus = active ? getLearningStatus(learningStatuses, active.key) : "unpracticed";
   const emptyMessage = filter.trim() ? t("无匹配结果") : statusFilter === "all" ? t("无匹配结果") : t("此状态下暂无公式");
@@ -2070,8 +2178,8 @@ export function FormulasApp() {
 
   function selectCase(item: FormulaCaseItem) {
     if (isMobile) {
-      if (item.variants.length > 1) toggleCaseExpanded(item.id);
-      else if (item.variants[0]) selectVariant(item.variants[0].key);
+      const variant = preferredCaseVariant(item, methodPreferences);
+      if (variant) selectVariant(variant.key);
       return;
     }
     if (!caseHasVariantKey(item, resolvedActiveKey)) {
@@ -2082,6 +2190,13 @@ export function FormulasApp() {
   }
 
   function selectVariant(key: string) {
+    const variant = findVariantByKey(formulaCases, key);
+    if (!variant) return;
+    const preferences = { ...methodPreferences, [variant.caseId]: key };
+    setMethodPreferences(preferences);
+    try {
+      window.localStorage.setItem(METHOD_PREFERENCES_KEY, JSON.stringify(preferences));
+    } catch { /* Formula selection still works when storage is unavailable. */ }
     setActiveKey(key);
     if (isMobile) {
       setMobileLibraryOpen(false);
@@ -2169,10 +2284,11 @@ export function FormulasApp() {
                 items.map((item) => {
                 const caseActive = item.variants.some((variant) => variant.key === resolvedActiveKey);
                 const totalVariantCount = getTotalVariantCount(item);
-                const usesVariantList = isMobile ? item.variants.length > 1 : caseUsesVariantList(item);
+                const usesVariantList = !isMobile && caseUsesVariantList(item);
                 const caseExpanded = usesVariantList && expandedCaseIds.has(item.id);
-                const summary = usesVariantList ? null : formatListStats(getCaseStats(item, formulaStats), averageSettings);
-                const itemLearningStatus = getLearningStatus(learningStatuses, item.variants[0]?.key ?? item.id);
+                const summary = isMobile || usesVariantList ? null : formatListStats(getCaseStats(item, formulaStats), averageSettings);
+                const preferredVariant = preferredCaseVariant(item, methodPreferences);
+                const itemLearningStatus = getLearningStatus(learningStatuses, preferredVariant?.key ?? item.id);
                 const statusLabel = t(LEARNING_STATUSES.find((status) => status.key === itemLearningStatus)?.shortLabel ?? "未学习");
                 const learningCounts = getCaseLearningCounts(item, learningStatuses);
                 const casePreviewFacelets = getFormulaCasePreviewFacelets(item);
@@ -2219,9 +2335,9 @@ export function FormulasApp() {
                               ? ` · ${t(item.variants[0].name)}`
                               : ""}
                           </span>
-                          <FormulaDescription description={item.variants.length === 1 ? item.variants[0]?.description : item.description} />
+                          {!isMobile && <FormulaDescription description={item.variants.length === 1 ? item.variants[0]?.description : item.description} />}
                         </div>
-                        {isFavoritesView && <div className="fvr-algo">{item.variants[0].algo}</div>}
+                        {!isMobile && isFavoritesView && <div className="fvr-algo">{item.variants[0].algo}</div>}
                         <div className="fmr-meta">
                           {usesVariantList ? (
                             <>
@@ -2258,14 +2374,16 @@ export function FormulasApp() {
                         </button>
                       ) : (
                         <button
-                          className={`fmr-fav${favs.includes(item.variants[0].key) ? " on" : ""}`}
+                          className={`fmr-fav${favs.includes(preferredVariant.key) ? " on" : ""}`}
+                          aria-label={t("收藏")}
+                          aria-pressed={favs.includes(preferredVariant.key)}
                           onClick={(event) => {
                             event.stopPropagation();
-                            toggleFav(item.variants[0].key);
+                            toggleFav(preferredVariant.key);
                           }}
                           type="button"
                         >
-                          {favs.includes(item.variants[0].key) ? "★" : "☆"}
+                          {favs.includes(preferredVariant.key) ? "★" : "☆"}
                         </button>
                       )}
                     </div>
@@ -2337,6 +2455,9 @@ export function FormulasApp() {
                 <FormulaStage
                   key={`${active.key}:${archiveRefreshKey}`}
                   active={active}
+                  compactLayout={isMobile}
+                  methods={activeMethods}
+                  onMethodChange={selectVariant}
                   shouldSolveToReset={activeCatKey !== "triggers"}
                   onStatsChange={updateFormulaStats}
                   learningStatus={activeLearningStatus}

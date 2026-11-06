@@ -1030,6 +1030,14 @@
   }
 }
 @media (width <= 700px) {
+  .lf-practice-app .scramble-stage-hint .algo-tok-index {
+    display: none;
+  }
+
+  .lf-practice-app .scramble-stage-hint .algo-tok {
+    padding: 4px;
+  }
+
   .practice-layout {
     gap: 10px;
     padding: 10px;
@@ -2333,7 +2341,7 @@
     width: 94%;
   }
 
-  .practice-focus-app .t-display {
+  :is(.practice-focus-app, .lf-tech-app) .t-display {
     font-size: clamp(50px, 18vw, 76px);
   }
 

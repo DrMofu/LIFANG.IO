@@ -3540,7 +3540,7 @@ export function CubePracticeApp() {
             {(stageGuidanceVisible || manualScrambleVisible) && (
               <div className="stage-bottom-stack">
                 {manualScrambleVisible && (
-                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
+                <div className="stage-hint scramble-stage-hint" role="status" aria-label={t("打乱公式")}>
                   <div className="sh-head sh-head-scramble">
                     <div className="sh-kicker">{t("打乱公式")}</div>
                     <div className="sh-actions">
@@ -3627,7 +3627,7 @@ export function CubePracticeApp() {
                 </div>
                 )}
                 {phase === "scrambling" && (
-                <div className="stage-hint" role="status" aria-label={t("打乱公式")}>
+                <div className="stage-hint scramble-stage-hint" role="status" aria-label={t("打乱公式")}>
                   <div className="sh-head sh-head-scramble">
                     <div className="sh-kicker">{t("打乱公式")}</div>
                     {undoDisplay.length > 0 && (

@@ -2,6 +2,7 @@
 export const englishSourceMessages: Record<string, string> = {
   "选公式": "Choose formula",
   "切换公式": "Switch formula",
+  "切换公式方法": "Switch formula method",
   "关闭公式菜单": "Close formula menu",
   "结束测试": "End test",
   "本组测试已结束": "Test ended",

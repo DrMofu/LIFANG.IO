@@ -483,6 +483,32 @@
   color: var(--tech-muted);
 }
 
+.lf-tech-app .formula-hero-tag.formula-method-select {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 26px;
+  border: 1px solid rgba(47, 111, 242, 0.2);
+  border-radius: 8px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.94), rgba(230, 240, 255, 0.78));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 2px 6px rgba(47, 86, 150, 0.06);
+  gap: 8px;
+  padding: 4px 10px;
+  color: var(--tech-ink-2);
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.lf-tech-app .formula-method-select:hover {
+  border-color: rgba(47, 111, 242, 0.42);
+}
+
+.lf-tech-app .formula-method-select:focus-visible {
+  outline: 2px solid rgba(47, 111, 242, 0.48);
+  outline-offset: 2px;
+}
+
 :is(.lf-tech-app, .practice-focus-app) .formula-status-badge.status-learning,
 .lf-tech-app .formula-hero-tag.status-learning {
   border-color: var(--tech-orange);
@@ -966,6 +992,11 @@
   margin-top: 8px;
 }
 
+.lf-tech-app .formula-selection-tags,
+.lf-tech-app .formula-performance-tags {
+  display: contents;
+}
+
 .lf-tech-app .formula-status-menu-wrap {
   position: relative;
   display: inline-flex;
@@ -1014,6 +1045,13 @@
   cursor: pointer;
 }
 
+.lf-tech-app .formula-method-menu {
+  right: auto;
+  left: 0;
+  max-height: min(280px, 50dvh);
+  overflow-y: auto;
+}
+
 .lf-tech-app .formula-status-menu-option.status-learning {
   color: var(--tech-orange);
 }
@@ -1023,6 +1061,7 @@
 }
 
 .lf-tech-app .formula-status-menu-option:hover,
+.lf-tech-app .formula-status-menu-option:focus-visible,
 .lf-tech-app .formula-status-menu-option.active {
   background: var(--tech-blue-soft);
 }
@@ -1525,8 +1564,85 @@
   }
 
   .fm-library-dialog .fm-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+    grid-auto-rows: minmax(130px, auto);
+    gap: 8px;
     overscroll-behavior: contain;
+    padding-top: 12px;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .fm-library-dialog .fm-empty {
+    grid-column: 1 / -1;
+  }
+
+  .fm-library-dialog .fm-case {
+    display: flex;
+    min-width: 0;
+    border: 0;
+  }
+
+  .fm-library-dialog .fm-row {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    justify-items: center;
+    gap: 4px;
+    border: 1px solid var(--tech-line);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.68);
+    box-shadow: var(--tech-shadow-soft);
+    padding: 10px 6px 8px;
+  }
+
+  .fm-library-dialog .fm-row.active,
+  .fm-library-dialog .fm-row:focus-visible {
+    border-color: var(--tech-blue);
+    background: var(--tech-blue-soft);
+    box-shadow: inset 0 0 0 1px var(--tech-blue);
+  }
+
+  .fm-library-dialog .fmr-img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .fm-library-dialog .fmr-l {
+    width: 100%;
+    text-align: center;
+  }
+
+  .fm-library-dialog .fmr-name {
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .fm-library-dialog .fmr-name > span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .fm-library-dialog .fmr-meta {
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  .fm-library-dialog .formula-status-badge {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+
+  .fm-library-dialog .fmr-fav {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 32px;
+    height: 32px;
   }
 
   .lf-tech-app .fm-category-tabs {
@@ -1542,18 +1658,12 @@
     padding: 0 10px;
   }
 
-  .lf-tech-app .fm-row {
-    grid-template-columns: 46px minmax(0, 1fr) 22px;
-  }
-
-  .lf-tech-app .fmr-img {
-    width: 42px;
-    height: 42px;
-  }
-
 }
 
 @media (width > 700px) and (width <= 1240px) {
+  .fm-library-dialog .fm-list {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
   .app.lf-tech-app {
     height: 100dvh;
     min-height: 0;
@@ -1561,8 +1671,10 @@
   }
 
   .lf-tech-app .fm-grid {
+    flex: 1 1 0;
     width: 100%;
     min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
     grid-template-columns: clamp(280px, 32vw, 360px) minmax(0, 1fr);
     grid-template-areas: "side stage";
     overflow: hidden;
@@ -1579,7 +1691,7 @@
   }
 
   .lf-tech-app .fm-stage .cube-mount {
-    inset: 55px 0 165px;
+    inset: 8px 0 160px;
   }
 
   .lf-tech-app .formula-stage-timer-stack {
@@ -1598,26 +1710,53 @@
   }
 
   .lf-tech-app .formula-hero {
-    grid-template-columns: 52px minmax(0, 1fr);
-    gap: 10px;
+    gap: 6px 10px;
   }
 
   .lf-tech-app .formula-hero-image {
-    width: 52px;
-    height: 52px;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .lf-tech-app .formula-hero-info,
+  .lf-tech-app .formula-hero-tags {
+    display: contents;
+  }
+
+  .lf-tech-app .formula-hero-title {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .lf-tech-app .formula-hero-info h2 {
     font-size: var(--ui-type-lg);
   }
 
-  .lf-tech-app .formula-hero-info h2 span {
-    white-space: normal;
-    overflow-wrap: anywhere;
+  .lf-tech-app .formula-selection-tags {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
   }
 
-  .lf-tech-app .formula-hero-tags {
-    flex-wrap: wrap;
+  .lf-tech-app .formula-performance-tags {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: flex;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .lf-tech-app .formula-selection-tags .formula-status-menu-wrap {
+    min-width: 0;
+  }
+
+  .lf-tech-app .formula-selection-tags .formula-method-select > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   html[lang="en"] .lf-tech-app .formula-mode-switch {
@@ -1629,7 +1768,34 @@
 @media (width <= 700px) {
   .lf-tech-app .fm-grid {
     gap: 10px;
-    padding: 10px;
+    padding: 14px 12px;
+  }
+
+  .lf-tech-app .formula-mode-switch {
+    display: none;
+  }
+
+  .lf-tech-app .fm-stage {
+    min-height: 570px;
+  }
+
+  .lf-tech-app .fm-stage .cube-mount {
+    inset: 18px 0 150px;
+  }
+
+  .lf-tech-app .formula-stage-timer-stack {
+    bottom: 18px;
+    width: 94%;
+    /* Reserve the practice timer's status row and action area. */
+    padding-bottom: calc(7px + 15.4px + 8px + 36px);
+  }
+
+  .lf-tech-app .stage-controls {
+    bottom: 18px;
+  }
+
+  .lf-tech-app .stage-controls .sc-btn {
+    min-height: 36px;
   }
 
   .lf-tech-app .formula-main-section {
