@@ -100,10 +100,6 @@
     padding-inline: 28px;
   }
 
-  .home-hero {
-    grid-template-columns: minmax(280px, 0.9fr) minmax(460px, 1.1fr);
-  }
-
   .home-nav .navitem small {
     display: none;
   }
@@ -196,7 +192,6 @@
   }
 
   .home-cube-stage {
-    min-height: min(54vh, 480px);
     margin-top: -8px;
   }
 

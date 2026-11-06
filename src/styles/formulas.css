@@ -1,3 +1,7 @@
+.fm-library-close-row {
+  display: none;
+}
+
 .fm-mobile-choose {
   display: none;
 }
@@ -15,8 +19,6 @@
   overflow: hidden;
 }
 
-
-
 .lf-tech-app .fm-left {
   position: absolute;
   z-index: 5;
@@ -27,7 +29,6 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   overflow: visible;
-  padding: 0;
 }
 
 .lf-tech-app .fm-category-tabs {
@@ -36,7 +37,7 @@
   grid-template-rows: 46px;
   gap: 6px;
   min-height: 0;
-  padding: 10px 10px 8px;
+  padding: 0 0 8px;
 }
 
 .lf-tech-app .fm-category-tab {
@@ -83,7 +84,7 @@
   align-items: center;
   gap: 8px;
   border-bottom: 1px solid var(--tech-line);
-  padding: 4px 12px 10px;
+  padding: 4px 0 12px;
 }
 
 .lf-tech-app .fm-search input,
@@ -91,9 +92,7 @@
 .lf-tech-app .fm-shape-select-trigger {
   width: 100%;
   min-width: 0;
-  height: 38px;
   border: 1px solid var(--tech-line);
-  border-radius: 14px;
   background: #fff;
   color: var(--tech-ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
@@ -314,7 +313,7 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 0 7px 10px;
+  padding: 0 0 8px;
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 145, 180, 0.35) transparent;
 }
@@ -768,7 +767,6 @@
   min-width: 0;
   flex: 0 0 auto;
   overflow: visible;
-  padding: 0;
 }
 
 .lf-tech-app .formula-mode-switch {
@@ -1128,7 +1126,6 @@
   min-height: 0;
   flex: 1 1 auto;
   overflow: hidden;
-  padding: 0;
 }
 
 .lf-tech-app .fm-side.is-research .fm-side-bottom,
@@ -1149,17 +1146,18 @@
 .lf-tech-app .formula-stats-head,
 .lf-tech-app .formula-title-line {
   display: flex;
-  align-items: center;
 }
 
 .lf-tech-app .formula-stats-head {
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
 }
 
-.lf-tech-app .formula-card-title {
-  color: #19386f;
+.lf-tech-app .formula-title-line {
+  align-items: baseline;
 }
 
 .lf-tech-app .formula-today-stat {
@@ -1351,7 +1349,6 @@
   display: flex;
   width: min(420px, calc(100% - 48px));
   flex-direction: column;
-  padding: 30px;
   transform: translate(-50%, -50%);
 }
 
@@ -1515,13 +1512,13 @@
     max-height: none;
     min-height: 0;
     grid-template-rows: auto minmax(0, 1fr);
-    border: 0;
-    border-radius: inherit;
-    box-shadow: none;
   }
 
-
   .fm-library-close-row > button {
+    position: absolute;
+    z-index: 20;
+    top: 16px;
+    right: 16px;
     display: grid;
     place-items: center;
     flex: none;
@@ -1539,8 +1536,6 @@
     grid-auto-rows: minmax(130px, auto);
     gap: 8px;
     overscroll-behavior: contain;
-    padding-top: 12px;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 
   .fm-library-dialog .fm-empty {
@@ -1618,13 +1613,20 @@
     display: flex;
     overflow-x: auto;
     gap: 5px;
-    padding: 8px 7px 7px;
   }
 
   .lf-tech-app .fm-category-tab {
     flex: 1 0 auto;
     min-height: 42px;
     padding: 0 10px;
+  }
+
+  .fm-library-close-row {
+    display: contents;
+  }
+
+  .fm-library-dialog .fm-left .fm-category-tabs {
+    padding-right: 50px;
   }
 
 }
@@ -1696,7 +1698,6 @@
     grid-column: 2;
     grid-row: 1;
   }
-
 
   .lf-tech-app .formula-selection-tags {
     grid-column: 2;

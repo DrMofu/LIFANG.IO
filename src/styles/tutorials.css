@@ -278,7 +278,6 @@
   overflow-y: auto;
 }
 
-
 .tutorial-toc ol {
   display: grid;
   gap: 3px;
@@ -1360,7 +1359,6 @@
   }
 
   .tutorial-cube-stage {
-    min-height: 380px;
     border-right: 0;
     border-bottom: 1px solid rgba(199, 214, 237, 0.9);
   }
@@ -1378,7 +1376,6 @@
   }
 
   .tutorial-algorithm-visual {
-    min-height: 330px;
     border-right: 0;
     border-bottom: 1px solid rgba(199, 214, 237, 0.9);
   }

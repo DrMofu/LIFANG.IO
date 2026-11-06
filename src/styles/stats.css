@@ -34,7 +34,6 @@
   border: 1px solid rgba(222, 232, 248, 0.92);
   border-radius: var(--tech-radius-lg);
   background: var(--tech-panel);
-  box-shadow: var(--tech-shadow);
   backdrop-filter: blur(18px);
 }
 
@@ -140,7 +139,6 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding: 16px;
 }
 
 .st-legend {
@@ -360,8 +358,6 @@
   border-radius: 0;
   background: transparent;
 }
-
-
 
 .st-trend .st-chart {
   display: flex;
@@ -1189,10 +1185,6 @@
   max-height: min(760px, calc(100vh - 48px));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 24px;
-  background: rgba(248, 251, 255, 0.96);
-  box-shadow: 0 30px 80px rgba(26, 48, 86, 0.24);
 }
 
 .dl-history-dialog-head {
@@ -1300,7 +1292,6 @@
   --solve-history-cell-padding: clamp(8px, 2vw, 16px);
   width: min(1120px, calc(100% - 32px));
   margin: auto;
-  padding: 0;
 }
 
 .solve-history-dialog::backdrop {
@@ -1859,10 +1850,6 @@
 }
 
 @media (width <= 1240px) {
-  .st-record {
-    gap: 12px;
-    padding: 6px 12px;
-  }
 
   .st-main {
     padding-right: 22px;
@@ -2052,7 +2039,6 @@
   }
 
   .dl-head-actions {
-    flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
@@ -2085,7 +2071,6 @@
 
   .dl-history-dialog {
     max-height: calc(100vh - 20px);
-    border-radius: 20px;
   }
 
   .dl-history-dialog-head {
@@ -2134,11 +2119,6 @@
 
   .dl-history-solves em {
     font-size: var(--ui-type-xs);
-  }
-
-  .st-card {
-    border-radius: 18px;
-    padding: 16px;
   }
 
   .daily-level-svg {

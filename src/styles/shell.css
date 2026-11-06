@@ -360,82 +360,6 @@
   z-index: 1;
 }
 
-
-.top-disconnect-popover {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
-  z-index: 130;
-  width: 220px;
-  border: 1px solid rgba(214, 226, 244, 0.96);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 20px 48px rgba(35, 61, 105, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.86);
-  padding: 12px;
-  color: var(--tech-ink);
-  backdrop-filter: blur(18px);
-}
-
-.top-disconnect-popover::before {
-  position: absolute;
-  top: -7px;
-  right: 26px;
-  width: 12px;
-  height: 12px;
-  border-top: 1px solid rgba(214, 226, 244, 0.96);
-  border-left: 1px solid rgba(214, 226, 244, 0.96);
-  background: rgba(255, 255, 255, 0.97);
-  content: "";
-  transform: rotate(45deg);
-}
-
-.top-disconnect-title {
-  color: var(--tech-ink);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.top-disconnect-text {
-  overflow: hidden;
-  margin-top: 4px;
-  color: var(--tech-muted);
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.top-disconnect-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.top-disconnect-actions button {
-  min-height: 30px;
-  border: 1px solid var(--tech-line);
-  border-radius: 999px;
-  background: #ffffff;
-  color: var(--tech-ink-2);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.top-disconnect-actions button:hover {
-  border-color: rgba(47, 111, 242, 0.32);
-  color: var(--tech-blue);
-}
-
-.top-disconnect-actions .danger {
-  border-color: rgba(201, 53, 42, 0.24);
-  background: rgba(201, 53, 42, 0.08);
-  color: var(--accent);
-}
-
 .top-connect-tooltip {
   position: fixed;
   top: 16px;
@@ -456,7 +380,6 @@
   font-family: var(--sans);
   text-align: left;
 }
-
 
 .top-connect-prompt-backdrop {
   position: fixed;
@@ -1262,16 +1185,6 @@
     grid-row: 1;
     justify-self: end;
     justify-content: flex-end;
-  }
-
-  .top-disconnect-popover {
-    right: 0;
-    left: auto;
-  }
-
-  .top-disconnect-popover::before {
-    right: 20px;
-    left: auto;
   }
 }
 

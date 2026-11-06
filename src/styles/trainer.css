@@ -55,9 +55,7 @@
     white-space: normal;
   }
 
-
   }
-
 
 .trainer-focus-app .trainer-timer-controls {
   position: relative;
@@ -147,17 +145,10 @@
   font-size: 28px;
 }
 
-
 .formula-library-dialog {
   width: min(800px, calc(100vw - 32px));
   max-height: min(850px, calc(100dvh - 32px));
   margin: auto;
-  padding: 16px;
-  border: 1px solid var(--tech-line);
-  border-radius: 24px;
-  background: rgba(245, 249, 255, .96);
-  box-shadow: 0 24px 80px rgba(30, 57, 100, .24);
-  backdrop-filter: blur(24px);
   color: #234578;
 }
 
@@ -219,6 +210,5 @@
 .formula-library-dialog input { accent-color: #3979de; }
 
 @media (width <= 700px) {
-  .formula-library-dialog { padding: 16px; }
   .formula-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

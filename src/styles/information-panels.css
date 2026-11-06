@@ -15,17 +15,3 @@
 .ui-info-panel > .practice-card-head {
   align-self: stretch;
 }
-
-.fm-library-close-row { display: none; }
-.lf-tech-app .fm-left .fm-category-tabs { padding: 0 0 8px; }
-.lf-tech-app .fm-left .fm-search { padding: 4px 0 12px; }
-.lf-tech-app .fm-left .fm-list { padding: 0 0 8px; }
-.lf-tech-app .formula-stats-head { align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
-.lf-tech-app .formula-title-line { align-items: baseline; }
-.tutorial-toc .ui-section-head { margin-bottom: 12px; }
-
-@media (width <= 1240px) {
-  .fm-library-close-row { display: contents; }
-  .fm-library-close-row > button { position: absolute; z-index: 20; top: 16px; right: 16px; }
-  .fm-library-dialog .fm-left .fm-category-tabs { padding-right: 50px; }
-}

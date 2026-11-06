@@ -121,15 +121,6 @@ html[lang="en"] .ui-section-kicker {
 }
 
 .dot {
-  background: #a8b4c9;
-}
-
-.dot-on {
-  background: var(--tech-green);
-  box-shadow: 0 0 0 5px rgba(34, 160, 82, 0.13);
-}
-
-.dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -813,7 +804,6 @@ html[lang="en"] .ui-section-kicker {
     animation: none;
   }
 }
-
 
 .turn-speed {
   display: flex;

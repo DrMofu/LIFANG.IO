@@ -31,9 +31,6 @@
 
 .settings-debug-block {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .settings-card:has(.settings-color-select-wrap.open),
@@ -776,8 +773,6 @@
     width: 100%;
   }
 
-
-
   .settings-card-appearance {
     gap: 18px;
   }
@@ -806,8 +801,6 @@
   }
 
 }
-
-
 
 .settings-row-label, .settings-setting-title, .settings-auth-field > span, .settings-archive-select-field > label {
   font-family: var(--sans);
