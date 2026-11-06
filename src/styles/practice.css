@@ -190,16 +190,17 @@
   letter-spacing: 0;
 }
 .lf-practice-app .sh-head-scramble {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
 }
-.lf-practice-app .sh-head-scramble .sh-kicker {
-  grid-column: 1;
-}
 .lf-practice-app .sh-head-scramble .sh-actions {
-  grid-column: 3;
-  justify-self: end;
+  align-items: baseline;
+}
+.lf-practice-app .sh-head-scramble .sh-counter,
+.lf-practice-app .sh-head-scramble .sh-cancel {
+  line-height: 1.4;
+}
+.lf-practice-app .sh-head-scramble .sh-cancel {
+  font-family: var(--sans);
 }
 .lf-practice-app .sh-counter {
   margin-left: auto;
@@ -234,6 +235,19 @@
   justify-content: center;
   gap: 8px;
 }
+
+@media (width > 1240px) {
+  .lf-practice-app .scramble-stage-hint .sh-grid {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 48px));
+  }
+
+  .lf-practice-app .scramble-stage-hint .algo-tok {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .lf-practice-app .sh-notice {
   display: flex;
   min-height: 18px;
@@ -252,10 +266,15 @@
   font-weight: 900;
 }
 .lf-practice-app .sh-notice-inline {
-  grid-column: 2;
-  justify-self: center;
+  flex: 1 1 auto;
+  justify-content: center;
+  flex-wrap: wrap;
   min-width: 0;
   margin-top: 0;
+}
+.lf-practice-app .sh-notice-inline .sh-undo-list {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
 }
 .lf-practice-app .sh-notice-label,
 .lf-practice-app .sh-undo-list {
@@ -693,6 +712,16 @@
   }
 }
 @media (width <= 700px) {
+  .lf-practice-app .sh-grid {
+    gap: 4px;
+  }
+
+  .lf-practice-app .stage-hint .algo-tok {
+    width: 30px;
+    height: 36px;
+    font-size: 12px;
+  }
+
   .lf-practice-app .scramble-stage-hint .algo-tok-index {
     display: none;
   }
@@ -753,6 +782,22 @@
 
 .practice-focus-app .practice-info {
   display: contents;
+}
+
+.practice-focus-app.manual-timer-mode :is(.practice-info > section > *, .stage-bottom-stack) {
+  transition: opacity 240ms ease;
+}
+
+.practice-focus-app.manual-timer-focused :is(.practice-info > section > *, .stage-bottom-stack) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-focus-app.manual-timer-mode :is(.practice-info > section > *, .stage-bottom-stack),
+  .practice-focus-app .manual-timer-surface .manual-timer-value {
+    transition: none;
+  }
 }
 
 .practice-focus-app .practice-left,
@@ -1014,6 +1059,7 @@
 }
 
 .practice-focus-app .manual-timer-surface {
+  container-type: inline-size;
   display: grid;
   min-height: 0;
   place-content: center;
@@ -1039,27 +1085,23 @@
   transform: translateX(-50%);
 }
 
-.practice-focus-app .manual-timer-surface:not(.phase-done):focus-visible {
-  outline: 3px solid rgba(47, 111, 242, 0.18);
-  outline-offset: -3px;
-}
-
 .practice-focus-app .manual-timer-content {
   transform: translateY(-38px);
 }
 
 .practice-focus-app .manual-timer-value {
+  --manual-timer-font-size: clamp(86px, 11vw, 164px);
+  --manual-timer-scale: 1;
   background: linear-gradient(180deg, #2d70f5 10%, #0751d8 70%, #7ba9ff 116%);
   color: transparent;
   font-family: var(--timer-number);
-  font-size: clamp(86px, 11vw, 164px);
+  font-size: min(calc(var(--manual-timer-font-size) * var(--manual-timer-scale)), 32cqi);
   font-weight: 900;
   letter-spacing: 0.01em;
   line-height: 0.9;
-  filter: drop-shadow(0 20px 28px rgba(42, 101, 225, 0.18));
   background-clip: text;
   -webkit-background-clip: text;
-  transition: filter 120ms ease;
+  transition: font-size 350ms ease;
 }
 
 .practice-focus-app .manual-timer-status {
@@ -1070,17 +1112,20 @@
 }
 
 .practice-focus-app .manual-timer-surface.arm-holding .manual-timer-value {
+  --manual-timer-scale: 1.12;
   background: linear-gradient(180deg, #efb730, #d58a00);
-  filter: drop-shadow(0 18px 26px rgba(216, 147, 16, 0.2));
   background-clip: text;
   -webkit-background-clip: text;
 }
 
 .practice-focus-app .manual-timer-surface.arm-ready .manual-timer-value {
   background: linear-gradient(180deg, #32b878, #138852);
-  filter: drop-shadow(0 18px 26px rgba(30, 155, 94, 0.2));
   background-clip: text;
   -webkit-background-clip: text;
+}
+
+.practice-focus-app .manual-timer-surface:is(.arm-ready, .phase-solving) .manual-timer-value {
+  --manual-timer-scale: 1.4;
 }
 
 .practice-focus-app .manual-timer-surface.fallback .manual-timer-status {
@@ -1432,7 +1477,8 @@
   inset: auto;
   margin: 0;
   display: block;
-  width: 142px;
+  width: min(600px, calc(100vw - 24px));
+  height: 72px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -1602,6 +1648,8 @@
 }
 
 .practice-focus-app .hr-m.source-timer {
+  grid-column: 3 / 5;
+  justify-self: center;
   border-radius: 999px;
   background: #eaf2ff;
   padding: 3px 6px;
@@ -1877,7 +1925,7 @@
   }
 
   .practice-focus-app .manual-timer-value {
-    font-size: clamp(68px, 21vw, 100px);
+    --manual-timer-font-size: clamp(68px, 21vw, 100px);
   }
 
   .practice-focus-app .manual-timer-status {

@@ -2634,6 +2634,7 @@ export function CubePracticeApp() {
 
   function changeTimingMode(nextMode: TimingMode) {
     if (
+      dailyTestRef.current ||
       timingModeRef.current === nextMode ||
       phaseRef.current === "solving" ||
       manualTimerArmStateRef.current !== "idle" ||
@@ -2741,6 +2742,7 @@ export function CubePracticeApp() {
   );
   const isConnected = connectionState === "connected";
   const isManualTimer = timingMode === "timer";
+  const isManualTimerFocused = isManualTimer && (manualTimerArmState === "ready" || phase === "solving");
   const todayLocalDate = getDailyTestDateKey();
   const yesterdayLocalDate = getYesterdayDailyTestDateKey();
   const todayDailyLevel = useMemo(
@@ -2762,8 +2764,8 @@ export function CubePracticeApp() {
   const canStartDailyTestFromScramble = practiceMode === "scramble" && (phase === "idle" || phase === "done" || canInterruptScrambleAttempt);
   const canStartDailyTestFromFree = practiceMode === "free" && phase !== "solving";
   const canSwitchMode = !dailyTest && !smartSolveBusy && phase !== "solving";
-  const canSwitchTimingMode = !smartSolveBusy && phase !== "solving" && manualTimerArmState === "idle";
-  const manualScrambleVisible = isManualTimer && practiceMode === "scramble" && phase !== "solving";
+  const canSwitchTimingMode = !dailyTest && !smartSolveBusy && phase !== "solving" && manualTimerArmState === "idle";
+  const manualScrambleVisible = isManualTimer && practiceMode === "scramble";
   const canStartDailyTestSession = (isManualTimer || isConnected) && !dailyTest && !smartSolveBusy && (canStartDailyTestFromScramble || canStartDailyTestFromFree);
   const canStartTodayDailyTest = !todayDailyLevel && canStartDailyTestSession;
   const showYesterdayMakeupTest = !todayDailyLevel && !yesterdayDailyLevel;
@@ -2804,12 +2806,12 @@ export function CubePracticeApp() {
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
   return (
-    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}`}>
+    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}`}>
       <AppTopbar />
       {gyroPowerNotice}
 
       <main className="practice-layout">
-        <div className="practice-info">
+        <div className="practice-info" inert={isManualTimerFocused}>
         <section className="practice-left">
           <div className="practice-card daily-test-card">
             <div className="practice-card-head">
@@ -2893,13 +2895,15 @@ export function CubePracticeApp() {
                 type="button"
                 aria-pressed={!isManualTimer} className={!isManualTimer ? "active" : ""}
                 onClick={() => changeTimingMode("smart-cube")}
-                disabled={!canSwitchTimingMode}
+                disabled={!!dailyTest}
+                aria-disabled={!canSwitchTimingMode}
               >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
               <button
                 type="button"
                 aria-pressed={isManualTimer} className={isManualTimer ? "active" : ""}
                 onClick={() => changeTimingMode("timer")}
-                disabled={!canSwitchTimingMode}
+                disabled={!!dailyTest}
+                aria-disabled={!canSwitchTimingMode}
               >{t("纯计时器")}</button>
             </div></SettingChoice>
 
@@ -3026,7 +3030,7 @@ export function CubePracticeApp() {
                 >
                   <em>{fmtShort(solveMs)}</em>
                   {currentSolveTimeline && (
-                    <SolveTimeline record={currentSolveTimeline} label={t("CFOP 阶段用时")} moveUnit={t("步")} />
+                    <SolveTimeline record={currentSolveTimeline} label={t("CFOP 阶段用时")} moveUnit={t("步")} placementKey={`${phase}:${stageGuidanceVisible}`} />
                   )}
                 </span>
                 {isManualTimer ? (
@@ -3167,7 +3171,7 @@ export function CubePracticeApp() {
                       <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
                         {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
                       </span>
-                      <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>
+                      {entry.source !== "timer" && <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>}
                       <span className="hr-t">{fmtShort(entry.ms)}</span>
                     </div>
                   );
@@ -3298,11 +3302,14 @@ export function CubePracticeApp() {
             )}
 
             {(stageGuidanceVisible || manualScrambleVisible) && (
-              <div className="stage-bottom-stack">
+              <div className="stage-bottom-stack" inert={isManualTimerFocused}>
                 {manualScrambleVisible && (
-                <div className="stage-hint scramble-stage-hint" role="status" aria-label={t("打乱公式")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("打乱公式")}</div>
+                <div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
+                  <div className="ui-section-head sh-head-scramble">
+                    <div className="ui-section-title-line">
+                      <div className="ui-section-title">{t("打乱公式")}</div>
+                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
+                    </div>
                     <div className="sh-actions">
                       {dailyTest && (
                         <div className="sh-counter">
@@ -3389,9 +3396,12 @@ export function CubePracticeApp() {
                 </div>
                 )}
                 {phase === "scrambling" && (
-                <div className="stage-hint scramble-stage-hint" role="status" aria-label={t("打乱公式")}>
-                  <div className="sh-head sh-head-scramble">
-                    <div className="sh-kicker">{t("打乱公式")}</div>
+                <div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
+                  <div className="ui-section-head sh-head-scramble">
+                    <div className="ui-section-title-line">
+                      <div className="ui-section-title">{t("打乱公式")}</div>
+                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
+                    </div>
                     {undoDisplay.length > 0 && (
                       <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
                         <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>

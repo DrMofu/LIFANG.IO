@@ -33,39 +33,3 @@
 .lf-practice-app .hist-list {
   min-height: 0;
 }
-
-.lf-practice-app .stage-hint {
-  container-type: inline-size;
-}
-
-.lf-practice-app .sh-grid {
-  --scramble-token-size: 48px;
-  --scramble-token-gap: 8px;
-  display: grid;
-  grid-template-columns: repeat(20, var(--scramble-token-size));
-  gap: var(--scramble-token-gap);
-  justify-content: center;
-}
-
-@container (max-width: 1111px) {
-  .lf-practice-app .sh-grid {
-    grid-template-columns: repeat(10, var(--scramble-token-size));
-  }
-}
-
-@media (max-width: 560px) {
-  .lf-practice-app .sh-grid {
-    --scramble-token-size: 30px;
-    --scramble-token-gap: 4px;
-  }
-
-  .lf-practice-app .stage-hint .algo-tok {
-    width: var(--scramble-token-size);
-    height: 36px;
-    font-size: 12px;
-  }
-
-  .lf-practice-app .stage-hint .algo-tok-index {
-    font-size: 8px;
-  }
-}

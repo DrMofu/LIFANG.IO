@@ -109,6 +109,25 @@ export function parseMoveNotation(notation: unknown): ParsedMove | null {
   };
 }
 
+export function groupAlgorithmMoves(source: string) {
+  const rows: Array<{ moves: Array<{ move: string; index: number }> }> = [];
+  let current: Array<{ move: string; index: number }> = [];
+  let moveIndex = 0;
+  const pushCurrent = () => {
+    if (current.length === 0) return;
+    rows.push({ moves: current });
+    current = [];
+  };
+  source.trim().split(/\s+/).forEach((token) => {
+    if (token.includes("(")) pushCurrent();
+    const move = token.replace(/[()]/g, "");
+    if (parseMoveNotation(move)) current.push({ move, index: moveIndex++ });
+    if (token.includes(")")) pushCurrent();
+  });
+  pushCurrent();
+  return rows;
+}
+
 export function parseAlgorithm(source: unknown): string[] {
   if (typeof source !== "string") return [];
   return source
@@ -264,6 +283,118 @@ export function shouldDeferExpectedSliceMoveAnimation(pendingMoves: string[], ex
   });
 }
 
+export type FormulaMoveAnimationState = {
+  animatedCount: number;
+  animatedPartialMove: string | null;
+};
+
+export function flushFormulaMoveAnimation(pendingMoves: string[], state: FormulaMoveAnimationState) {
+  return state.animatedPartialMove
+    ? [invertMoveNotation(state.animatedPartialMove), ...pendingMoves]
+    : pendingMoves.slice(state.animatedCount);
+}
+
+// Slice/wide turns may arrive as several face events. Share the same animation
+// plan between formula practice and trainer hints so no event is rendered twice.
+export function planFormulaMoveAnimation(
+  pendingMoves: string[],
+  expected: string,
+  state: FormulaMoveAnimationState,
+) {
+  if (movesMatchExpected(pendingMoves, expected)) {
+    const animateExpected = shouldAnimateExpectedSliceMoveAfterMatch(pendingMoves, expected)
+      || shouldAnimateExpectedWideMoveAfterMatch(pendingMoves, expected);
+    const unplayed = (animateExpected ? [expected] : pendingMoves).slice(state.animatedCount);
+    let moves = unplayed.length > 0 ? unplayed : [expected];
+    if (animateExpected && state.animatedPartialMove) {
+      moves = [state.animatedPartialMove];
+    } else if (animateExpected && state.animatedCount > 0) {
+      moves = [...pendingMoves.slice(0, state.animatedCount).toReversed().map(invertMoveNotation), expected];
+    }
+    return {
+      match: "matched" as const,
+      moves,
+      animatedCount: 0,
+      animatedPartialMove: null,
+    };
+  }
+
+  if (moveCanStillMatchExpected(pendingMoves, expected)) {
+    const deferSlice = shouldDeferExpectedSliceMoveAnimation(pendingMoves, expected);
+    const deferWide = shouldDeferExpectedWideMoveAnimation(pendingMoves, expected);
+    let partialMove: string | undefined;
+    if (movePartiallyMatchesExpectedDoubleTurn(pendingMoves, expected)) {
+      if (deferSlice) partialMove = compressMoveSequence(pendingMoves)[0];
+      else if (deferWide) partialMove = hintMoveForDoubleTurnProgress(pendingMoves, expected);
+    }
+    if (partialMove && !state.animatedPartialMove) {
+      return {
+        match: "partial" as const,
+        moves: [partialMove],
+        animatedCount: pendingMoves.length,
+        animatedPartialMove: partialMove,
+      };
+    }
+    return {
+      ...state,
+      match: "partial" as const,
+      moves: deferSlice || deferWide ? [] : pendingMoves.slice(-1),
+      animatedCount: deferSlice || deferWide ? state.animatedCount : pendingMoves.length,
+    };
+  }
+
+  return {
+    match: "wrong" as const,
+    moves: pendingMoves.slice(state.animatedCount),
+    animatedCount: 0,
+    animatedPartialMove: null,
+  };
+}
+
+export function advanceFormulaRotationSteps(moves: string[], startIndex: number, coordinate: MoveCoordinateState) {
+  let nextIndex = startIndex;
+  const rotations: string[] = [];
+  while (nextIndex < moves.length && isRotationMoveNotation(moves[nextIndex])) {
+    const move = moves[nextIndex];
+    rotations.push(move);
+    coordinate = updateMoveCoordinateStateAfterRotationMove(coordinate, move);
+    nextIndex += 1;
+  }
+  return { nextIndex, rotations, coordinate };
+}
+
+// Generate a scenario in the same fixed hardware frame used for completion.
+// Whole-cube orientation belongs to the formula display, not the target state.
+export function formulaToHardwareMoves(source: string) {
+  const sliceFaces: Record<string, string[]> = {
+    M: ["R", "L'"], E: ["U", "D'"], S: ["F'", "B"],
+  };
+  let coordinate = createMoveCoordinateState();
+  const hardwareMoves: string[] = [];
+  for (const expected of parseAlgorithm(source)) {
+    if (isRotationMoveNotation(expected)) {
+      coordinate = updateMoveCoordinateStateAfterRotationMove(coordinate, expected);
+      continue;
+    }
+    const parsed = parseMoveNotation(expected)!;
+    const wide = WIDE_LAYER_SET.has(parsed.layer as WideMoveLayer);
+    const faces = sliceFaces[parsed.layer] ?? [
+      wide ? OPPOSITE_FACE[wideLayerToFace(parsed.layer as WideMoveLayer)] : parsed.layer,
+    ];
+    const pending = faces.map((face) => {
+      const part = parseMoveNotation(face)!;
+      return formatParsedMove(part.layer, parsed.turns, (part.dir * parsed.dir) as 1 | -1);
+    });
+    pending.forEach((move) => {
+      const part = parseMoveNotation(move)!;
+      const face = (Object.keys(coordinate) as CubeFace[]).find((face) => coordinate[face] === part.layer)!;
+      hardwareMoves.push(formatParsedMove(face, part.turns, part.dir));
+    });
+    coordinate = updateMoveCoordinateStateAfterMatch(coordinate, pending, expected);
+  }
+  return hardwareMoves;
+}
+
 export function updateMoveCoordinateStateAfterMatch(
   state: MoveCoordinateState,
   pendingMoves: string[],
@@ -392,8 +523,9 @@ function combineOppositeFaces(a: MoveAtom, b: MoveAtom) {
   const bPhysical = physicalAmount(b.amount, bAxis.sign);
   if (aAxis.axis !== bAxis.axis || aPhysical !== bPhysical) return null;
 
-  const sliceAmount = aPhysical === 3 ? 1 : aPhysical === 1 ? 3 : 2;
-  return formatMove(SLICE_BY_AXIS[aAxis.axis], sliceAmount);
+  const slice = SLICE_BY_AXIS[aAxis.axis];
+  const sliceAmount = slice === "S" ? aPhysical : invertAmount(aPhysical);
+  return formatMove(slice, sliceAmount);
 }
 
 function faceMoveCanBecomeSlice(actual: MoveAtom, expected: MoveAtom) {
@@ -433,7 +565,7 @@ function sliceEmulationRotationAfterMatch(pendingMoves: string[], expectedMove: 
   if (!hasFaceEmulation) return null;
   return {
     axis: SLICE_AXIS[expected.layer as CubeSlice],
-    amount: expected.amount,
+    amount: expected.layer === "S" ? invertAmount(expected.amount) : expected.amount,
   };
 }
 
@@ -454,7 +586,7 @@ function coordinateRotationForSliceMove(move: string): CoordinateRotation | null
   if (!atom || !SLICE_SET.has(atom.layer as CubeSlice)) return null;
   return {
     axis: SLICE_AXIS[atom.layer as CubeSlice],
-    amount: atom.amount,
+    amount: atom.layer === "S" ? invertAmount(atom.amount) : atom.amount,
   };
 }
 

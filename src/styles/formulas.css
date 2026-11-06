@@ -683,57 +683,14 @@
   transform: translateX(-50%);
 }
 
-.lf-tech-app .sc-btn {
-  display: inline-flex;
-  flex: 0 1 112px;
-  min-width: 0;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid rgba(222, 232, 248, 0.94);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: none;
-  padding: 6px 10px;
-  color: #234578;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-size: var(--ui-type-sm);
-  font-weight: var(--ui-weight-support);
-  cursor: pointer;
-  backdrop-filter: blur(15px);
-  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease, transform 0.14s ease;
+.lf-tech-app .stage-controls .ui-setting-action {
+  flex: 1 1 0;
 }
 
-.lf-tech-app .sc-btn:hover:not(:disabled),
-.lf-tech-app .sc-btn.active {
-  border-color: rgba(47, 111, 242, 0.26);
-  background: #eaf2ff;
-  color: #164aab;
-}
-
-.lf-tech-app .sc-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.lf-tech-app .sc-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.46;
-}
-
-.lf-tech-app .sc-key {
-  display: grid;
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid rgba(128, 146, 177, 0.26);
-  border-radius: 50%;
-  background: rgba(234, 242, 255, 0.76);
-  color: #205fd8;
-  font-family: var(--mono);
-  font-size: var(--ui-type-sm);
-  font-weight: var(--ui-weight-support);
+.lf-tech-app .stage-controls .ui-setting-action.active {
+  border-color: #a9c4f1;
+  background: var(--tech-blue-soft);
+  color: var(--tech-blue);
 }
 
 .lf-tech-app .fm-side {
@@ -1040,7 +997,7 @@
   background: var(--tech-blue-soft);
 }
 
-.lf-tech-app .algo-display {
+:is(.lf-tech-app, .trainer-focus-app) .algo-display {
   display: flex;
   min-height: 58px;
   max-height: none;
@@ -1049,7 +1006,7 @@
   overflow: visible;
 }
 
-.lf-tech-app .algo-row {
+:is(.lf-tech-app, .trainer-focus-app) .algo-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1754,15 +1711,11 @@
     bottom: 18px;
     width: 94%;
     /* Keep the timer above the action buttons. */
-    padding-bottom: calc(8px + 36px);
+    padding-bottom: calc(8px + 44px);
   }
 
   .lf-tech-app .stage-controls {
     bottom: 18px;
-  }
-
-  .lf-tech-app .stage-controls .sc-btn {
-    min-height: 36px;
   }
 
   .lf-tech-app .formula-main-section {

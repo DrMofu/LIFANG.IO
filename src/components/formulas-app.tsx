@@ -17,25 +17,20 @@ import { FORMULA_STATS_LIMIT } from "@/lib/formula-time-distribution";
 import { MoveToken } from "@/components/move-token";
 import {
   appendNormalizedMoveLogMove,
-  compressMoveSequence,
+  advanceFormulaRotationSteps,
   createMoveCoordinateState,
   expandMoveNotation,
   hintMoveForDoubleTurnProgress,
   invertMoveNotation,
   isRotationMoveNotation,
   movePartiallyMatchesExpectedDoubleTurn,
-  moveCanStillMatchExpected,
-  movesMatchExpected,
   normalizeMoveCoordinate,
+  groupAlgorithmMoves,
   parseAlgorithm,
   parseMoveNotation,
-  shouldAnimateExpectedSliceMoveAfterMatch,
-  shouldAnimateExpectedWideMoveAfterMatch,
-  shouldDeferExpectedSliceMoveAnimation,
-  shouldDeferExpectedWideMoveAnimation,
+  planFormulaMoveAnimation,
   updateMoveCoordinateStateAfterMatch,
   updateMoveCoordinateStateAfterMove,
-  updateMoveCoordinateStateAfterRotationMove,
   type MoveCoordinateState,
 } from "@/lib/algorithms";
 import { getFaceHexColors } from "@/lib/cube-appearance";
@@ -731,43 +726,7 @@ function getCommutatorOrConjugateNotation(moves: string[]) {
 }
 
 function groupAlgorithmRows(algo: string) {
-  const rows: Array<{
-    moves: Array<{ move: string; index: number }>;
-  }> = [];
-  let current: Array<{ move: string; index: number }> = [];
-  let moveIndex = 0;
-
-  function pushCurrent() {
-    if (current.length === 0) return;
-    rows.push({ moves: current });
-    current = [];
-  }
-
-  algo
-    .trim()
-    .split(/\s+/)
-    .forEach((token) => {
-      const opens = token.includes("(");
-      const closes = token.includes(")");
-      const displayMove = token.replace(/[()]/g, "");
-      const parsed = parseMoveNotation(displayMove);
-
-      if (opens) {
-        pushCurrent();
-      }
-
-      if (parsed) {
-        current.push({ move: displayMove, index: moveIndex });
-        moveIndex += 1;
-      }
-
-      if (closes) {
-        pushCurrent();
-      }
-    });
-
-  pushCurrent();
-  return rows.map((row) => {
+  return groupAlgorithmMoves(algo).map((row) => {
     const moves = row.moves.map(({ move }) => move);
     const triggerName = getTriggerName(moves);
 
@@ -909,14 +868,14 @@ function FormulaStage({
   }
 
   function advancePastVirtualRotations(startIndex: number, statuses: PracticeStatus[], durationMs: number) {
-    let nextIndex = startIndex;
+    const advanced = advanceFormulaRotationSteps(algoMoves, startIndex, moveCoordinateRef.current);
     const nextStatuses = [...statuses];
-    while (nextIndex < algoMoves.length && isRotationMoveNotation(algoMoves[nextIndex])) {
-      nextStatuses[nextIndex] = "correct";
-      cubeApiRef.current?.applyMoves(expandMoveNotation(algoMoves[nextIndex]), durationMs);
-      moveCoordinateRef.current = updateMoveCoordinateStateAfterRotationMove(moveCoordinateRef.current, algoMoves[nextIndex]);
-      nextIndex += 1;
-    }
+    advanced.rotations.forEach((move, index) => {
+      nextStatuses[startIndex + index] = "correct";
+      cubeApiRef.current?.applyMoves(expandMoveNotation(move), durationMs);
+    });
+    moveCoordinateRef.current = advanced.coordinate;
+    const nextIndex = advanced.nextIndex;
     return { nextIndex, statuses: nextStatuses };
   }
 
@@ -1313,28 +1272,10 @@ function FormulaStage({
     practiceIndexRef.current = practiceIndex;
   }, [practiceIndex]);
 
-  function beginPractice() {
-    if (!connected) return;
-    stopPlayback();
-    practiceActiveRef.current = true;
-    setPracticeActive(true);
-    prepareRound();
-  }
-
   function animatePracticeMoves(moves: string[]) {
     moves.forEach((move) => {
       cubeApiRef.current?.applyMoves(expandMoveNotation(move), 180);
     });
-  }
-
-  function animateUnplayedPracticeMoves(moves: string[], fallbackMove?: string) {
-    const unplayed = moves.slice(pendingPracticeAnimatedCountRef.current);
-    if (unplayed.length > 0) {
-      animatePracticeMoves(unplayed);
-    } else if (fallbackMove) {
-      animatePracticeMoves([fallbackMove]);
-    }
-    pendingPracticeAnimatedCountRef.current = 0;
   }
 
   function handlePracticeMove(move: string) {
@@ -1369,24 +1310,15 @@ function FormulaStage({
     if (!expected) return;
     pendingPracticeMovesRef.current = [...pendingPracticeMovesRef.current, normalizedMove];
 
-    if (movesMatchExpected(pendingPracticeMovesRef.current, expected)) {
-      const shouldAnimateExpectedMove =
-        shouldAnimateExpectedSliceMoveAfterMatch(pendingPracticeMovesRef.current, expected) ||
-        shouldAnimateExpectedWideMoveAfterMatch(pendingPracticeMovesRef.current, expected);
-      const animatedPartialMove = pendingPracticeAnimatedPartialRef.current;
-      if (shouldAnimateExpectedMove && animatedPartialMove) {
-        // The first quarter of an emulated slice or wide double turn was already rendered.
-        // Render only the second quarter instead of replaying the whole double turn.
-        animatePracticeMoves([animatedPartialMove]);
-        pendingPracticeAnimatedCountRef.current = 0;
-      } else {
-        animateUnplayedPracticeMoves(
-          shouldAnimateExpectedMove
-            ? [expected]
-            : pendingPracticeMovesRef.current,
-          expected,
-        );
-      }
+    const animation = planFormulaMoveAnimation(pendingPracticeMovesRef.current, expected, {
+      animatedCount: pendingPracticeAnimatedCountRef.current,
+      animatedPartialMove: pendingPracticeAnimatedPartialRef.current,
+    });
+    animatePracticeMoves(animation.moves);
+    pendingPracticeAnimatedCountRef.current = animation.animatedCount;
+    pendingPracticeAnimatedPartialRef.current = animation.animatedPartialMove;
+
+    if (animation.match === "matched") {
       moveCoordinateRef.current = updateMoveCoordinateStateAfterMatch(
         moveCoordinateRef.current,
         pendingPracticeMovesRef.current,
@@ -1417,36 +1349,7 @@ function FormulaStage({
           if (practiceActiveRef.current) prepareRound(false);
         }, 900);
       }
-    } else if (moveCanStillMatchExpected(pendingPracticeMovesRef.current, expected)) {
-      const shouldDeferSliceAnimation = shouldDeferExpectedSliceMoveAnimation(
-        pendingPracticeMovesRef.current,
-        expected,
-      );
-      const partialSliceAnimationMove =
-        shouldDeferSliceAnimation &&
-        movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
-          ? compressMoveSequence(pendingPracticeMovesRef.current)[0]
-          : undefined;
-      const shouldDeferWideAnimation = shouldDeferExpectedWideMoveAnimation(
-        pendingPracticeMovesRef.current,
-        expected,
-      );
-      const shouldDeferAnimation = shouldDeferSliceAnimation || shouldDeferWideAnimation;
-      const partialWideAnimationMove =
-        shouldDeferWideAnimation &&
-        movePartiallyMatchesExpectedDoubleTurn(pendingPracticeMovesRef.current, expected)
-          ? hintMoveForDoubleTurnProgress(pendingPracticeMovesRef.current, expected)
-          : undefined;
-      const partialAnimationMove = partialSliceAnimationMove ?? partialWideAnimationMove;
-      if (partialAnimationMove && !pendingPracticeAnimatedPartialRef.current) {
-        // Show the known first quarter immediately while keeping the formula step partial.
-        animatePracticeMoves([partialAnimationMove]);
-        pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
-        pendingPracticeAnimatedPartialRef.current = partialAnimationMove;
-      } else if (!shouldDeferAnimation) {
-        animatePracticeMoves([normalizedMove]);
-        pendingPracticeAnimatedCountRef.current = pendingPracticeMovesRef.current.length;
-      }
+    } else if (animation.match === "partial") {
       const partialStatus = [...(practiceStatusRef.current.length ? practiceStatusRef.current : practiceStatus)];
       const hasCompletedFirstHalf = movePartiallyMatchesExpectedDoubleTurn(
         pendingPracticeMovesRef.current,
@@ -1461,7 +1364,6 @@ function FormulaStage({
       return;
     } else {
       const detected = pendingPracticeMovesRef.current.join(" ") || normalizedMove;
-      animateUnplayedPracticeMoves(pendingPracticeMovesRef.current);
       pendingPracticeMovesRef.current = [];
       pendingPracticeAnimatedCountRef.current = 0;
       pendingPracticeAnimatedPartialRef.current = null;
@@ -1610,28 +1512,28 @@ function FormulaStage({
             </div>
           </div>
         )}
-        <div className="stage-controls stage-touch-controls" aria-label={t("公式显示控制")}>
-          <button className={`sc-btn${playbackActive ? " active" : ""}`} onClick={play} type="button">
-            <span className="sc-key" aria-hidden="true">P</span>{t("播放公式")}</button>
-          <button className="sc-btn" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
-            <span className="sc-key" aria-hidden="true">R</span>{t("视角归位")}</button>
+        <div className="stage-controls" aria-label={t("公式显示控制")}>
+          <button className={`ui-setting-action${playbackActive ? " active" : ""}`} onClick={play} type="button">
+            {t("播放公式")}</button>
+          <button className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
+            {t("视角归位")}</button>
           {canUseTransparentDisplay ? (
             <button
-              className={`sc-btn${transparentDisplay ? " active" : ""}`}
+              className={`ui-setting-action${transparentDisplay ? " active" : ""}`}
               onClick={toggleTransparentDisplay}
               aria-pressed={transparentDisplay}
               type="button"
             >
-              <span className="sc-key" aria-hidden="true">T</span>{t("透明显示")}</button>
+              {t("透明显示")}</button>
           ) : null}
           {canUseFocusMode ? (
             <button
-              className={`sc-btn${lowerLayerHidden ? " active" : ""}`}
+              className={`ui-setting-action${lowerLayerHidden ? " active" : ""}`}
               onClick={toggleLowerLayerHidden}
               aria-pressed={lowerLayerHidden}
               type="button"
             >
-              <span className="sc-key" aria-hidden="true">H</span>{t("专注模式")}</button>
+              {t("专注模式")}</button>
           ) : null}
         </div>
       </div>
@@ -1826,7 +1728,7 @@ function FormulaStage({
               ))}
             </div>
           )}
-          {(canRotateF2lVariant || researchMode || connected) && <div className="formula-practice-actions">
+          {(canRotateF2lVariant || researchMode) && <div className="formula-practice-actions">
             {canRotateF2lVariant && !researchMode && (
               <>
                 <button
@@ -1841,12 +1743,8 @@ function FormulaStage({
                 >{t("逆时针旋转")}</button>
               </>
             )}
-            {researchMode ? (
+            {researchMode && (
               <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => void copyResearchMoves()} disabled={researchMoves.length === 0}>{t("复制记录")}</button>
-            ) : !connected ? null : practiceActive ? (
-              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={() => resetPractice()}>{t("停止练习")}</button>
-            ) : (
-              <button className="mini-btn full primary practice-btn practice-btn-primary" onClick={beginPractice}>{t("开始练习")}</button>
             )}
           </div>}
           </div>
@@ -2359,16 +2257,16 @@ export function FormulasApp() {
                           {usesVariantList ? (
                             <>
                               {learningCounts.mastered > 0 && (
-                                <span className="formula-status-badge status-mastered">{learningCounts.mastered}{t("个公式已掌握")}</span>
+                                <span className="formula-status-badge status-mastered">{t("formulaCatalog.masteredCount").replace("{count}", String(learningCounts.mastered))}</span>
                               )}
                               {learningCounts.learning > 0 && (
-                                <span className="formula-status-badge status-learning">{learningCounts.learning}{t("个公式学习中")}</span>
+                                <span className="formula-status-badge status-learning">{t("formulaCatalog.learningCount").replace("{count}", String(learningCounts.learning))}</span>
                               )}
                             </>
                           ) : (
                             <span className={`formula-status-badge status-${itemLearningStatus}`}>{statusLabel}</span>
                           )}
-                          {usesVariantList && <span className="formula-variant-count">{totalVariantCount}{t("个公式")}</span>}
+                          {usesVariantList && <span className="formula-variant-count">{t("formulaCatalog.count").replace("{count}", String(totalVariantCount))}</span>}
                           {summary && (
                             <>
                               <span className="formula-stat-text">{t("最佳")}{" "}{summary.best}</span>

@@ -1,4 +1,4 @@
-import { invertMoveNotation, parseAlgorithm } from "@/lib/algorithms";
+import { formulaToHardwareMoves, invertMoveNotation } from "@/lib/algorithms";
 import { rotateAlgorithmByYOffset, type FormulaRotationOffset } from "@/lib/formula-rotation";
 import { FORMULAS, type FormulaItem } from "@/lib/formulas-data";
 import { applyMovesToFacelets } from "@/lib/facelets-pattern";
@@ -47,7 +47,7 @@ export async function createFormulaTrainerScenario(
   const selectedAlgo = randomItem(algos);
   const rotation = (options.includeRotations ? Math.floor(Math.random() * 4) : 0) as FormulaRotationOffset;
   const sourceAlgo = rotateAlgorithmByYOffset(selectedAlgo, rotation);
-  const setupMoves = parseAlgorithm(sourceAlgo).toReversed().map(invertMoveNotation);
+  const setupMoves = formulaToHardwareMoves(sourceAlgo).toReversed().map(invertMoveNotation);
   const startFacelets = await applyMovesToFacelets(SOLVED_FACELETS, setupMoves);
 
   return {

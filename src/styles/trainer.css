@@ -59,14 +59,29 @@
 
 .trainer-focus-app .trainer-timer-controls {
   position: relative;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
 }
 
-.trainer-focus-app .trainer-round-actions {
-  position: static;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: 100%;
+.trainer-focus-app .trainer-timer-controls .practice-btn {
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  padding: 4px 6px;
+  grid-row: 1;
+}
+
+.trainer-focus-app .trainer-start-btn {
+  grid-column: 2;
+}
+
+.trainer-focus-app .trainer-retry-btn {
+  grid-column: 1;
+}
+
+.trainer-focus-app .trainer-abandon-btn {
+  grid-column: 3;
 }
 
 .trainer-focus-app .trainer-abandon-btn {
@@ -75,24 +90,17 @@
   color: #c74343;
 }
 
-.trainer-focus-app .trainer-formula-timer-stack {
-  width: min(720px, 96%);
-}
-
 .trainer-focus-app .trainer-formula-panel {
+  order: 3;
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
   gap: 12px;
-  padding: 16px;
 }
 
 .trainer-focus-app .trainer-formula-panel .ui-section-head {
   margin-bottom: 0;
-}
-
-.trainer-focus-app .trainer-formula-panel .sh-grid {
-  display: flex;
 }
 
 .trainer-focus-app .trainer-formula-panel .sh-notice {
@@ -105,6 +113,12 @@
 .trainer-focus-app .trainer-formula-panel .sh-undo-list {
   flex: 0 1 auto;
   flex-wrap: wrap;
+}
+
+@media (width > 700px) and (width <= 1240px) {
+  .trainer-focus-app .practice-info .trainer-formula-panel {
+    order: 31;
+  }
 }
 
 .trainer-focus-app .trainer-recognition-timer-stack {
@@ -146,6 +160,7 @@
 }
 
 .formula-library-dialog {
+  --tech-panel: #fff;
   width: min(800px, calc(100vw - 32px));
   max-height: min(850px, calc(100dvh - 32px));
   margin: auto;

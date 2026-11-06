@@ -2,6 +2,9 @@ import type { Locale } from "@/lib/i18n";
 
 export const messages = {
   zh: {
+    "formulaCatalog.count": "{count}个公式",
+    "formulaCatalog.masteredCount": "{count}个公式已掌握",
+    "formulaCatalog.learningCount": "{count}个公式学习中",
     "formulaLibrary.title": "公式库管理",
     "formulaLibrary.selected": "已选 {count} / {total} 个公式",
     "formulaLibrary.all": "全选",
@@ -157,6 +160,9 @@ export const messages = {
     "connection.batteryUnknown": "电量未知",
   },
   en: {
+    "formulaCatalog.count": "{count} algorithms",
+    "formulaCatalog.masteredCount": "{count} algorithms mastered",
+    "formulaCatalog.learningCount": "{count} algorithms in progress",
     "formulaLibrary.title": "Formula library",
     "formulaLibrary.selected": "{count} / {total} cases selected",
     "formulaLibrary.all": "Select all",

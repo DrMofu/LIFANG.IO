@@ -1,12 +1,56 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "@/components/language-provider";
 import { fmtShort } from "@/lib/format";
 import { calculateTps, formatTps } from "@/lib/tps";
 import type { SolveHistoryEntry } from "@/lib/solve-history";
 
 const PAGE_SIZE = 20;
+const DELETE_REMINDER_KEY = "lifang:history-delete-skip-date:v1";
+
+function localDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+}
+
+function DeleteConfirmation({ onCancel, onConfirm }: {
+  onCancel: () => void;
+  onConfirm: (skipToday: boolean) => void;
+}) {
+  const { t } = useLanguage();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [skipToday, setSkipToday] = useState(false);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    const previousFocus = document.activeElement;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
+    };
+  }, []);
+
+  return createPortal(
+    <dialog ref={ref} className="ui-settings-dialog" aria-labelledby="solve-delete-title" aria-describedby="solve-delete-message"
+      onCancel={(event) => { event.preventDefault(); event.stopPropagation(); onCancel(); }}>
+      <form onSubmit={(event) => { event.preventDefault(); onConfirm(skipToday); }}>
+        <h2 id="solve-delete-title" className="ui-section-title">{t("删除确认")}</h2>
+        <p id="solve-delete-message">{t("确定删除这条成绩吗？")}</p>
+        <label className="settings-toggle-row">
+          <input type="checkbox" checked={skipToday} onChange={(event) => setSkipToday(event.target.checked)} />
+          <span className="settings-toggle-copy"><b>{t("本日不再提醒")}</b></span>
+        </label>
+        <div className="ui-setting-actions">
+          <button type="button" className="ui-setting-action" autoFocus onClick={onCancel}>{t("取消")}</button>
+          <button type="submit" className="ui-setting-action ui-setting-action-danger">{t("确认删除")}</button>
+        </div>
+      </form>
+    </dialog>, document.body,
+  );
+}
 const PHASES = ["cross", "f2l", "oll", "pll"] as const;
 const PHASE_LABELS = ["Cross", "F2L", "OLL", "PLL"];
 
@@ -28,6 +72,26 @@ export function SolveHistoryDialog({ history, onClose, onDelete }: {
   const { locale, t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [pendingDelete, setPendingDelete] = useState<{ index: number; entry: SolveHistoryEntry } | null>(null);
+  const skipDate = useRef<string | null>(null);
+
+  function requestDelete(index: number, entry: SolveHistoryEntry) {
+    const today = localDate();
+    let savedDate = skipDate.current;
+    try { savedDate = localStorage.getItem(DELETE_REMINDER_KEY) ?? savedDate; } catch { /* Storage may be unavailable. */ }
+    if (savedDate === today) onDelete(index, entry);
+    else setPendingDelete({ index, entry });
+  }
+
+  function confirmDelete(skipToday: boolean) {
+    if (!pendingDelete) return;
+    if (skipToday) {
+      skipDate.current = localDate();
+      try { localStorage.setItem(DELETE_REMINDER_KEY, skipDate.current); } catch { /* Keep the preference for this dialog session. */ }
+    }
+    onDelete(pendingDelete.index, pendingDelete.entry);
+    setPendingDelete(null);
+  }
   // Omit timeZone so both formatters use the user's current device time zone.
   const { dateFormat, timeFormat } = useMemo(() => ({
     dateFormat: new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en-GB", {
@@ -101,7 +165,7 @@ export function SolveHistoryDialog({ history, onClose, onDelete }: {
                     </td>
                     {times.map((time, phaseIndex) => <td className="solve-history-phase-column" key={PHASES[phaseIndex]}><span className="solve-history-phase-value" data-missing={time === "—"}>{time}</span></td>)}
                     <td className="dl-history-score">{fmtShort(entry.ms)}</td>
-                    <td><button type="button" className="solve-history-delete" aria-label={t(`删除历史记录 #${number}`)} onClick={() => onDelete(index, entry)}>×</button></td>
+                    <td><button type="button" className="solve-history-delete" aria-label={t(`删除历史记录 #${number}`)} onClick={() => requestDelete(index, entry)}>×</button></td>
                   </tr>
                 );
               })}
@@ -116,6 +180,7 @@ export function SolveHistoryDialog({ history, onClose, onDelete }: {
           )}
         </div>
       )}
+      {pendingDelete && <DeleteConfirmation onCancel={() => setPendingDelete(null)} onConfirm={confirmDelete} />}
     </dialog>
   );
 }

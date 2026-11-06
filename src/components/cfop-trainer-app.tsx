@@ -18,7 +18,9 @@ import { FORMULAS } from "@/lib/formulas-data";
 import { MoveToken } from "@/components/move-token";
 import {
   expandMoveNotation,
+  flushFormulaMoveAnimation,
   compressMoveSequence,
+  advanceFormulaRotationSteps,
   createMoveCoordinateState,
   hintMoveForDoubleTurnProgress,
   invertMoveNotation,
@@ -26,11 +28,14 @@ import {
   movePartiallyMatchesExpectedDoubleTurn,
   movesMatchExpected,
   normalizeMoveCoordinate,
+  groupAlgorithmMoves,
   parseAlgorithm,
   parseMoveNotation,
+  planFormulaMoveAnimation,
   updateMoveCoordinateStateAfterMatch,
   updateMoveCoordinateStateAfterMove,
   type MoveCoordinateState,
+  type FormulaMoveAnimationState,
 } from "@/lib/algorithms";
 import {
   CFOP_TRAINER_PHASES,
@@ -382,6 +387,8 @@ function CfopTrainerClient() {
   const formulaHintUndoStackRef = useRef<string[]>([]);
   const formulaHintPendingUndoMovesRef = useRef<string[]>([]);
   const formulaHintCoordinateRef = useRef<MoveCoordinateState>(createMoveCoordinateState());
+  const formulaHintAnimationRef = useRef<FormulaMoveAnimationState>({ animatedCount: 0, animatedPartialMove: null });
+  const formulaHintUndoAnimationRef = useRef<FormulaMoveAnimationState>({ animatedCount: 0, animatedPartialMove: null });
   const gyroDisabledRef = useRef(loadPracticeGyroDisabled());
   const visualPendingMoveRef = useRef<string | null>(null);
   const visualPendingTimerRef = useRef<number | null>(null);
@@ -422,6 +429,7 @@ function CfopTrainerClient() {
   const formulaArrowEnabledRef = useRef(formulaArrowEnabled);
   const f2lEdgeOnlyRef = useRef(f2lEdgeOnly);
   const [formulaHintMoves, setFormulaHintMoves] = useState<string[]>([]);
+  const [formulaHintRows, setFormulaHintRows] = useState<ReturnType<typeof groupAlgorithmMoves>>([]);
   const [formulaHintIndex, setFormulaHintIndex] = useState(0);
   const [formulaHintStatus, setFormulaHintStatus] = useState<FormulaHintStepStatus[]>([]);
   const [formulaHintWrong, setFormulaHintWrong] = useState(false);
@@ -470,7 +478,6 @@ function CfopTrainerClient() {
     : null;
   const roundInProgress = state === "loading" || state === "observe" || state === "solving";
   const autoNextPending = !isRecognitionSpecialty && sessionInProgress && state === "done" && connected && sessionRoundCount > 0 && sessionRoundCount < sessionRoundLimit;
-  const canCancelTrainerAction = sessionInProgress;
   const settingsLocked = sessionInProgress;
   const sessionAverageObserveMs = useMemo(
     () => averageTime(sessionResults.filter((entry) => !entry.dnf).map((entry) => entry.observeMs)),
@@ -628,9 +635,7 @@ function CfopTrainerClient() {
 
   const animateCubeMoves = useCallback((moves: string[], durationMs = TRAINER_MOVE_ANIMATION_MS) => {
     moves.forEach((move) => {
-      expandMoveNotation(move).forEach((turn) => {
-        cubeApiRef.current?.applyMove(turn.layer, turn.dir, durationMs);
-      });
+      cubeApiRef.current?.applyMoves(expandMoveNotation(move), durationMs);
     });
   }, []);
 
@@ -708,30 +713,48 @@ function CfopTrainerClient() {
     };
   }, [connected, isRecognitionSpecialty, subscribeFacelets]);
 
-  const resetFormulaHint = useCallback((moves: string[] = []) => {
+  const resetFormulaHint = useCallback((source = "") => {
+    const rows = groupAlgorithmMoves(source);
+    const moves = parseAlgorithm(source);
+    setFormulaHintRows(rows);
     formulaHintMovesRef.current = moves;
-    formulaHintIndexRef.current = 0;
     formulaHintPendingMovesRef.current = [];
     formulaHintUndoStackRef.current = [];
     formulaHintPendingUndoMovesRef.current = [];
     formulaHintCoordinateRef.current = createMoveCoordinateState();
+    formulaHintAnimationRef.current = { animatedCount: 0, animatedPartialMove: null };
+    formulaHintUndoAnimationRef.current = { animatedCount: 0, animatedPartialMove: null };
+    const advanced = advanceFormulaRotationSteps(
+      moves, 0, formulaHintCoordinateRef.current,
+    );
+    const nextIndex = formulaHintEnabledRef.current ? advanced.nextIndex : 0;
+    if (formulaHintEnabledRef.current) {
+      animateCubeMoves(advanced.rotations, 0);
+      formulaHintCoordinateRef.current = advanced.coordinate;
+    }
+    formulaHintIndexRef.current = nextIndex;
     setFormulaHintMoves(moves);
-    setFormulaHintIndex(0);
-    setFormulaHintStatus(freshFormulaHintStatus(moves));
+    setFormulaHintIndex(nextIndex);
+    setFormulaHintStatus(freshFormulaHintStatus(moves).map((status, index) => index < nextIndex ? "correct" : status));
     setFormulaHintWrong(false);
     setFormulaHintUndoDisplay([]);
-  }, []);
+  }, [animateCubeMoves]);
 
   const updateFormulaHintMove = useCallback((move: string) => {
     const moves = formulaHintMovesRef.current;
-    if (moves.length === 0) return;
     const actual = normalizeMoveCoordinate(normalizeMove(move), formulaHintCoordinateRef.current);
     const undoStack = formulaHintUndoStackRef.current;
 
     if (undoStack.length > 0) {
       const expectedUndo = undoStack[undoStack.length - 1];
       formulaHintPendingUndoMovesRef.current = [...formulaHintPendingUndoMovesRef.current, actual];
+      const animation = planFormulaMoveAnimation(formulaHintPendingUndoMovesRef.current, expectedUndo, formulaHintUndoAnimationRef.current);
+      animateCubeMoves(animation.moves);
+      formulaHintUndoAnimationRef.current = animation;
       if (movesMatchExpected(formulaHintPendingUndoMovesRef.current, expectedUndo)) {
+        formulaHintCoordinateRef.current = updateMoveCoordinateStateAfterMatch(
+          formulaHintCoordinateRef.current, formulaHintPendingUndoMovesRef.current, expectedUndo,
+        );
         formulaHintPendingUndoMovesRef.current = [];
         formulaHintUndoStackRef.current = undoStack.slice(0, -1);
         setFormulaHintUndoDisplay(formulaHintUndoStackRef.current);
@@ -751,17 +774,30 @@ function CfopTrainerClient() {
 
     const currentIndex = formulaHintIndexRef.current;
     const expected = moves[currentIndex];
-    if (!expected) return;
+    if (!expected) {
+      animateCubeMoves([actual]);
+      return;
+    }
     formulaHintPendingMovesRef.current = [...formulaHintPendingMovesRef.current, actual];
+    const previousAnimation = formulaHintAnimationRef.current;
+    const animation = planFormulaMoveAnimation(formulaHintPendingMovesRef.current, expected, previousAnimation);
+    // Undo instructions use the last confirmed frame, including after a half turn.
+    animateCubeMoves(animation.match === "wrong"
+      ? flushFormulaMoveAnimation(formulaHintPendingMovesRef.current, previousAnimation)
+      : animation.moves);
+    formulaHintAnimationRef.current = animation;
     if (movesMatchExpected(formulaHintPendingMovesRef.current, expected)) {
-      const nextIndex = currentIndex + 1;
       formulaHintCoordinateRef.current = updateMoveCoordinateStateAfterMatch(
         formulaHintCoordinateRef.current,
         formulaHintPendingMovesRef.current,
         expected,
       );
+      const advanced = advanceFormulaRotationSteps(moves, currentIndex + 1, formulaHintCoordinateRef.current);
+      animateCubeMoves(advanced.rotations);
+      formulaHintCoordinateRef.current = advanced.coordinate;
+      const nextIndex = advanced.nextIndex;
       formulaHintPendingMovesRef.current = [];
-      setFormulaHintStatus((prev) => prev.map((status, index) => (index === currentIndex ? "correct" : status)));
+      setFormulaHintStatus((prev) => prev.map((status, index) => (index >= currentIndex && index < nextIndex ? "correct" : status)));
       setFormulaHintWrong(false);
       formulaHintIndexRef.current = nextIndex;
       setFormulaHintIndex(nextIndex);
@@ -778,7 +814,9 @@ function CfopTrainerClient() {
       const pendingWrong = formulaHintPendingMovesRef.current;
       const { retainedMoves, wrongMoves } = splitInvalidPendingMoves(pendingWrong, expected);
       formulaHintPendingMovesRef.current = retainedMoves;
+      formulaHintAnimationRef.current = { animatedCount: retainedMoves.length, animatedPartialMove: null };
       formulaHintPendingUndoMovesRef.current = [];
+      formulaHintUndoAnimationRef.current = { animatedCount: 0, animatedPartialMove: null };
       setFormulaHintWrong(true);
       setFormulaHintStatus((prev) => prev.map((status, index) => (
         index === currentIndex
@@ -791,7 +829,7 @@ function CfopTrainerClient() {
       setFormulaHintUndoDisplay(formulaHintUndoStackRef.current);
       if (formulaHintUndoStackRef.current.length === 0) setFormulaHintWrong(false);
     }
-  }, []);
+  }, [animateCubeMoves]);
 
   const getFormulaHintMove = useCallback(() => {
     if (!formulaHintEnabled || !formulaArrowEnabled) return null;
@@ -805,9 +843,9 @@ function CfopTrainerClient() {
     cubeApiRef.current?.setHintMove(
       isRecognitionSpecialty
         ? recognitionHintEnabled ? recognitionExpectedMove : null
-        : getFormulaHintMove(),
+        : state === "observe" || state === "solving" ? getFormulaHintMove() : null,
     );
-  }, [getFormulaHintMove, formulaHintIndex, formulaHintMoves, formulaHintStatus, formulaHintUndoDisplay, isRecognitionSpecialty, recognitionExpectedMove, recognitionHintEnabled]);
+  }, [getFormulaHintMove, formulaHintIndex, formulaHintMoves, formulaHintStatus, formulaHintUndoDisplay, isRecognitionSpecialty, recognitionExpectedMove, recognitionHintEnabled, state]);
 
   const resetRun = useCallback(() => {
     runIdRef.current += 1;
@@ -925,7 +963,7 @@ function CfopTrainerClient() {
       const phase = selectedPhaseRef.current;
       if (!isFormulaTrainerPhase(phase)) return;
       recordSolveMove(move);
-      updateFormulaHintMove(move);
+      if (formulaHintEnabledRef.current) updateFormulaHintMove(move);
       const nextFacelets = await applyMoveToFacelets(currentFaceletsRef.current, move);
       const nextFocusFacelets = focusFaceletsRef.current
         ? await applyMoveToFormulaFacelets(focusFaceletsRef.current, move)
@@ -939,10 +977,19 @@ function CfopTrainerClient() {
           f2lRotation: scenarioRotationRef.current,
         })
       ) {
+        if (formulaHintEnabledRef.current) {
+          const undoing = formulaHintUndoStackRef.current.length > 0;
+          animateCubeMoves(flushFormulaMoveAnimation(
+            undoing ? formulaHintPendingUndoMovesRef.current : formulaHintPendingMovesRef.current,
+            undoing ? formulaHintUndoAnimationRef.current : formulaHintAnimationRef.current,
+          ));
+          setFormulaHintWrong(false);
+          setFormulaHintUndoDisplay([]);
+        }
         finishRun(nextFacelets);
       }
     },
-    [finishRun, recordSolveMove, updateFormulaHintMove],
+    [animateCubeMoves, finishRun, recordSolveMove, updateFormulaHintMove],
   );
 
   const buildRecognitionMoves = useCallback((count: number, previousMove: string | null = null) => {
@@ -1073,8 +1120,8 @@ function CfopTrainerClient() {
       scenarioRotationRef.current = nextScenario.rotation;
       currentFaceletsRef.current = nextScenario.startFacelets;
       focusFaceletsRef.current = nextFocusFacelets;
-      resetFormulaHint(parseAlgorithm(nextScenario.sourceAlgo));
       renderTrainerCubeFacelets(nextScenario.startFacelets);
+      resetFormulaHint(nextScenario.sourceAlgo);
       enterObserve();
     } catch (error) {
       if (!mountedRef.current || runIdRef.current !== runId) return;
@@ -1109,7 +1156,7 @@ function CfopTrainerClient() {
 
   const startTraining = useCallback(async () => {
     if (sessionInProgress) {
-      cancelRun();
+      endTraining();
       return;
     }
     if (!connected) {
@@ -1123,7 +1170,7 @@ function CfopTrainerClient() {
       return;
     }
     await beginTrainerRound(runIdRef.current);
-  }, [beginRecognitionTraining, beginTrainerRound, cancelRun, connectRealCube, connected, resetRun, sessionInProgress]);
+  }, [beginRecognitionTraining, beginTrainerRound, endTraining, connectRealCube, connected, resetRun, sessionInProgress]);
 
   useEffect(() => {
     if (!autoNextPending) return;
@@ -1194,12 +1241,12 @@ function CfopTrainerClient() {
           const currentState = stateRef.current;
           if (selectedPhaseRef.current === "turn-recognition") return;
           if (currentState === "observe") {
-            queueVisualMove(actual);
+            if (!formulaHintEnabledRef.current) queueVisualMove(actual);
             await beginSolve(actual);
             return;
           }
           if (currentState === "solving") {
-            queueVisualMove(actual);
+            if (!formulaHintEnabledRef.current) queueVisualMove(actual);
             await processSolveMove(actual);
           }
         })
@@ -1295,9 +1342,6 @@ function CfopTrainerClient() {
               ))}
             </div>
           </div>
-        </section>
-
-        <section className="practice-right trainer-right">
           <div className="practice-control-panel trainer-settings-panel ui-info-panel">
               <div className="practice-card-head practice-control-head">
                 <div className="practice-title-line">
@@ -1313,7 +1357,6 @@ function CfopTrainerClient() {
               </label>
               {isRecognitionSpecialty ? (
                 <div className="trainer-option-list">
-                  <div className="ui-setting-row"><span>{t("基础面转动")}</span><span className="ui-setting-status">{t("始终包含")}</span></div>
                   <SettingToggle label={t("加入中层转动")} checked={recognitionIncludeSlices} disabled={settingsLocked} onChange={(next) => {
                         setRecognitionIncludeSlices(next);
                         saveStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY, next);
@@ -1366,6 +1409,9 @@ function CfopTrainerClient() {
               </div>
             </div>
 
+        </section>
+
+        <section className="practice-right trainer-right">
           <div className="stats trainer-results-panel ui-info-panel" aria-live="polite">
             <div className="practice-card-head">
               <div className="practice-title-line">
@@ -1428,39 +1474,32 @@ function CfopTrainerClient() {
                 </ol>
               )}
           </div>
-        </section>
-        </div>
-
-        <section className="practice-center">
-          <div className="practice-stage trainer-stage">
-            <div ref={cubeMountRef} className="cube-mount" />
-            <TurnSpeed />
-
-            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : formulaHintVisible ? " trainer-formula-timer-stack" : ""}`}>
-              {formulaHintVisible && (
-                <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
-                  <div className="ui-section-head">
-                    <div className="ui-section-title-line"><div className="ui-section-title">{t("公式提示")}</div><span className="ui-section-kicker" aria-hidden="true">HINT</span></div>
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{formulaHintCounter}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{formulaHintMoves.length}</span>
-                      </div>
-                    </div>
+          {formulaHintVisible && (
+            <div className="trainer-formula-panel ui-info-panel" role="status" aria-label={t("公式提示")}>
+              <div className="ui-section-head">
+                <div className="ui-section-title-line"><div className="ui-section-title">{t("公式提示")}</div><span className="ui-section-kicker" aria-hidden="true">HINT</span></div>
+                <div className="sh-actions">
+                  <div className="sh-counter">
+                    <span className="sh-counter-num">{formulaHintCounter}</span>
+                    <span className="sh-counter-sep">/</span>
+                    <span className="sh-counter-total">{formulaHintMoves.length}</span>
                   </div>
-                  {formulaHintUndoDisplay.length > 0 && (
-                    <div className="sh-notice error">
-                      <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                      <span className="sh-undo-list">
-                        {[...formulaHintUndoDisplay].reverse().map((move, index) => (
-                          <MoveToken key={`${move}-${index}`} move={move} />
-                        ))}
-                      </span>
-                    </div>
-                  )}
-                  <div className="sh-grid">
-                    {formulaHintMoves.map((move, index) => {
+                </div>
+              </div>
+              {formulaHintUndoDisplay.length > 0 && (
+                <div className="sh-notice error">
+                  <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                  <span className="sh-undo-list">
+                    {[...formulaHintUndoDisplay].reverse().map((move, index) => (
+                      <MoveToken key={`${move}-${index}`} move={move} />
+                    ))}
+                  </span>
+                </div>
+              )}
+              <div className="algo-display">
+                {formulaHintRows.map((row, rowIndex) => (
+                  <div className="algo-row" key={rowIndex}>
+                    {row.moves.map(({ move, index }) => {
                       const stepStatus: AlgorithmStepStatus =
                         index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
                           ? "wrong"
@@ -1480,8 +1519,19 @@ function CfopTrainerClient() {
                       );
                     })}
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+        </div>
+
+        <section className="practice-center">
+          <div className="practice-stage trainer-stage">
+            <div ref={cubeMountRef} className="cube-mount" />
+            <TurnSpeed />
+
+            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : ""}`}>
               {recognitionSequenceVisible ? (
                 <div className="stage-hint trainer-recognition-sequence" role="status" aria-live="polite" aria-label={t("转动序列")}>
                   <div className="sh-head">
@@ -1512,45 +1562,37 @@ function CfopTrainerClient() {
 
               <div className="timer-controls trainer-timer-controls">
                 <button
-                  className="practice-btn practice-btn-primary"
+                  className="practice-btn practice-btn-primary trainer-start-btn"
                   type="button"
                   onClick={startTraining}
                   disabled={connecting}
                   aria-keyshortcuts={showKeyboardHints ? "Space" : undefined}
                 >
-                  <span>{canCancelTrainerAction
+                  <span>{sessionInProgress
                     ? isRecognitionSpecialty
                       ? t(showKeyboardHints ? "结束 · 按 SPACE" : "结束")
-                      : t(showKeyboardHints ? "取消 · 按 SPACE" : "取消")
+                      : t(showKeyboardHints ? "结束测试 · 按 SPACE" : "结束测试")
                     : connected ? t(showKeyboardHints ? "开始 · 按 SPACE" : "开始") : t("连接智能魔方")}</span>
                 </button>
                 {!isRecognitionSpecialty && sessionInProgress && state === "error" && (
                   <button
-                    className="practice-btn practice-btn-ghost"
+                    className="practice-btn practice-btn-ghost trainer-retry-btn"
                     type="button"
                     onClick={retryTrainerRound}
                     disabled={!connected || connecting}
+                    title={trainerError ?? undefined}
                   >
-                    <span>{t(trainerError ?? "重试本局")}</span>
+                    <span>{t("重试本局")}</span>
                   </button>
                 )}
                 {!isRecognitionSpecialty && roundInProgress && (
-                  <div className="trainer-round-actions">
-                    <button
-                      className="practice-btn practice-btn-ghost trainer-abandon-btn"
-                      type="button"
-                      onClick={abandonRound}
-                    >
-                      <span>{t("放弃本局")}</span>
-                    </button>
-                    <button
-                      className="practice-btn practice-btn-ghost"
-                      type="button"
-                      onClick={endTraining}
-                    >
-                      <span>{t("结束测试")}</span>
-                    </button>
-                  </div>
+                  <button
+                    className="practice-btn practice-btn-ghost trainer-abandon-btn"
+                    type="button"
+                    onClick={abandonRound}
+                  >
+                    <span>{t("放弃本局")}</span>
+                  </button>
                 )}
               </div>
             </div>

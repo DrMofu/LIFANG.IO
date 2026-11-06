@@ -140,10 +140,16 @@
         {
           "id": "oll-11-1",
           "name": "公式一",
-          "algo": "F' (L' U' L U) F y F (R U R' U') F'"
+          "algo": "F' (L' U' L U) F y F (R U R' U') F' y'",
+          "facelets": "UXXUUXXUXXUURRRRRRXXUFFFFFFDDDDDDDDDXXULLLLLLXUXBBBBBB"
+        },
+        {
+          "id": "oll-11-2",
+          "name": "公式二",
+          "algo": "S (R U R' U) (R U2 R') U2 S'",
+          "facelets": "XXXXUUUUXXXURRRRRRXXUFFFFFFDDDDDDDDDXUXLLLLLLXUUBBBBBB"
         }
-      ],
-      "facelets": "UXXUUXXUXXUUFFFFFFXXULLLLLLDDDDDDDDDXXUBBBBBBXUXRRRRRR"
+      ]
     },
     {
       "id": "oll-12",
@@ -153,10 +159,16 @@
         {
           "id": "oll-12-1",
           "name": "公式一",
-          "algo": "F (R U R' U') F' U F (R U R' U') F'"
+          "algo": "F (R U R' U') F' U F (R U R' U') F'",
+          "facelets": "XXUXUUXUXUXXRRRRRRUXXFFFFFFDDDDDDDDDUUXLLLLLLXUXBBBBBB"
+        },
+        {
+          "id": "oll-12-2",
+          "name": "公式二",
+          "algo": "S (R' U' R U') (R' U2 R) U2 S'",
+          "facelets": "UUXXUUXXXUXXRRRRRRUUXFFFFFFDDDDDDDDDXUXLLLLLLUXXBBBBBB"
         }
-      ],
-      "facelets": "XXUXUUXUXUXXRRRRRRUXXFFFFFFDDDDDDDDDUUXLLLLLLXUXBBBBBB"
+      ]
     },
     {
       "id": "oll-13",
