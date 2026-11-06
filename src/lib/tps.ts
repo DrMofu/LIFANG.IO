@@ -31,7 +31,7 @@ export class TurnCounter {
   }
 }
 
-export const LIVE_TPS_WINDOW_MS = 2000;
+export const LIVE_TPS_WINDOW_MS = 1000;
 
 export class RollingTps {
   private counter = new TurnCounter();

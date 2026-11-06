@@ -208,7 +208,7 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
             <div className="st-ch-kicker">— SYSTEM NOTICE</div>
             <h2 id="system-notice-title">{t("系统通知")}</h2>
             <div
-              className="settings-segmented settings-segmented-two system-notice-language"
+              className="ui-setting-segments system-notice-language"
               role="group"
               aria-label={t("settings.language.aria")}
             >
@@ -216,7 +216,7 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
                 <button
                   key={language}
                   type="button"
-                  className={`settings-segment${locale === language ? " active" : ""}`}
+                  className={locale === language ? "active" : undefined}
                   lang={language === "zh" ? "zh-CN" : "en"}
                   aria-pressed={locale === language}
                   onClick={() => setLocale(language)}

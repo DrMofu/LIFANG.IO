@@ -518,7 +518,8 @@ html[lang="en"] .ui-section-kicker {
   margin-top: 16px;
 }
 
-.system-notice-language .settings-segment {
+.system-notice-language.ui-setting-segments > button {
+  flex-basis: 0;
   min-height: 40px;
 }
 
