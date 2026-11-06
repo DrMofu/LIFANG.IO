@@ -1,5 +1,12 @@
 // Source-text keys keep the initial migration compact. New copy should prefer semantic keys.
 export const englishSourceMessages: Record<string, string> = {
+  "云端已有数据，上传将覆盖云端备份。本地数据保持不变。": "Uploading replaces the existing cloud backup. Your local data stays unchanged.",
+  "处理中": "Processing",
+  "上传失败，请检查网络后重试。": "Upload failed. Check your connection and try again.",
+  "云端同步暂不可用，本地数据不受影响。": "Cloud sync is unavailable. Your local data is unaffected.",
+  "存档名称": "Archive name",
+  "始终包含": "Always included",
+  "请输入范围内的整数": "Enter a whole number within the range",
   "阶段": "Stage",
   "F2L专项": "F2L training",
   "OLL专项": "OLL training",

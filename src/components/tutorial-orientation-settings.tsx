@@ -38,7 +38,7 @@ export function TutorialOrientationSettings() {
             <label htmlFor={`${id}-palette`}>{t("settings.colorPalette")}</label>
             <button
               type="button"
-              className="tutorial-orientation-reset"
+              className="ui-setting-action"
               onClick={() => {
                 resetOrientation();
                 resetColorPalette();

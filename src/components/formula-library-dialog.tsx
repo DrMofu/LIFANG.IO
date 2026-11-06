@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingToggle } from "@/components/setting-controls";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FormulaCubeImage, FormulaTopViewImage } from "@/components/formula-cube-image";
 import { useLanguage } from "@/components/language-provider";
@@ -54,13 +56,10 @@ export function FormulaLibraryDialog({ phase, selectedIds, includeRotations, onC
         <span aria-live="polite">{t("formulaLibrary.selected").replace("{count}", String(selected.size)).replace("{total}", String(cases.length))}</span>
       </header>
       <div className="formula-library-toolbar">
-        <label className="trainer-variant-toggle">
-          <input type="checkbox" checked={rotations} onChange={(event) => setRotations(event.target.checked)} />
-          <span><b>{t("加入 Y 轴旋转变体")}</b><small>{t("formulaLibrary.pool").replace("{count}", String(selected.size * (rotations ? 4 : 1)))}</small></span>
-        </label>
+        <SettingToggle label={t("加入 Y 轴旋转变体")} hint={t("formulaLibrary.pool").replace("{count}", String(selected.size * (rotations ? 4 : 1)))} checked={rotations} onChange={setRotations} />
         <div className="formula-library-actions">
-          <button type="button" className="practice-btn practice-btn-ghost" onClick={() => setSelected(new Set(cases.map((item) => item.id)))}>{t("formulaLibrary.all")}</button>
-          <button type="button" className="practice-btn practice-btn-ghost" onClick={() => setSelected(new Set())}>{t("formulaLibrary.clear")}</button>
+          <button type="button" className="ui-setting-action" onClick={() => setSelected(new Set(cases.map((item) => item.id)))}>{t("formulaLibrary.all")}</button>
+          <button type="button" className="ui-setting-action" onClick={() => setSelected(new Set())}>{t("formulaLibrary.clear")}</button>
         </div>
       </div>
       <div className="formula-library-groups">
@@ -94,8 +93,8 @@ export function FormulaLibraryDialog({ phase, selectedIds, includeRotations, onC
       <footer className="formula-library-toolbar">
         <span role="status">{selected.size === 0 ? t("formulaLibrary.empty") : ""}</span>
         <div className="formula-library-actions">
-          <button type="button" className="practice-btn practice-btn-ghost" onClick={onClose}>{t("formulaLibrary.cancel")}</button>
-          <button type="button" className="practice-btn practice-btn-primary" disabled={selected.size === 0} onClick={() => onSave(cases.filter((item) => selected.has(item.id)).map((item) => item.id), rotations)}>{t("formulaLibrary.save")}</button>
+          <button type="button" className="ui-setting-action" onClick={onClose}>{t("formulaLibrary.cancel")}</button>
+          <button type="button" className="ui-setting-action ui-setting-action-primary" disabled={selected.size === 0} onClick={() => onSave(cases.filter((item) => selected.has(item.id)).map((item) => item.id), rotations)}>{t("formulaLibrary.save")}</button>
         </div>
       </footer>
     </dialog>

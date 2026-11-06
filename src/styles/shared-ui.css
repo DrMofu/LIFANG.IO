@@ -105,7 +105,7 @@
   margin: 0;
   color: #19386f;
   font-family: var(--sans);
-  font-size: var(--ui-type-lg);
+  font-size: var(--ui-section-title-size, var(--ui-type-lg));
   font-weight: var(--ui-weight-emphasis);
   line-height: 1.2;
   letter-spacing: normal;

@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingNumber, SettingToggle } from "@/components/setting-controls";
+
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
@@ -1302,172 +1304,64 @@ function CfopTrainerClient() {
                   <div className="practice-card-title">{t("专项设置")}</div>
                 </div>
               </div>
-              <label className="trainer-round-setting">
+              <label className="ui-setting-row trainer-round-setting">
                 <span>
                   <b>{t("每组测试轮数")}</b>
                 </span>
-                <input
-                  data-testid="trainer-round-limit"
-                  type="number"
-                  min={MIN_TRAINER_SESSION_ROUNDS}
-                  max={MAX_TRAINER_SESSION_ROUNDS}
-                  step={1}
-                  inputMode="numeric"
-                  value={sessionRoundLimit}
-                  disabled={settingsLocked}
-                  aria-label={t("每组测试轮数")}
-                  onChange={(event) => updateSessionRoundLimit(event.target.value)}
-                />
+                <SettingNumber data-testid="trainer-round-limit" min={MIN_TRAINER_SESSION_ROUNDS} max={MAX_TRAINER_SESSION_ROUNDS} value={sessionRoundLimit} disabled={settingsLocked} aria-label={t("每组测试轮数")} onCommit={(value) => updateSessionRoundLimit(String(value))} />
               </label>
               {isRecognitionSpecialty ? (
                 <div className="trainer-option-list">
-                  <div className="trainer-variant-toggle trainer-fixed-option">
-                    <input type="checkbox" checked readOnly tabIndex={-1} aria-hidden="true" />
-                    <span>
-                      <b>{t("基础面转动")}</b>
-                    </span>
-                  </div>
-                  <label className="trainer-variant-toggle">
-                    <input
-                      type="checkbox"
-                      checked={recognitionIncludeSlices}
-                      disabled={settingsLocked}
-                      onChange={(event) => {
-                        const next = event.target.checked;
+                  <div className="ui-setting-row"><span>{t("基础面转动")}</span><span className="ui-setting-status">{t("始终包含")}</span></div>
+                  <SettingToggle label={t("加入中层转动")} checked={recognitionIncludeSlices} disabled={settingsLocked} onChange={(next) => {
                         setRecognitionIncludeSlices(next);
                         saveStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY, next);
-                      }}
-                    />
-                    <span>
-                      <b>{t("加入中层转动")}</b>
-                    </span>
-                  </label>
-                  <label className="trainer-variant-toggle">
-                    <input
-                      type="checkbox"
-                      checked={recognitionIncludeWideMoves}
-                      disabled={settingsLocked}
-                      onChange={(event) => {
-                        const next = event.target.checked;
+                      }} />
+                  <SettingToggle label={t("加入宽层转动")} checked={recognitionIncludeWideMoves} disabled={settingsLocked} onChange={(next) => {
                         setRecognitionIncludeWideMoves(next);
                         saveStoredTrainerBoolean(TRAINER_RECOGNITION_WIDE_KEY, next);
-                      }}
-                    />
-                    <span>
-                      <b>{t("加入宽层转动")}</b>
-                    </span>
-                  </label>
-                  <label className="trainer-variant-toggle">
-                    <input
-                      type="checkbox"
-                      checked={recognitionHintEnabled}
-                      disabled={settingsLocked}
-                      onChange={(event) => {
-                        const next = event.target.checked;
+                      }} />
+                  <SettingToggle label={t("显示旋转箭头")} checked={recognitionHintEnabled} disabled={settingsLocked} onChange={(next) => {
                         setRecognitionHintEnabled(next);
                         saveStoredTrainerBoolean(TRAINER_RECOGNITION_HINT_KEY, next);
-                      }}
-                    />
-                    <span>
-                      <b>{t("显示旋转箭头")}</b>
-                    </span>
-                  </label>
+                      }} />
                 </div>
               ) : (
                 <>
                   <div className="trainer-option-list">
                     {isFormulaTrainerPhase(selectedPhase) && (
-                      <button type="button" className="trainer-variant-toggle trainer-library-button" disabled={settingsLocked} onClick={() => setFormulaLibraryOpen(true)} aria-haspopup="dialog">
+                      <button type="button" className="ui-setting-row trainer-library-button" disabled={settingsLocked} onClick={() => setFormulaLibraryOpen(true)} aria-haspopup="dialog">
                         <span><b>{t("formulaLibrary.title")}</b><small>{t("formulaLibrary.selected").replace("{count}", String(selectedCaseIds[selectedPhase].length)).replace("{total}", String(FORMULAS[selectedPhase].items.length))}</small></span>
                         <span aria-hidden="true">›</span>
                       </button>
                     )}
                     {selectedPhase === "f2l" && (
-                      <label className="trainer-variant-toggle">
-                        <input
-                          type="checkbox"
-                          checked={f2lEdgeOnly}
-                          disabled={settingsLocked}
-                          onChange={(event) => {
-                            const next = event.target.checked;
+                      <SettingToggle label={t("仅判定目标棱")} checked={f2lEdgeOnly} disabled={settingsLocked} onChange={(next) => {
                             f2lEdgeOnlyRef.current = next;
                             setF2lEdgeOnly(next);
                             saveStoredTrainerBoolean(TRAINER_F2L_EDGE_ONLY_KEY, next);
-                          }}
-                        />
-                        <span>
-                          <b>{t("仅判定目标棱")}</b>
-                        </span>
-                      </label>
+                          }} />
                     )}
-                    <label className="trainer-variant-toggle">
-                      <input
-                        type="checkbox"
-                        checked={formulaHintEnabled}
-                        disabled={settingsLocked}
-                        onChange={(event) => {
-                          const next = event.target.checked;
+                    <SettingToggle label={t("公式提示")} checked={formulaHintEnabled} disabled={settingsLocked} onChange={(next) => {
                           formulaHintEnabledRef.current = next;
                           setFormulaHintEnabled(next);
                           saveStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY, next);
-                        }}
-                      />
-                      <span>
-                        <b>{t("开启公式提示")}</b>
-                      </span>
-                    </label>
-                    <label className="trainer-variant-toggle">
-                      <input
-                        type="checkbox"
-                        checked={formulaArrowEnabled}
-                        disabled={settingsLocked || !formulaHintEnabled}
-                        onChange={(event) => {
-                          const next = event.target.checked;
+                        }} />
+                    <SettingToggle label={t("显示旋转箭头")} checked={formulaArrowEnabled} disabled={settingsLocked || !formulaHintEnabled} onChange={(next) => {
                           formulaArrowEnabledRef.current = next;
                           setFormulaArrowEnabled(next);
                           saveStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY, next);
-                        }}
-                      />
-                      <span>
-                        <b>{t("显示旋转箭头")}</b>
-                      </span>
-                    </label>
+                        }} />
                   </div>
                 </>
               )}
 
-              <div className="practice-settings-tools trainer-stage-tools">
-                {canUseFocusMode && (
-                  <button
-                    className={`practice-setting-button${f2lFocusMode ? " active" : ""}`}
-                    type="button"
-                    onClick={toggleF2lFocusMode}
-                    disabled={settingsLocked}
-                    aria-keyshortcuts="H"
-                    aria-pressed={f2lFocusMode}
-                  >
-                    <span>{t("专注模式")}</span>
-                  </button>
-                )}
-                <button
-                  className={`practice-setting-button${gyroDisabled ? "" : " active"}`}
-                  type="button"
-                  onClick={toggleGyroDisabled}
-                  aria-keyshortcuts="L"
-                  aria-pressed={!gyroDisabled}
-
-                >
-                  <span>{gyroDisabled ? t("禁用陀螺仪") : t("启用陀螺仪")}</span>
-                </button>
-                <button
-                  className="practice-setting-button"
-                  type="button"
-                  onClick={resetDisplayOrientation}
-                  disabled={!canResetDisplayOrientation}
-                  aria-keyshortcuts="R"
-                >
-                  <span>{t("视角归位")}</span>
-                </button>
+              <div className="ui-setting-stack ui-setting-divider">
+                {canUseFocusMode && <SettingToggle label={t("专注模式")} checked={f2lFocusMode} onChange={toggleF2lFocusMode} disabled={settingsLocked} shortcut="H" />}
+                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
+              </div>
+              <div className="ui-setting-actions ui-setting-divider">
+                <button className="ui-setting-action trainer-reset-action" type="button" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
               </div>
             </div>
 

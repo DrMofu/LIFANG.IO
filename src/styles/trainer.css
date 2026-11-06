@@ -16,103 +16,32 @@
   font-weight: 900;
 }
 
-.trainer-focus-app .trainer-round-setting,
-.trainer-focus-app .trainer-variant-toggle {
-  display: grid;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid rgba(205, 220, 242, 0.72);
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 9px 10px;
-  color: #234578;
-}
-
-.trainer-focus-app .trainer-round-setting {
-  grid-template-columns: minmax(0, 1fr) 58px;
-}
-
-.trainer-focus-app .trainer-variant-toggle {
-  grid-template-columns: auto minmax(0, 1fr);
+.trainer-focus-app .trainer-round-setting { gap: 12px; }
+.trainer-round-setting .ui-number-field { width: 76px; flex-shrink: 0; }
+.trainer-round-setting b { font-weight: 600; }
+.trainer-option-list { display: grid; min-width: 0; gap: 0; }
+.trainer-reset-action { width: 100%; }
+.trainer-library-button {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--tech-line-2);
+  background: transparent;
+  padding: 4px 0 8px;
+  text-align: left;
   cursor: pointer;
 }
-
-.trainer-focus-app .trainer-option-list {
-  display: grid;
-  gap: 7px;
-}
-
-.trainer-focus-app .trainer-round-setting > span,
-.trainer-focus-app .trainer-variant-toggle > span {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-
-.trainer-focus-app .trainer-round-setting b,
-.trainer-focus-app .trainer-variant-toggle b {
-  color: #19386f;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.trainer-focus-app .trainer-round-setting small,
-.trainer-focus-app .trainer-variant-toggle small {
-  color: #8495b1;
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.35;
-}
-
-.trainer-focus-app .trainer-variant-toggle input {
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: #2f6ff2;
-}
-
-.trainer-focus-app .trainer-variant-toggle:has(input:disabled),
-.trainer-focus-app .trainer-round-setting:has(input:disabled) {
-  cursor: not-allowed;
-  opacity: 0.62;
-}
-
-.trainer-focus-app .trainer-fixed-option {
-  cursor: default;
-  opacity: 1;
-}
-
-.trainer-focus-app .trainer-fixed-option input {
-  pointer-events: none;
-}
-
-.trainer-focus-app .trainer-round-setting input {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  border: 1px solid rgba(47, 111, 242, 0.2);
-  border-radius: 10px;
-  outline: none;
-  background: #f8fbff;
-  color: #19386f;
-  font-family: var(--timer-number);
-  font-size: 15px;
-  font-weight: 900;
-  text-align: center;
-}
-
-.trainer-focus-app .trainer-round-setting input:focus-visible {
-  border-color: #2f6ff2;
-  box-shadow: 0 0 0 3px rgba(47, 111, 242, 0.12);
-}
+.trainer-library-button > span:first-child { display: grid; gap: 4px; }
+.trainer-library-button b { font-size: 12px; font-weight: 600; }
+.trainer-library-button small { color: var(--tech-muted); font-size: 12px; }
+.trainer-library-button:disabled { color: var(--tech-muted); cursor: not-allowed; }
+.trainer-library-button:focus-visible { outline: 2px solid var(--tech-blue); outline-offset: 3px; }
 
 @media (width > 700px) and (width <= 1240px) {
-  .trainer-focus-app :is(.trainer-catalog-panel, .trainer-settings-panel) {
+  .trainer-focus-app .trainer-catalog-panel {
     gap: 8px;
   }
 
-  .trainer-focus-app .trainer-phase-list,
-  .trainer-focus-app .trainer-option-list {
+  .trainer-focus-app .trainer-phase-list {
     gap: 4px;
   }
 
@@ -126,22 +55,9 @@
     white-space: normal;
   }
 
-  .trainer-focus-app :is(.trainer-round-setting, .trainer-variant-toggle) {
-    min-height: 44px;
-    gap: 7px;
-    border-radius: 12px;
-    padding: 6px 8px;
+
   }
 
-  .trainer-focus-app .trainer-round-setting input {
-    height: 30px;
-  }
-}
-
-.trainer-focus-app .trainer-stage-tools > :only-child,
-.trainer-focus-app .trainer-stage-tools > :last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
 
 .trainer-focus-app .trainer-timer-controls {
   position: relative;
@@ -231,18 +147,13 @@
   font-size: 28px;
 }
 
-.trainer-focus-app .trainer-library-button {
-  grid-template-columns: minmax(0, 1fr) auto;
-  width: 100%;
-  text-align: left;
-}
 
 .formula-library-dialog {
   width: min(800px, calc(100vw - 32px));
   max-height: min(850px, calc(100dvh - 32px));
   margin: auto;
-  padding: 20px;
-  border: 1px solid rgba(255, 255, 255, .9);
+  padding: 16px;
+  border: 1px solid var(--tech-line);
   border-radius: 24px;
   background: rgba(245, 249, 255, .96);
   box-shadow: 0 24px 80px rgba(30, 57, 100, .24);
@@ -276,11 +187,13 @@
   font-size: 12px;
 }
 
-.formula-library-actions { margin-left: auto; }
-.formula-library-actions .practice-btn { min-height: 36px; padding: 8px 16px; white-space: nowrap; }
+.formula-library-actions { margin-left: auto; flex-wrap: wrap; }
+.formula-library-toolbar > .ui-toggle-row { flex: 1 1 240px; }
+.formula-library-dialog footer { border-top: 1px solid var(--tech-line); padding-top: 16px; }
+
 .formula-library-groups { overflow-y: auto; min-height: 0; padding: 2px; }
 .formula-library-group + .formula-library-group { margin-top: 20px; }
-.formula-library-group-label { margin-bottom: 10px; font-size: 13px; cursor: pointer; }
+.formula-library-group-label { margin-bottom: 10px; font-size: 12px; cursor: pointer; }
 .formula-library-group-label span { color: #7589a8; font-size: 12px; }
 .formula-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
 
@@ -306,6 +219,6 @@
 .formula-library-dialog input { accent-color: #3979de; }
 
 @media (width <= 700px) {
-  .formula-library-dialog { padding: 16px; border-radius: 20px; }
+  .formula-library-dialog { padding: 16px; }
   .formula-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

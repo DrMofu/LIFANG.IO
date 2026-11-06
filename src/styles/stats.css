@@ -1149,8 +1149,7 @@
   padding: 0 18px;
 }
 
-.dl-history-open,
-.tutorial-orientation-reset {
+.dl-history-open {
   min-height: 38px;
   border: 1px solid rgba(113, 134, 171, 0.25);
   border-radius: 11px;
@@ -1166,9 +1165,7 @@
 }
 
 .dl-history-open:hover,
-.dl-history-open:focus-visible,
-.tutorial-orientation-reset:hover,
-.tutorial-orientation-reset:focus-visible {
+.dl-history-open:focus-visible {
   border-color: rgba(47, 111, 242, 0.42);
   box-shadow: 0 10px 24px rgba(47, 111, 242, 0.12);
   color: var(--tech-blue);
@@ -2073,8 +2070,7 @@
     padding: 11px 14px;
   }
 
-  .dl-history-open,
-  .tutorial-orientation-reset {
+  .dl-history-open {
     min-height: 36px;
     padding: 0 12px;
   }

@@ -40,14 +40,15 @@
   margin: 0;
 }
 
-.tutorial-orientation-settings :is(.settings-color-trigger, .settings-palette-trigger) {
-  min-height: 40px;
+.tutorial-orientation-settings label {
+  color: var(--tech-ink-2);
+  font: 600 12px/1.5 var(--sans);
 }
 
 .tutorial-orientation-settings .lg-row {
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .tutorial-orientation-settings .lg-sw {

@@ -1,5 +1,7 @@
 "use client";
 
+import { SettingChoice, SettingToggle } from "@/components/setting-controls";
+
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
@@ -2878,61 +2880,46 @@ export function CubePracticeApp() {
                 <div className="practice-card-title">{t("练习设置")}</div>
               </div>
             </div>
-            <div className="practice-mode-switch" aria-label={t("练习模式")}>
+            <SettingChoice label={t("练习模式")}><div className="ui-setting-segments" role="group" aria-label={t("练习模式")}>
               <button
                 type="button"
-                className={practiceMode === "scramble" ? "active" : ""}
+                aria-pressed={practiceMode === "scramble"} className={practiceMode === "scramble" ? "active" : ""}
                 onClick={() => changePracticeMode("scramble")}
                 disabled={!canSwitchMode}
               >{t("打乱练习")}</button>
               <button
                 type="button"
-                className={practiceMode === "free" ? "active" : ""}
+                aria-pressed={practiceMode === "free"} className={practiceMode === "free" ? "active" : ""}
                 onClick={() => changePracticeMode("free")}
                 disabled={!canSwitchMode}
               >{t("自由练习")}</button>
-            </div>
+            </div></SettingChoice>
 
-            <div className="practice-mode-switch timing-mode-switch" aria-label={t("计时方式")}>
+            <SettingChoice label={t("计时方式")}><div className="ui-setting-segments" role="group" aria-label={t("计时方式")}>
               <button
                 type="button"
-                className={!isManualTimer ? "active" : ""}
+                aria-pressed={!isManualTimer} className={!isManualTimer ? "active" : ""}
                 onClick={() => changeTimingMode("smart-cube")}
                 disabled={!canSwitchTimingMode}
               >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
               <button
                 type="button"
-                className={isManualTimer ? "active" : ""}
+                aria-pressed={isManualTimer} className={isManualTimer ? "active" : ""}
                 onClick={() => changeTimingMode("timer")}
                 disabled={!canSwitchTimingMode}
               >{t("纯计时器")}</button>
-            </div>
+            </div></SettingChoice>
 
-            {!isManualTimer && <div className="practice-settings-tools">
-              <button
-                className={`practice-setting-button${gyroDisabled ? "" : " active"}`}
-                onClick={toggleGyroDisabled}
-                aria-keyshortcuts="L"
-                aria-pressed={!gyroDisabled}
-
-              >
-                <span>{gyroDisabled ? t("陀螺仪禁用中") : t("陀螺仪启用中")}</span>
-              </button>
-              <button
-                className={`practice-setting-button${formulaRecognitionEnabled ? " active" : ""}`}
-                onClick={toggleFormulaRecognition}
-                aria-keyshortcuts="F"
-                aria-pressed={formulaRecognitionEnabled}
-              >
-                <span>{formulaRecognitionEnabled ? t("公式识别已开启") : t("公式识别已关闭")}</span>
-              </button>
-              <button className="practice-setting-button" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">
-                <span>{t("视角归位")}</span>
-              </button>
-              <button className="practice-setting-button" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">
-                <span>{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</span>
-              </button>
-            </div>}
+            {!isManualTimer && <>
+              <div className="ui-setting-stack ui-setting-divider">
+                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
+                <SettingToggle label={t("公式识别")} checked={formulaRecognitionEnabled} onChange={toggleFormulaRecognition} shortcut="F" />
+              </div>
+              <div className="ui-setting-actions practice-settings-actions ui-setting-divider">
+                <button type="button" className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
+                <button type="button" className="ui-setting-action" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</button>
+              </div>
+            </>}
           </div>
 
           {!isManualTimer && formulaRecognitionEnabled && (

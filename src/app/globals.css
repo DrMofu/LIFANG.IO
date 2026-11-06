@@ -10,6 +10,7 @@
 @import "../styles/tutorials.css";
 @import "../styles/stats.css";
 @import "../styles/settings.css";
+@import "../styles/setting-controls.css";
 
 .lf-practice-app {
   --panel-shadow-gutter: 28px;

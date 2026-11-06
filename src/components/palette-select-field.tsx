@@ -1,5 +1,7 @@
 "use client";
 
+import { handleSettingMenuKeyDown } from "@/components/setting-controls";
+
 import { useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { COLOR_LIST, COLOR_PALETTES, type CubeColor, type CubeColorPaletteId } from "@/lib/cube-appearance";
@@ -29,6 +31,7 @@ export function PaletteSelectField({
   return (
     <div
       className={`settings-palette-select-wrap${isOpen ? " open" : ""}`}
+      onKeyDown={(event) => handleSettingMenuKeyDown(event, () => setIsOpen(false))}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
       }}
@@ -39,7 +42,7 @@ export function PaletteSelectField({
         className="settings-palette-trigger"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-controls={`${id}-menu`}
+        aria-controls={isOpen ? `${id}-menu` : undefined}
         onClick={() => setIsOpen((current) => !current)}
         onKeyDown={(event) => {
           if (event.key === "Escape") setIsOpen(false);

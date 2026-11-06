@@ -1,0 +1,142 @@
+.settings-card,
+.practice-settings-panel,
+.trainer-settings-panel,
+.formula-library-dialog,
+.ui-settings-dialog,
+.tutorial-orientation-settings {
+  --ui-section-title-size: 16px;
+  font-size: 12px;
+}
+
+:is(.settings-card, .tutorial-orientation-settings) .lg-row,
+.settings-card .ui-section-kicker { font-size: 12px; }
+
+.ui-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 44px;
+  color: var(--tech-ink-2);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ui-setting-copy { display: grid; min-width: 0; gap: 4px; }
+.ui-setting-copy small, .ui-setting-status { color: var(--tech-muted); font-size: 12px; font-weight: 500; line-height: 1.5; }
+.ui-toggle-row { cursor: pointer; }
+.ui-toggle-row:has(:disabled) { color: var(--tech-muted); cursor: not-allowed; }
+.ui-setting-switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 22px;
+  margin: 0;
+  border: 1px solid #b6c5dc;
+  border-radius: 99px;
+  background: #dce5f2;
+  cursor: inherit;
+}
+.ui-setting-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 3px #25365626;
+}
+.ui-setting-switch:checked { background: var(--tech-blue); border-color: var(--tech-blue); }
+.ui-setting-switch:checked::after { left: 16px; }
+.ui-setting-switch:disabled { opacity: .55; }
+.ui-setting-choice { display: grid; min-width: 0; gap: var(--setting-choice-gap, 8px); }
+.ui-setting-label { font-size: 12px; color: var(--tech-ink-2); font-weight: 600; }
+.ui-setting-stack { display: grid; min-width: 0; gap: var(--setting-stack-gap, 8px); }
+.ui-setting-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.ui-setting-divider { border-top: 1px solid var(--tech-line-2); padding-top: var(--setting-divider-padding, 16px); margin-top: var(--setting-divider-margin, 8px); }
+.ui-setting-action {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--tech-line);
+  border-radius: var(--tech-radius-sm);
+  background: rgba(255,255,255,.8);
+  color: var(--tech-ink-2);
+  font: 600 12px/1.4 var(--sans);
+  cursor: pointer;
+}
+.ui-setting-action:hover:not(:disabled) { background: var(--tech-blue-soft); border-color: #a9c4f1; color: var(--tech-blue); }
+.ui-setting-action-primary { background: var(--tech-blue); border-color: var(--tech-blue); color: white; }
+.ui-setting-action-primary:hover:not(:disabled) { background: var(--tech-blue-2); color: white; }
+.ui-setting-action-danger { color: #b83228; border-color: #e8bdb8; }
+.ui-setting-action-danger:hover:not(:disabled) { color: #a82a21; background: #fff0ef; border-color: #d49c96; }
+.ui-setting-action:disabled { border-color: var(--tech-line); color: var(--tech-muted); background: #f0f4fa; cursor: not-allowed; }
+.ui-number-field { display: grid; min-width: 0; gap: 4px; }
+.ui-number-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--tech-line);
+  border-radius: var(--tech-radius-sm);
+  background: #f8fbff;
+  color: var(--tech-ink-2);
+  font: 600 12px var(--mono);
+}
+.ui-number-field input:disabled { color: var(--tech-muted); background: #f0f4fa; }
+.ui-number-field input[aria-invalid="true"] { border-color: #c9352a; }
+.ui-number-field small { color: #b83228; font-size: 12px; line-height: 1.5; }
+:is(.ui-setting-action, .ui-setting-switch, .ui-number-field input):focus-visible { outline: 2px solid var(--tech-blue); outline-offset: 3px; }
+.ui-settings-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  margin: auto;
+  border: 1px solid var(--tech-line);
+  border-radius: var(--tech-radius-lg);
+  background: #f7faff;
+  padding: 24px;
+  color: var(--tech-ink-2);
+  box-shadow: var(--tech-shadow);
+}
+.ui-settings-dialog::backdrop { background: #192d4b52; backdrop-filter: blur(5px); }
+.ui-settings-dialog form { display: grid; gap: 16px; }
+.ui-settings-dialog p { margin: 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-line; }
+.ui-settings-dialog .settings-auth-field span { font-size: 12px; font-weight: 600; }
+
+@media (width <= 700px) {
+  .ui-settings-dialog { padding: 16px; }
+}
+
+.ui-setting-segments {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--tech-line);
+  border-radius: 12px;
+  background: #eef4fd;
+}
+.ui-setting-segments > button {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #526581;
+  font: 600 12px/1.4 var(--sans);
+  cursor: pointer;
+}
+.ui-setting-segments > button:hover:not(:disabled) { background: white; color: var(--tech-blue); }
+.ui-setting-segments > button.active { background: var(--tech-blue); color: white; }
+.ui-setting-segments > button:disabled { color: var(--tech-muted); cursor: not-allowed; }
+.ui-setting-segments > button.active:disabled { background: #c3d4ef; color: #344f79; }
+.ui-setting-segments > button:focus-visible { outline: 2px solid var(--tech-blue); outline-offset: 2px; }
