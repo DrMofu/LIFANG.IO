@@ -31,7 +31,7 @@ export function TutorialOrientationSettings() {
   }
 
   return (
-    <div className="tutorial-orientation-settings">
+    <div className="tutorial-orientation-settings ui-info-panel">
       <div className="tutorial-orientation-controls">
         <div>
           <div className="tutorial-orientation-palette-label">

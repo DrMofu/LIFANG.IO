@@ -72,8 +72,9 @@
 .ui-section-head {
   display: flex;
   min-height: 24px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   margin: 0 0 12px;
   padding: 0;
@@ -86,7 +87,9 @@
   min-height: 24px;
   align-self: flex-start;
   align-items: baseline;
-  gap: 8px;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 4px;
 }
 
 .practice-kicker,
@@ -98,6 +101,7 @@
   font-weight: var(--ui-weight-support);
   line-height: 1.2;
   letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
 .practice-card-title,
@@ -105,7 +109,7 @@
   margin: 0;
   color: #19386f;
   font-family: var(--sans);
-  font-size: var(--ui-section-title-size, var(--ui-type-lg));
+  font-size: 16px;
   font-weight: var(--ui-weight-emphasis);
   line-height: 1.2;
   letter-spacing: normal;

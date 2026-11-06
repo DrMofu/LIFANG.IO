@@ -4,12 +4,10 @@
 .formula-library-dialog,
 .ui-settings-dialog,
 .tutorial-orientation-settings {
-  --ui-section-title-size: 16px;
   font-size: 12px;
 }
 
-:is(.settings-card, .tutorial-orientation-settings) .lg-row,
-.settings-card .ui-section-kicker { font-size: 12px; }
+:is(.settings-card, .tutorial-orientation-settings) .lg-row { font-size: 12px; }
 
 .ui-setting-row {
   display: flex;

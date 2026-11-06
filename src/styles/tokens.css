@@ -23,6 +23,7 @@
   --tech-orange: #f4a337;
   --tech-shadow: 0 18px 48px rgba(45, 78, 128, 0.12);
   --tech-shadow-soft: 0 8px 24px rgba(45, 78, 128, 0.09);
+  --tech-shadow-panel: 0 3px 8px -4px rgba(45, 78, 128, 0.12);
   --tech-radius-lg: 24px;
   --tech-radius-md: 16px;
   --tech-radius-sm: 10px;

@@ -54,7 +54,7 @@ type CompactDailyLevelTuple = [string, string, number, number, CompactDailySolve
 type CompactDailyPracticeTuple = [string, number, number];
 type FormulaLearningStatus = "unpracticed" | "learning" | "mastered";
 type FormulaLearningTuple = [string, FormulaLearningStatus];
-type FormulaStatTuple = [string, number, number[], number | null, string | null, number | null, (number | null)[]?];
+type FormulaStatTuple = [string, number, number[], number | null, string | null, number | null];
 type CompactAverageSettingsTuple = [AverageTimeMethod, number, number, number];
 type CompactInspectionSettingsTuple = [PracticeInspectionMode, number];
 
@@ -130,7 +130,7 @@ export const USER_DATA_EXPORT_SCHEMA = {
   daily: ["id", "date", "completedAt", "avg", "solves"],
   dailySolve: ["ms", "ts", "moves", "source"],
   dailyPractice: ["date", "seconds", "updatedAt"],
-  formulaStat: ["key", "count", "times", "best", "today", "todayCount", "moveCounts"],
+  formulaStat: ["key", "count", "times", "best", "today", "todayCount"],
   console: ["enabled", "logSentCommands", "logMove", "logGyro", "logFacelets", "logBattery", "logHardware", "logDisconnect"],
 } as const;
 
@@ -489,7 +489,37 @@ function isFormulaStatTuple(value: unknown): value is FormulaStatTuple {
   );
 }
 
+// Remove obsolete speed metadata from formula records in every local archive.
+export function cleanupFormulaRecordSpeedData() {
+  if (typeof window === "undefined") return;
+  try {
+    const keys = Array.from({ length: window.localStorage.length }, (_, index) => window.localStorage.key(index));
+    for (const key of keys) {
+      if (!key || (key !== FORMULA_STATS_KEY && !key.startsWith(`${FORMULA_STATS_KEY}:`))) continue;
+      try {
+        const stats: unknown = JSON.parse(window.localStorage.getItem(key) || "{}");
+        if (!isRecord(stats)) continue;
+        let changed = false;
+        for (const record of Object.values(stats)) {
+          if (!isRecord(record)) continue;
+          for (const field of ["moveCounts", "tps"]) {
+            if (!(field in record)) continue;
+            delete record[field];
+            changed = true;
+          }
+        }
+        if (changed) window.localStorage.setItem(key, JSON.stringify(stats));
+      } catch {
+        // Leave unreadable archives untouched and continue with the others.
+      }
+    }
+  } catch {
+    // Storage may be unavailable in restricted browser contexts.
+  }
+}
+
 export function readFormulaExportData(): FormulaExportData {
+  cleanupFormulaRecordSpeedData();
   const rawFavorites = readScopedJson(FORMULA_FAVS_KEY, []);
   const rawLearning = readScopedJson(FORMULA_LEARNING_STATUS_KEY, {});
   const rawStats = readScopedJson(FORMULA_STATS_KEY, {});
@@ -514,11 +544,6 @@ export function readFormulaExportData(): FormulaExportData {
             typeof value.bestMs === "number" ? roundMs(value.bestMs) : null,
             typeof value.todayKey === "string" ? value.todayKey : null,
             typeof value.todayCount === "number" ? value.todayCount : null,
-            value.times.flatMap((time, index) => {
-              if (typeof time !== "number" || !Number.isFinite(time) || time <= 0) return [];
-              const moves = Array.isArray(value.moveCounts) ? value.moveCounts[index] : null;
-              return [typeof moves === "number" && Number.isInteger(moves) && moves > 0 ? moves : null];
-            }),
           ] satisfies FormulaStatTuple;
         })
         .filter((entry): entry is FormulaStatTuple => entry !== null)
@@ -557,7 +582,7 @@ function parseFormulaExportData(value: unknown): FormulaExportData | null {
   return {
     favorites: [...new Set(favorites)],
     learning,
-    stats,
+    stats: stats.map(([key, count, times, best, today, todayCount]) => [key, count, times, best, today, todayCount]),
     state,
     focusMode,
   };
@@ -653,7 +678,7 @@ export function cleanupDeprecatedFormulaLocalStorage(): DeprecatedFormulaDataCle
 
 export function writeFormulaExportData(formulas: FormulaExportData) {
   const stats = Object.fromEntries(
-    formulas.stats.map(([key, count, times, bestMs, todayKey, todayCount, moveCounts]) => [
+    formulas.stats.map(([key, count, times, bestMs, todayKey, todayCount]) => [
       key,
       {
         count,
@@ -661,7 +686,6 @@ export function writeFormulaExportData(formulas: FormulaExportData) {
         ...(bestMs == null ? {} : { bestMs }),
         ...(todayKey == null ? {} : { todayKey }),
         ...(todayCount == null ? {} : { todayCount }),
-        ...(moveCounts == null ? {} : { moveCounts }),
       },
     ]),
   );

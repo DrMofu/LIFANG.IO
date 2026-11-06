@@ -50,9 +50,9 @@ export function FormulaLibraryDialog({ phase, selectedIds, includeRotations, onC
   }
 
   return (
-    <dialog ref={dialogRef} className="formula-library-dialog" aria-labelledby="formula-library-title" onCancel={onClose}>
+    <dialog ref={dialogRef} className="formula-library-dialog ui-info-panel" aria-labelledby="formula-library-title" onCancel={onClose}>
       <header className="formula-library-toolbar">
-        <h2 id="formula-library-title" className="ui-section-title">{t("formulaLibrary.title")}</h2>
+        <div className="ui-section-title-line"><h2 id="formula-library-title" className="ui-section-title">{t("formulaLibrary.title")}</h2><span className="ui-section-kicker" aria-hidden="true">LIBRARY</span></div>
         <span aria-live="polite">{t("formulaLibrary.selected").replace("{count}", String(selected.size)).replace("{total}", String(cases.length))}</span>
       </header>
       <div className="formula-library-toolbar">

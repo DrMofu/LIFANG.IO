@@ -4,11 +4,9 @@ import { memo, useEffect, useRef, useState } from "react";
 import { buildFormulaTimeDistribution, buildSmoothDistributionCurve } from "@/lib/formula-time-distribution";
 import { useFormulaDistributionAnimation } from "@/components/use-formula-distribution-animation";
 import { fmtShort } from "@/lib/format";
-import { calculateTps, formatTps } from "@/lib/tps";
 
 type Props = {
   times: readonly number[];
-  moveCounts?: readonly (number | null)[];
   count: number;
   bestMs?: number;
   todayPracticeCount: number;
@@ -22,7 +20,7 @@ const RIGHT = WIDTH - 12;
 const TOP = 34;
 const BOTTOM = 172;
 
-export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, moveCounts, count, bestMs, todayPracticeCount, todayPracticeTone, t }: Props) {
+export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, count, bestMs, todayPracticeCount, todayPracticeTone, t }: Props) {
   const [history, setHistory] = useState(() => ({ times, count, distribution: buildFormulaTimeDistribution(times) }));
   if (history.times !== times || history.count !== count) {
     const unchanged = history.count === count && history.times.length === times.length
@@ -78,6 +76,7 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
     <div className="practice-card-head fm-stats-head">
       <div className="practice-title-line">
         <h3 className="practice-card-title">{t("最近记录")}</h3>
+        <span className="practice-kicker" aria-hidden="true">RECENT</span>
       </div>
       <span className={`formula-hero-tag formula-today-stat tone-${todayPracticeTone}`}>{t("今日")} {todayPracticeCount} {t("次")}</span>
     </div>
@@ -159,7 +158,6 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
                   <span className="hr-bar" style={{ width: `${time / slowestRecent * 100}%` }} />
                 </span>
                 <span className="hr-t">{(time / 1000).toFixed(2)}<small>s</small></span>
-                <span className="hr-tps">{formatTps(calculateTps(moveCounts?.[times.length - 1 - index], time))} <small>TPS</small></span>
               </li>
             );
           })}

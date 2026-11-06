@@ -679,6 +679,7 @@ export function CubePracticeApp() {
   const portalReady = useClientReady();
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
   const [historyRows, setHistoryRows] = useState(HISTORY_FALLBACK_ROWS);
+  const [historyRowSize, setHistoryRowSize] = useState(HISTORY_ROW_SIZE);
   const [historyScrolling, setHistoryScrolling] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
@@ -804,43 +805,36 @@ export function CubePracticeApp() {
     const list = historyListRef.current;
     if (!list) return;
 
+    const panel = list.closest<HTMLElement>(".practice-history-panel");
+    const head = list.parentElement?.querySelector<HTMLElement>(".practice-card-head");
+    if (!panel) return;
+
     const updateRows = () => {
-      const parent = list.parentElement;
-      const rightColumn = parent?.parentElement;
-      const head = parent?.querySelector<HTMLElement>(".practice-card-head") ?? null;
-      const parentStyle = parent ? window.getComputedStyle(parent) : null;
-      const rightStyle = rightColumn ? window.getComputedStyle(rightColumn) : null;
+      const panelStyle = window.getComputedStyle(panel);
       const listStyle = window.getComputedStyle(list);
-      const rightPaddingY = rightStyle ? parseFloat(rightStyle.paddingTop) + parseFloat(rightStyle.paddingBottom) : 0;
-      const rightBorderY = rightStyle ? parseFloat(rightStyle.borderTopWidth) + parseFloat(rightStyle.borderBottomWidth) : 0;
-      const parentHeight = rightColumn
-        ? rightColumn.clientHeight -
-          rightPaddingY -
-          rightBorderY -
-          [...rightColumn.children].reduce((height, child) => child === parent ? height : height + child.getBoundingClientRect().height, 0) -
-          Math.max(0, rightColumn.children.length - 1) * (rightStyle ? parseFloat(rightStyle.rowGap) || parseFloat(rightStyle.gap) || 0 : 0)
-        : parent?.clientHeight ?? 0;
-      const parentPaddingY = parentStyle ? parseFloat(parentStyle.paddingTop) + parseFloat(parentStyle.paddingBottom) : 0;
-      const parentBorderY = parentStyle ? parseFloat(parentStyle.borderTopWidth) + parseFloat(parentStyle.borderBottomWidth) : 0;
-      const headHeight = head ? head.getBoundingClientRect().height : 0;
-      const headStyle = head ? window.getComputedStyle(head) : null;
-      const headMarginBottom = headStyle ? parseFloat(headStyle.marginBottom) : 0;
+      const contentBottom = panel.getBoundingClientRect().bottom
+        - parseFloat(panelStyle.paddingBottom) - parseFloat(panelStyle.borderBottomWidth);
       const listBorderY = parseFloat(listStyle.borderTopWidth) + parseFloat(listStyle.borderBottomWidth);
-      const computedRowSize = parseFloat(listStyle.getPropertyValue("--history-row-size"));
+      const rowSpace = Math.max(0, contentBottom - list.getBoundingClientRect().top - listBorderY);
+      const computedRowSize = parseFloat(listStyle.getPropertyValue("--history-base-row-size"));
       const computedRowGap = parseFloat(listStyle.getPropertyValue("--history-row-gap"));
-      const rowSize = Number.isFinite(computedRowSize) && computedRowSize > 0 ? computedRowSize : HISTORY_ROW_SIZE;
+      const baseRowSize = Number.isFinite(computedRowSize) && computedRowSize > 0 ? computedRowSize : HISTORY_ROW_SIZE;
       const rowGap = Number.isFinite(computedRowGap) && computedRowGap >= 0 ? computedRowGap : HISTORY_ROW_GAP;
-      const availableHeight = parentHeight - parentPaddingY - parentBorderY - headHeight - headMarginBottom;
-      const rowSpace = Math.max(0, availableHeight - listBorderY);
-      const rows = Math.max(1, Math.floor((rowSpace + rowGap) / (rowSize + rowGap)));
+      // A small reduction can fit an extra complete row near the height threshold.
+      const minimumRowSize = Math.max(1, baseRowSize - 2);
+      const rows = Math.max(1, Math.floor((rowSpace + rowGap) / (minimumRowSize + rowGap)));
+      // Spread the remainder across complete rows rather than leaving it below the list.
+      const rowSize = Math.max(minimumRowSize, Math.floor((rowSpace - rowGap * (rows - 1)) / rows * 64) / 64);
       setHistoryRows(rows);
+      setHistoryRowSize(rowSize);
     };
 
     updateRows();
     const observer = new ResizeObserver(updateRows);
     observer.observe(list);
     if (list.parentElement) observer.observe(list.parentElement);
-    if (list.parentElement?.parentElement) observer.observe(list.parentElement.parentElement);
+    observer.observe(panel);
+    if (head) observer.observe(head);
     return () => observer.disconnect();
   }, [history.length]);
 
@@ -2824,6 +2818,7 @@ export function CubePracticeApp() {
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("每日测试")}</div>
+                <span className="practice-kicker" aria-hidden="true">DAILY TEST</span>
               </div>
               <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
                 {dailyTestDisplayDate}
@@ -2874,10 +2869,11 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="practice-control-panel practice-settings-panel">
+          <div className="practice-control-panel practice-settings-panel ui-info-panel">
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("练习设置")}</div>
+                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
               </div>
             </div>
             <SettingChoice label={t("练习模式")}><div className="ui-setting-segments" role="group" aria-label={t("练习模式")}>
@@ -2923,10 +2919,11 @@ export function CubePracticeApp() {
           </div>
 
           {!isManualTimer && formulaRecognitionEnabled && (
-            <div className="practice-card formula-recognition-panel" aria-live="polite">
+            <div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite">
               <div className="practice-card-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("公式识别")}</div>
+                <span className="practice-kicker" aria-hidden="true">OLL · PLL</span>
                 </div>
               </div>
               {recognizedFormula ? (
@@ -2978,10 +2975,11 @@ export function CubePracticeApp() {
             </div>
           )}
 
-          {!isManualTimer && <div className="practice-card legend">
+          {!isManualTimer && <div className="practice-card legend ui-info-panel">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("色彩对照")}</div>
+                <span className="practice-kicker" aria-hidden="true">COLORS</span>
               </div>
             </div>
             <CubeColorLegend faceColors={faceColors} />
@@ -2990,10 +2988,11 @@ export function CubePracticeApp() {
         </section>
 
         <section className="practice-right">
-          <div className="stats">
+          <div className="stats ui-info-panel">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("统计摘要")}</div>
+                <span className="practice-kicker" aria-hidden="true">SUMMARY</span>
               </div>
             </div>
             <div className="stat-grid">
@@ -3010,11 +3009,12 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="practice-live-panel practice-score-panel">
+          <div className="practice-live-panel practice-score-panel ui-info-panel">
             <div className="solve-metrics">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
+                <span className="practice-kicker" aria-hidden="true">SCORE</span>
               </div>
             </div>
             <div className={`solve-current-grid${isManualTimer ? " timer-only" : ""}`}>
@@ -3109,11 +3109,12 @@ export function CubePracticeApp() {
           </div>
           </div>
 
-          <div className="practice-live-panel practice-history-panel">
+          <div className="practice-live-panel practice-history-panel ui-info-panel">
           <div className="hist hist-right">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("历史成绩")}</div>
+                <span className="practice-kicker" aria-hidden="true">HISTORY</span>
               </div>
               {history.length > 0 && (
                 <button
@@ -3137,7 +3138,7 @@ export function CubePracticeApp() {
               <div
                 className={`hist-list${historyScrolling ? " scrolling" : ""}`}
                 ref={historyListRef}
-                style={{ "--history-rows": historyRows } as CSSProperties}
+                style={{ "--history-rows": historyRows, "--history-row-size": `${historyRowSize}px` } as CSSProperties}
                 onScroll={handleHistoryScroll}
                 onPointerLeave={() => setHistoryScrolling(false)}
               >

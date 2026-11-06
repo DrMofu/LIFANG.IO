@@ -54,7 +54,7 @@ export function SolveHistoryDialog({ history, onClose, onDelete }: {
   return (
     <dialog
       ref={dialogRef}
-      className="dl-history-dialog solve-history-dialog"
+      className="dl-history-dialog solve-history-dialog ui-info-panel"
       aria-labelledby="solve-history-title"
       onCancel={onClose}
       onClick={(event) => {
@@ -64,7 +64,7 @@ export function SolveHistoryDialog({ history, onClose, onDelete }: {
       }}
     >
       <div className="dl-history-dialog-head">
-        <h2 className="ui-section-title" id="solve-history-title">{t("历史成绩")}</h2>
+        <div className="ui-section-title-line"><h2 className="ui-section-title" id="solve-history-title">{t("历史成绩")}</h2><span className="ui-section-kicker" aria-hidden="true">HISTORY</span></div>
         <button type="button" className="dl-history-close" aria-label={t("关闭")} onClick={onClose}>×</button>
       </div>
       {history.length === 0 ? <div className="dl-history-empty">{t("尚无记录")}</div> : (

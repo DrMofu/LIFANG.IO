@@ -4,12 +4,6 @@
   gap: 10px;
   width: min(560px, 100%);
   margin: 16px auto;
-  padding: 16px;
-  border: 1px solid var(--tech-line);
-  border-radius: var(--tech-radius-md);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 10px 22px rgba(45, 78, 128, 0.09);
-  backdrop-filter: blur(18px);
 }
 
 .tutorial-orientation-settings label {
@@ -282,22 +276,8 @@
   max-height: calc(100vh - 154px);
   margin-top: 42px;
   overflow-y: auto;
-  border: 1px solid rgba(204, 217, 237, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 16px 40px rgba(39, 72, 121, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.92);
-  padding: 18px 12px 18px;
-  backdrop-filter: blur(18px);
 }
 
-.tutorial-toc-title {
-  padding: 0 10px 11px;
-  color: var(--tech-ink);
-  font-family: var(--sans);
-  font-size: 15px;
-  font-weight: 820;
-  letter-spacing: -0.01em;
-}
 
 .tutorial-toc ol {
   display: grid;

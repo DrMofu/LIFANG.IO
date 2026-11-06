@@ -17,12 +17,6 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 16px;
-  border: 1px solid rgba(222, 232, 248, 0.92);
-  border-radius: var(--tech-radius-lg);
-  background: var(--tech-panel);
-  box-shadow: var(--tech-shadow);
-  backdrop-filter: blur(18px);
 }
 
 .settings-card-appearance,

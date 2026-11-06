@@ -12,7 +12,7 @@ import { FormulaCubeImage, FormulaTopViewImage } from "@/components/formula-cube
 import { FormulaKeypad } from "@/components/formula-keypad";
 import { FormulaPracticeStats } from "@/components/formula-practice-stats";
 import { TurnSpeed } from "@/components/turn-speed";
-import { countStmMoves } from "@/lib/tps";
+import { cleanupFormulaRecordSpeedData } from "@/lib/user-data-package";
 import { FORMULA_STATS_LIMIT } from "@/lib/formula-time-distribution";
 import { MoveToken } from "@/components/move-token";
 import {
@@ -145,7 +145,6 @@ const FORMULA_ROTATION_SUFFIX: Record<Exclude<FormulaRotationOffset, 0>, string>
 type FormulaStats = {
   count: number;
   times: number[];
-  moveCounts?: Array<number | null>;
   bestMs?: number;
   todayKey?: string;
   todayCount?: number;
@@ -323,17 +322,14 @@ function isFormulaStats(value: unknown): value is FormulaStats {
 function normalizeFormulaStats(stats: FormulaStats): FormulaStats {
   const validIndexes = stats.times.map((time, index) => Number.isFinite(time) && time > 0 ? index : -1).filter((index) => index >= 0).slice(-FORMULA_STATS_LIMIT);
   const times = validIndexes.map((index) => stats.times[index]);
-  const moveCounts = validIndexes.map((index) => {
-    const moves = stats.moveCounts?.[index];
-    return typeof moves === "number" && Number.isFinite(moves) && moves > 0 ? moves : null;
-  });
   const storedBest = typeof stats.bestMs === "number" && Number.isFinite(stats.bestMs) && stats.bestMs > 0 ? stats.bestMs : null;
   const visibleBest = times.length > 0 ? Math.min(...times) : null;
   const bestMs = storedBest ?? visibleBest ?? undefined;
   return {
-    ...stats,
+    count: stats.count,
+    todayKey: stats.todayKey,
+    todayCount: stats.todayCount,
     times,
-    moveCounts,
     bestMs,
   };
 }
@@ -439,7 +435,6 @@ function getCaseStats(item: FormulaCaseItem, statsByVariant: Record<string, Form
       return {
         count: total.count + stats.count,
         times: [...total.times, ...stats.times].slice(-FORMULA_STATS_LIMIT),
-        moveCounts: [...(total.moveCounts ?? total.times.map(() => null)), ...(stats.moveCounts ?? stats.times.map(() => null))].slice(-FORMULA_STATS_LIMIT),
         bestMs: [total.bestMs, stats.bestMs].filter((time): time is number => typeof time === "number").sort((a, b) => a - b)[0],
         todayKey: getLocalDayKey(),
         todayCount: (total.todayCount ?? 0) + getTodayPracticeCount(stats),
@@ -481,6 +476,7 @@ function getTodayPracticeTone(count: number) {
 
 function readAllFormulaStats(): Record<string, FormulaStats> {
   if (typeof window === "undefined") return {};
+  cleanupFormulaRecordSpeedData();
   try {
     const all = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(STATS_KEY)) || "{}") as Record<string, unknown>;
     return Object.fromEntries(
@@ -503,7 +499,7 @@ function readFormulaStats(id: string): FormulaStats {
   return { count: 0, times: [] };
 }
 
-function saveFormulaCompletion(id: string, ms: number, moves: number): FormulaStats {
+function saveFormulaCompletion(id: string, ms: number): FormulaStats {
   try {
     const all = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(STATS_KEY)) || "{}") as Record<string, FormulaStats>;
     const prev = isFormulaStats(all[id]) ? normalizeFormulaStats(all[id]) : { count: 0, times: [] };
@@ -511,7 +507,6 @@ function saveFormulaCompletion(id: string, ms: number, moves: number): FormulaSt
     const next: FormulaStats = {
       count: prev.count + 1,
       times: [...prev.times, ms].slice(-FORMULA_STATS_LIMIT),
-      moveCounts: [...(prev.moveCounts ?? prev.times.map(() => null)), moves].slice(-FORMULA_STATS_LIMIT),
       bestMs: prev.bestMs == null ? ms : Math.min(prev.bestMs, ms),
       todayKey,
       todayCount: prev.todayKey === todayKey ? (prev.todayCount ?? 0) + 1 : 1,
@@ -520,7 +515,7 @@ function saveFormulaCompletion(id: string, ms: number, moves: number): FormulaSt
     window.localStorage.setItem(getArchiveScopedStorageKey(STATS_KEY), JSON.stringify(all));
     return next;
   } catch {
-    return { count: 1, times: [ms], moveCounts: [moves], todayKey: getLocalDayKey(), todayCount: 1 };
+    return { count: 1, times: [ms], todayKey: getLocalDayKey(), todayCount: 1 };
   }
 }
 
@@ -832,7 +827,6 @@ function FormulaStage({
   const moveCoordinateRef = useRef<MoveCoordinateState>(createMoveCoordinateState());
   const wrongWaitRef = useRef(false);
   const roundStartRef = useRef(0);
-  const roundMovesRef = useRef(0);
   const nextRoundTimerRef = useRef<number | null>(null);
   const practiceTimerRef = useRef<number | null>(null);
   const practiceToastTimerRef = useRef<number | null>(null);
@@ -1070,7 +1064,6 @@ function FormulaStage({
     roundStartRef.current = performance.now();
     if (resetMs) {
       setPracticeMs(0);
-      roundMovesRef.current = 0;
     }
   }
 
@@ -1377,7 +1370,6 @@ function FormulaStage({
     pendingPracticeMovesRef.current = [...pendingPracticeMovesRef.current, normalizedMove];
 
     if (movesMatchExpected(pendingPracticeMovesRef.current, expected)) {
-      roundMovesRef.current += countStmMoves([expected]);
       const shouldAnimateExpectedMove =
         shouldAnimateExpectedSliceMoveAfterMatch(pendingPracticeMovesRef.current, expected) ||
         shouldAnimateExpectedWideMoveAfterMatch(pendingPracticeMovesRef.current, expected);
@@ -1414,7 +1406,7 @@ function FormulaStage({
         inRoundRef.current = false;
         setPracticeMs(elapsed);
         const previousBest = readFormulaStats(displayStatsKey).bestMs;
-        const newStats = saveFormulaCompletion(displayStatsKey, elapsed, roundMovesRef.current);
+        const newStats = saveFormulaCompletion(displayStatsKey, elapsed);
         setPracticeStats(newStats);
         onStatsChange(displayStatsKey, newStats);
         if (typeof previousBest === "number" && elapsed < previousBest) {
@@ -1645,7 +1637,7 @@ function FormulaStage({
       </div>
       <div className={`fm-side${researchMode ? " is-research" : " is-practice"}`}>
         <div className="formula-info-stack">
-          <div className="formula-primary-panel practice-card">
+          <div className="formula-primary-panel practice-card ui-info-panel">
             <div className="tr-section formula-main-section">
           <div className="formula-hero">
             <div className="formula-hero-image" aria-hidden="true">
@@ -1670,9 +1662,10 @@ function FormulaStage({
             </div>
             <div className="formula-hero-info">
               <div className="formula-hero-title">
-                <h2>
-                  <span>{formulaTitle}</span>
-                </h2>
+                <div className="ui-section-title-line formula-detail-title-line">
+                  <h2 className="ui-section-title"><span>{formulaTitle}</span></h2>
+
+                </div>
                 <b>{displayedMoveCount} MOVES</b>
                 <button
                   type="button"
@@ -1860,12 +1853,13 @@ function FormulaStage({
         </div>
         </div>
 
-        <div className={`fm-side-bottom practice-card${researchMode ? "" : " fm-side-bottom-stats"}`}>
+        <div className={`fm-side-bottom practice-card ui-info-panel${researchMode ? "" : " fm-side-bottom-stats"}`}>
           {researchMode ? (
             <div className="tr-section formula-keypad-section">
               <div className="formula-stats-head">
                 <div className="practice-title-line formula-title-line">
                   <div className="practice-card-title formula-card-title">{t("公式键盘")}</div>
+                  <span className="practice-kicker" aria-hidden="true">KEYPAD</span>
                 </div>
               </div>
               <FormulaKeypad
@@ -1883,7 +1877,6 @@ function FormulaStage({
               <FormulaPracticeStats
                 key={displayStatsKey}
                 times={practiceStats.times}
-                moveCounts={practiceStats.moveCounts}
                 count={practiceStats.count}
                 bestMs={practiceStats.bestMs}
                 todayPracticeCount={todayPracticeCount}
@@ -1909,6 +1902,7 @@ function FormulaPicker({ mobile, open, onClose, children }: {
   onClose: () => void;
   children: ReactNode;
 }) {
+  const { t } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -1931,7 +1925,7 @@ function FormulaPicker({ mobile, open, onClose, children }: {
       ref={dialogRef}
       id="fm-mobile-library"
       className="lf-tech-app fm-library-dialog"
-      aria-labelledby="fm-library-title"
+      aria-label={t("切换公式")}
       onCancel={(event) => { event.preventDefault(); onClose(); }}
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
       onKeyDown={(event) => event.stopPropagation()}
@@ -2250,11 +2244,10 @@ export function FormulasApp() {
 
       <main className="fm-grid">
         <FormulaPicker mobile={isMobile} open={mobileLibraryOpen} onClose={() => setMobileLibraryOpen(false)}>
-        <section className="fm-left practice-card">
-          <header className="fm-mobile-library-head">
-            <h2 id="fm-library-title" className="ui-section-title">{t("切换公式")}</h2>
+        <section className="fm-left practice-card ui-info-panel">
+          <div className="fm-library-close-row">
             <button className="ghost-link" type="button" aria-label={t("关闭公式菜单")} onClick={() => setMobileLibraryOpen(false)}>×</button>
-          </header>
+          </div>
           <div className="fm-category-tabs" aria-label={t("公式类别")}>
             {Object.entries(FORMULAS).map(([key, value]) => (
               <button
@@ -2493,7 +2486,7 @@ export function FormulasApp() {
               </div>
             </>
           ) : (
-            <div className="fm-detail-empty practice-card">
+            <div className="fm-detail-empty practice-card ui-info-panel">
               <div className="fmd-cat">{t("收藏夹")}</div>
               <div className="fmd-name">{t("还没有收藏公式")}</div>
               <div className="fm-empty">{t("点击任意公式右侧的星标后，会在这里集中显示。")}</div>

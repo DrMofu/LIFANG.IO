@@ -724,7 +724,7 @@
 .lf-practice-app .solve-phase-card-pll {
   grid-area: pll;
 }
-.lf-practice-app .solve-metrics span,
+.lf-practice-app .solve-metrics span:where(:not(.practice-kicker)),
 .lf-practice-app .st-l {
   display: block;
   color: var(--tech-muted);
@@ -1076,16 +1076,6 @@
   z-index: 1;
 }
 
-.practice-focus-app .practice-card,
-.practice-focus-app .stats,
-.practice-focus-app .practice-control-panel,
-.practice-focus-app .practice-live-panel {
-  border: 0;
-  border-radius: 22px;
-  background: #f8fbff;
-  box-shadow: 6px 8px 20px rgba(65, 94, 142, 0.07);
-  backdrop-filter: none;
-}
 
 .practice-focus-app .practice-card,
 .practice-focus-app .stats {
@@ -1578,6 +1568,7 @@
 .practice-focus-app .practice-history-panel {
   order: 3;
   flex: 1 1 auto;
+  min-height: 110px;
 }
 
 .practice-focus-app .practice-history-panel .practice-card-head {
@@ -1869,7 +1860,8 @@
 }
 
 :is(.practice-focus-app, .lf-tech-app) .hist-list {
-  --history-row-size: 44px;
+  --history-base-row-size: 44px;
+  --history-row-size: var(--history-base-row-size);
   --history-row-gap: 0px;
   flex: 1 1 auto;
   height: calc(
@@ -1894,6 +1886,7 @@
 }
 
 .practice-focus-app .hist-list {
+  grid-auto-rows: var(--history-row-size);
   grid-template-columns: max-content minmax(12px, 1fr) repeat(3, max-content);
   column-gap: 5px;
 }
@@ -2004,7 +1997,7 @@
   .practice-focus-app .daily-test-card {
     border-radius: 22px;
     background: #f8fbff;
-    box-shadow: 6px 8px 20px rgba(65, 94, 142, 0.07);
+    box-shadow: var(--tech-shadow-panel);
     padding: 16px;
   }
 
@@ -2065,6 +2058,7 @@
   .practice-focus-app .practice-info .legend { order: 60; }
 
   .practice-focus-app .practice-info .practice-history-panel {
+    height: 300px;
     min-height: 300px;
     flex: 0 0 auto;
   }
@@ -2190,7 +2184,9 @@
   }
 
   .practice-focus-app .practice-history-panel {
+    height: 420px;
     min-height: 420px;
+    flex: 0 0 auto;
   }
 
   .practice-focus-app .hist-list {

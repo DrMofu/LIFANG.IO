@@ -703,7 +703,7 @@ export function SettingsApp() {
       <AppTopbar />
 
       <main className="settings-main">
-        <section className="settings-card settings-card-appearance">
+        <section className="settings-card ui-info-panel settings-card-appearance">
           <div className="ui-section-head settings-card-head">
             <div className="ui-section-title-line">
               <div className="ui-section-title">{t("settings.display.title")}</div>
@@ -769,7 +769,7 @@ export function SettingsApp() {
           </div>
         </section>
 
-        <section className="settings-card settings-card-other">
+        <section className="settings-card ui-info-panel settings-card-other">
           <div className="ui-section-head settings-card-head">
             <div className="ui-section-title-line">
               <div className="ui-section-title">{t("settings.other.title")}</div>
@@ -879,7 +879,7 @@ export function SettingsApp() {
           </div>
         </section>
 
-        <section className="settings-card settings-card-cloud">
+        <section className="settings-card ui-info-panel settings-card-cloud">
           <div className="ui-section-head settings-card-head">
             <div className="ui-section-title-line">
               <div className="ui-section-title">{t("云端同步")}</div>
@@ -968,7 +968,7 @@ export function SettingsApp() {
           </div>
         </section>
 
-        <section className="settings-card settings-card-archive">
+        <section className="settings-card ui-info-panel settings-card-archive">
           <div className="ui-section-head settings-card-head">
             <div className="ui-section-title-line">
               <div className="ui-section-title">{t("存档管理")}</div>
@@ -1027,7 +1027,7 @@ export function SettingsApp() {
         <div className="settings-debug-block">
           {showDebugSettings && (
             <>
-              <section className="settings-card settings-card-console">
+              <section className="settings-card ui-info-panel settings-card-console">
                 <div className="ui-section-head settings-card-head">
                   <div className="ui-section-title-line">
                     <div className="ui-section-title">{t("Console 打印管理")}</div>
@@ -1057,7 +1057,7 @@ export function SettingsApp() {
                 </div>
               </section>
 
-              <section className="settings-card settings-card-console settings-card-debug-tools">
+              <section className="settings-card ui-info-panel settings-card-console settings-card-debug-tools">
                 <div className="ui-section-head settings-card-head">
                   <div className="ui-section-title-line">
                     <div className="ui-section-title">{t("Debug 管理")}</div>

@@ -1272,10 +1272,11 @@ function CfopTrainerClient() {
       <main className="practice-layout trainer-layout">
         <div className="practice-info">
         <section className="practice-left trainer-left">
-          <div className="practice-control-panel trainer-catalog-panel">
+          <div className="practice-control-panel trainer-catalog-panel ui-info-panel">
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("专项列表")}</div>
+                <span className="practice-kicker" aria-hidden="true">LIST</span>
               </div>
             </div>
             <div className="stage-tools trainer-phase-list" aria-label={t("专项阶段选择")}>
@@ -1298,10 +1299,11 @@ function CfopTrainerClient() {
         </section>
 
         <section className="practice-right trainer-right">
-          <div className="practice-control-panel trainer-settings-panel">
+          <div className="practice-control-panel trainer-settings-panel ui-info-panel">
               <div className="practice-card-head practice-control-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("专项设置")}</div>
+                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
                 </div>
               </div>
               <label className="ui-setting-row trainer-round-setting">
@@ -1365,10 +1367,11 @@ function CfopTrainerClient() {
               </div>
             </div>
 
-          <div className="stats trainer-results-panel" aria-live="polite">
+          <div className="stats trainer-results-panel ui-info-panel" aria-live="polite">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
+                <span className="practice-kicker" aria-hidden="true">SCORE</span>
               </div>
             </div>
               {isRecognitionSpecialty ? (
@@ -1438,7 +1441,7 @@ function CfopTrainerClient() {
               {formulaHintVisible && (
                 <div className="stage-hint trainer-formula-panel" role="status" aria-label={t("公式提示")}>
                   <div className="ui-section-head">
-                    <div className="ui-section-title">{t("公式提示")}</div>
+                    <div className="ui-section-title-line"><div className="ui-section-title">{t("公式提示")}</div><span className="ui-section-kicker" aria-hidden="true">HINT</span></div>
                     <div className="sh-actions">
                       <div className="sh-counter">
                         <span className="sh-counter-num">{formulaHintCounter}</span>

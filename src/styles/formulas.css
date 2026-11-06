@@ -1,5 +1,4 @@
-.fm-mobile-choose,
-.fm-mobile-library-head {
+.fm-mobile-choose {
   display: none;
 }
 
@@ -16,21 +15,7 @@
   overflow: hidden;
 }
 
-.lf-tech-app .fm-left,
-.lf-tech-app .fm-detail-empty {
-  border-color: rgba(222, 232, 248, 0.9);
-  background: rgba(255, 255, 255, 0.68);
-  box-shadow: 0 18px 50px rgba(39, 55, 86, 0.12);
-}
 
-.lf-tech-app .formula-primary-panel,
-.lf-tech-app .fm-side-bottom {
-  border: 0;
-  border-radius: 22px;
-  background: #f8fbff;
-  box-shadow: 6px 8px 20px rgba(65, 94, 142, 0.07);
-  backdrop-filter: none;
-}
 
 .lf-tech-app .fm-left {
   position: absolute;
@@ -906,10 +891,10 @@
   flex: 0 0 auto;
   flex-direction: column;
   gap: 12px;
-  margin: 0 14px;
+  margin: 0;
   border-top: 0;
   border-bottom: 0;
-  padding: 13px 2px 14px;
+  padding: 0;
 }
 
 .lf-tech-app .formula-hero {
@@ -961,23 +946,9 @@
   gap: 8px;
 }
 
-.lf-tech-app .formula-hero-info h2 {
-  display: flex;
-  min-width: 0;
-  align-items: baseline;
-  gap: 8px;
-  margin: 0;
-  color: var(--tech-ink);
-  font-size: var(--ui-type-xl);
-  font-weight: var(--ui-weight-emphasis);
-  line-height: 1.15;
-}
-
-.lf-tech-app .formula-hero-info h2 span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.lf-tech-app .formula-detail-title-line { flex: 1; }
+.lf-tech-app .formula-hero-info h2 { min-width: 0; overflow-wrap: anywhere; }
+.lf-tech-app .formula-hero-title { flex-wrap: wrap; }
 
 .lf-tech-app .formula-hero-title > b {
   flex: 0 0 auto;
@@ -1172,7 +1143,7 @@
   width: 100%;
   flex: 1;
   flex-direction: column;
-  padding: 14px;
+  padding: 0;
 }
 
 .lf-tech-app .formula-stats-head,
@@ -1226,10 +1197,6 @@
 
 .lf-tech-app .fm-side-bottom-stats {
   flex: 1 0 auto;
-}
-
-.lf-tech-app .formula-stats-section {
-  padding: 16px;
 }
 
 .lf-tech-app .fm-stats-head {
@@ -1337,7 +1304,7 @@
 
 .lf-tech-app .fm-stat-row {
   --history-row-size: 36px;
-  grid-template-columns: minmax(40px, auto) minmax(12px, 1fr) auto 68px;
+  grid-template-columns: minmax(40px, auto) minmax(12px, 1fr) auto;
   column-gap: 12px;
   padding: 7px 8px;
 }
@@ -1547,21 +1514,14 @@
     height: 100%;
     max-height: none;
     min-height: 0;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     border: 0;
     border-radius: inherit;
     box-shadow: none;
   }
 
-  .fm-mobile-library-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 16px 0;
-  }
 
-  .fm-mobile-library-head > button {
+  .fm-library-close-row > button {
     display: grid;
     place-items: center;
     flex: none;
@@ -1737,9 +1697,6 @@
     grid-row: 1;
   }
 
-  .lf-tech-app .formula-hero-info h2 {
-    font-size: var(--ui-type-lg);
-  }
 
   .lf-tech-app .formula-selection-tags {
     grid-column: 2;

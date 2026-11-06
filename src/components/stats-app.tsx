@@ -1423,7 +1423,7 @@ export function StatsApp() {
             ))}
           </dl>
           <div
-            className="st-card st-daily-level"
+            className="st-card st-daily-level ui-info-panel"
             onPointerLeave={() => setDailyLevelTip(null)}
             onMouseLeave={() => setDailyLevelTip(null)}
           >
@@ -1549,7 +1549,7 @@ export function StatsApp() {
             {portalReady && isDailyHistoryOpen && createPortal(
               <div className="dl-history-backdrop" onMouseDown={() => setIsDailyHistoryOpen(false)}>
                 <section
-                  className="dl-history-dialog"
+                  className="dl-history-dialog ui-info-panel"
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="daily-history-title"
@@ -1619,7 +1619,7 @@ export function StatsApp() {
         </section>
 
         <section className="st-heatmap-row">
-          <div className="st-card st-heatmap">
+          <div className="st-card st-heatmap ui-info-panel">
             <div className="ui-section-head st-card-head">
               <div className="ui-section-title-line">
                 <div className="ui-section-title">{t("练习热力图")}</div>
@@ -1703,7 +1703,7 @@ export function StatsApp() {
 
         <section className="st-row-2">
           <div
-            className="st-card st-trend"
+            className="st-card st-trend ui-info-panel"
             onPointerLeave={clearTrendHover}
             onMouseLeave={clearTrendHover}
           >
@@ -1769,7 +1769,7 @@ export function StatsApp() {
             ), document.body)}
           </div>
 
-          <div className="st-card st-cfop">
+          <div className="st-card st-cfop ui-info-panel">
             <div className="ui-section-head st-card-head">
               <div className="ui-section-title-line">
                 <div className="ui-section-title">{t("近期成绩概览")}</div>

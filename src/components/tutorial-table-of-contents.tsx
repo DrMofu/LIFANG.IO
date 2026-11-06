@@ -94,8 +94,8 @@ export function TutorialTableOfContents({
   }, [headings]);
 
   return (
-    <nav ref={navRef} className="tutorial-toc" aria-label={label}>
-      <div className="tutorial-toc-title">{label}</div>
+    <nav ref={navRef} className="tutorial-toc ui-info-panel" aria-label={label}>
+      <div className="ui-section-head"><div className="ui-section-title-line"><div className="ui-section-title">{label}</div><span className="ui-section-kicker" aria-hidden="true">CONTENTS</span></div></div>
       <ol>
         {headings.map(({ id, title }) => (
           <li key={id}>

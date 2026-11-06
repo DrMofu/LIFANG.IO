@@ -26,7 +26,7 @@ export function DailyTestResultDialog({ entry, onClose }: { entry: DailyLevelEnt
   return (
     <dialog
       ref={dialogRef}
-      className="daily-result-dialog"
+      className="daily-result-dialog ui-info-panel"
       aria-labelledby="daily-result-title"
       onCancel={onClose}
       onClick={(event) => {
@@ -40,7 +40,7 @@ export function DailyTestResultDialog({ entry, onClose }: { entry: DailyLevelEnt
     >
       <header className="daily-result-head">
         <div>
-          <h2 id="daily-result-title" className="ui-section-title">{t("dailyResult.title")}</h2>
+          <div className="ui-section-title-line"><h2 id="daily-result-title" className="ui-section-title">{t("dailyResult.title")}</h2><span className="ui-section-kicker" aria-hidden="true">DAILY TEST</span></div>
           <time dateTime={entry.localDate}>{entry.localDate}</time>
         </div>
       </header>
