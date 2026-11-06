@@ -10,6 +10,8 @@ import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/solve-record-details";
 import { useLanguage } from "@/components/language-provider";
+import { useGyroPowerNotice } from "@/components/gyro-power-notice";
+import { isTextEntryTarget } from "@/lib/keyboard-shortcuts";
 import {
   useCubeConnection,
   type CubeFaceletsSignal,
@@ -300,12 +302,6 @@ type HistoryCfopTip = {
   placement: "above" | "below";
 };
 type FormulaRecognitionModule = typeof import("@/lib/formula-recognition");
-
-function isTextEntryTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return target.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
-}
 
 type DailyTestRun = {
   id: string;
@@ -644,6 +640,7 @@ export function CubePracticeApp() {
   const [, setFreeScrambleMoveCount] = useState(0);
   const [freeNotice, setFreeNotice] = useState<string | null>(null);
   const [gyroDisabled, setGyroDisabled] = useState(false);
+  const { notifyGyroEnabled, gyroPowerNotice } = useGyroPowerNotice();
   const [formulaRecognitionEnabled, setFormulaRecognitionEnabled] = useState(false);
   const [recognizedFormula, setRecognizedFormula] = useState<FormulaRecognitionResult | null>(null);
   const [formulaLearningStatuses, setFormulaLearningStatuses] = useState<Record<string, FormulaLearningStatus>>({});
@@ -2349,13 +2346,11 @@ export function CubePracticeApp() {
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
       if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (dailyTestResult || historyDialogOpen || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
-      if (key === " " && event.target instanceof HTMLElement) {
-        event.target.closest<HTMLButtonElement>(".practice-settings-panel button")?.blur();
-      }
+      if (event.repeat) return;
       if (key === " " && timingModeRef.current === "timer") {
         beginManualTimerHold();
         return;
@@ -2461,6 +2456,7 @@ export function CubePracticeApp() {
     const next = !gyroDisabledRef.current;
     gyroDisabledRef.current = next;
     setGyroDisabled(next);
+    notifyGyroEnabled(!next);
     if (next) {
       const displayState = cubeApiRef.current?.getDisplayState();
       cubeApiRef.current?.resetGyroOrientation();
@@ -2618,8 +2614,8 @@ export function CubePracticeApp() {
       const nextScramble = generateScramble(SCRAMBLE_LENGTH);
       resetAttempt(nextScramble);
       setScrambleNotice(t(showKeyboardHints
-        ? "按照公式自行完成打乱，准备复原时长按空格键。"
-        : "按照公式自行完成打乱，准备复原时长按计时器。"));
+        ? "按照公式自行完成打乱，准备复原时长按空格或界面。"
+        : "按照公式自行完成打乱，准备复原时长按界面。"));
     }
   }
 
@@ -2784,16 +2780,16 @@ export function CubePracticeApp() {
         )
       : 0;
   const manualTimerPhaseLabel = manualFallbackNotice && phase === "solving"
-    ? t(showKeyboardHints ? "连接已断开 · 按空格结束并仅保存总用时" : "连接已断开 · 点击计时器结束并仅保存总用时")
+    ? t(showKeyboardHints ? "连接已断开 · 按空格或点击界面结束并仅保存总用时" : "连接已断开 · 点击界面结束并仅保存总用时")
     : phase === "solving"
-      ? t(showKeyboardHints ? "按空格键结束" : "点击计时器结束")
+      ? t(showKeyboardHints ? "按空格或点击界面结束" : "点击界面结束")
       : manualTimerArmState === "ready"
         ? t("松开开始")
         : manualTimerArmState === "holding"
           ? t("继续按住")
           : phase === "done"
-            ? t(showKeyboardHints ? "长按空格键或计时器以开始下一次" : "长按计时器以开始下一次")
-            : t(showKeyboardHints ? "长按空格键或计时器以准备" : "长按计时器以准备");
+            ? t(showKeyboardHints ? "长按空格或界面以开始下一次" : "长按界面以开始下一次")
+            : t(showKeyboardHints ? "长按空格或界面以准备" : "长按界面以准备");
   const manualTimerDisplayMs = manualTimerArmState === "idle" && (phase === "solving" || phase === "done") ? solveMs : 0;
   const currentSolveTimeline = !isManualTimer && phase !== "solving" && completedSolveTimeline?.durationMs === Math.round(solveMs)
     ? completedSolveTimeline
@@ -2810,6 +2806,7 @@ export function CubePracticeApp() {
   return (
     <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}`}>
       <AppTopbar />
+      {gyroPowerNotice}
 
       <main className="practice-layout">
         <div className="practice-info">

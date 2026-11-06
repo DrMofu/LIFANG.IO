@@ -6,6 +6,8 @@ import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } fro
 import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { useLanguage } from "@/components/language-provider";
+import { useGyroPowerNotice } from "@/components/gyro-power-notice";
+import { isTextEntryTarget } from "@/lib/keyboard-shortcuts";
 import { useKeyboardHints } from "@/lib/use-keyboard-hints";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
@@ -284,12 +286,6 @@ function isDefaultDisplayState(state: CubeDisplayState) {
   );
 }
 
-function isTextEntryTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return target.isContentEditable || tag === "input" || tag === "textarea" || tag === "select";
-}
-
 function normalizeMove(move: string) {
   return parseMoveNotation(move)?.notation ?? move;
 }
@@ -432,6 +428,7 @@ function CfopTrainerClient() {
   const [formulaHintUndoDisplay, setFormulaHintUndoDisplay] = useState<string[]>([]);
   const [f2lFocusMode, setF2lFocusMode] = useState(readF2lFocusModeEnabled);
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
+  const { notifyGyroEnabled, gyroPowerNotice } = useGyroPowerNotice();
   const [sessionRoundLimit, setSessionRoundLimit] = useState(readStoredTrainerSessionRounds);
   const [sessionInProgress, setSessionInProgress] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
@@ -1143,13 +1140,14 @@ function CfopTrainerClient() {
     const next = !gyroDisabledRef.current;
     gyroDisabledRef.current = next;
     setGyroDisabled(next);
+    notifyGyroEnabled(!next);
     if (next) {
       const displayState = cubeApiRef.current?.getDisplayState();
       cubeApiRef.current?.resetGyroOrientation();
       setViewResetEnabled(displayState ? !isDefaultDisplayState(displayState) : false);
     }
     savePracticeGyroDisabled(next);
-  }, []);
+  }, [notifyGyroEnabled]);
 
   const toggleF2lFocusMode = useCallback(() => {
     if (settingsLocked) return;
@@ -1167,11 +1165,11 @@ function CfopTrainerClient() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== " ") return;
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
       if (formulaLibraryOpen || isTextEntryTarget(event.target)) return;
-      if (connecting) return;
 
       event.preventDefault();
+      if (event.repeat || connecting) return;
       void startTraining();
     };
     window.addEventListener("keydown", onKey);
@@ -1269,6 +1267,7 @@ function CfopTrainerClient() {
   return (
     <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
       <AppTopbar />
+      {gyroPowerNotice}
       <main className="practice-layout trainer-layout">
         <div className="practice-info">
         <section className="practice-left trainer-left">

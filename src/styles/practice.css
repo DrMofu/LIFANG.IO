@@ -788,8 +788,13 @@
 }
 
 .practice-focus-app .daily-test-card .practice-card-head {
+  align-items: baseline;
   margin-bottom: 5px;
   padding: 0 4px;
+}
+
+.practice-focus-app .daily-test-card .practice-title-line {
+  align-self: baseline;
 }
 
 .practice-focus-app .dt-date {
