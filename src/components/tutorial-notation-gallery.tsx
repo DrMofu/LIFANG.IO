@@ -6,14 +6,15 @@ import { TutorialStaticCube } from "@/components/tutorial-static-cube";
 import type { CubeOrientation } from "@/lib/cube-appearance";
 import type { CubeFace } from "@/lib/smart-cube";
 
-type GalleryId = "faces" | "turns" | "suffixes" | "rotations" | "slices" | "wide";
+type GalleryId = "faces" | "turns" | "suffixes" | "rotations" | "slices" | "wide" | "pieces";
 
 type MoveDiagram = {
-  symbol: string;
-  move: string;
+  symbol?: string;
+  move?: string;
   title: string;
   note?: string;
   face?: CubeFace;
+  formulaFacelets?: string;
 };
 
 const FACE_ORDER: CubeFace[] = ["U", "R", "F", "D", "L", "B"];
@@ -23,6 +24,14 @@ function highlightedFacelets(face: CubeFace) {
 }
 
 const GALLERIES: Record<GalleryId, { label: string; items: MoveDiagram[] }> = {
+  pieces: {
+    label: "棱块、角块与中心块示意",
+    items: [
+      { title: "棱块", formulaFacelets: FACE_ORDER.map((face) => `X${face}X${face}X${face}X${face}X`).join("") },
+      { title: "角块", formulaFacelets: FACE_ORDER.map((face) => `${face}X${face}XXX${face}X${face}`).join("") },
+      { title: "中心块", formulaFacelets: FACE_ORDER.map((face) => `XXXX${face}XXXX`).join("") },
+    ],
+  },
   faces: {
     label: "六个面的转动示意",
     items: [
@@ -83,6 +92,10 @@ const GALLERIES: Record<GalleryId, { label: string; items: MoveDiagram[] }> = {
 };
 
 const ENGLISH_GALLERY_COPY: Record<string, string> = {
+  "棱块、角块与中心块示意": "Edges, corners, and centers",
+  "棱块": "Edges",
+  "角块": "Corners",
+  "中心块": "Centers",
   "六个面的转动示意": "The six cube faces",
   "右面": "Right face",
   "左面": "Left face",
@@ -152,15 +165,15 @@ function NotationCard({
       <div className="tutorial-notation-visual">
         <TutorialStaticCube
           hintMove={diagram.face ? undefined : diagram.move}
-          formulaFacelets={diagram.face ? highlightedFacelets(diagram.face) : undefined}
+          formulaFacelets={diagram.formulaFacelets ?? (diagram.face ? highlightedFacelets(diagram.face) : undefined)}
           transparentFormulaFacelets={Boolean(diagram.face)}
           faceColors={faceColors}
           orientation={orientation}
-          sizes="(max-width: 560px) 50vw, (max-width: 760px) 45vw, 240px"
+          sizes="(width <= 700px) 50vw, (width <= 1240px) 33vw, 240px"
         />
       </div>
       <figcaption>
-        <code>{diagram.symbol}</code>
+        {diagram.symbol ? <code>{diagram.symbol}</code> : null}
         <span className="tutorial-notation-copy">
           <strong>{getGalleryCopy(diagram.title, locale)}</strong>
           {diagram.note ? <small>{getGalleryCopy(diagram.note, locale)}</small> : null}
@@ -188,7 +201,7 @@ export function TutorialNotationGallery({ group }: { group: string }) {
           faceColors={faceColors}
           orientation={orientation}
           locale={locale}
-          key={diagram.symbol}
+          key={diagram.title}
         />
       ))}
     </section>

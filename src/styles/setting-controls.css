@@ -133,7 +133,9 @@
   font: 600 12px/1.4 var(--sans);
   cursor: pointer;
 }
-.ui-setting-segments > button:hover:not(:disabled) { background: white; color: var(--tech-blue); }
+@media (hover: hover) and (pointer: fine) {
+  .ui-setting-segments > button:hover:not(:disabled):not(.active) { background: white; color: var(--tech-blue); }
+}
 .ui-setting-segments > button.active { background: var(--tech-blue); color: white; }
 .ui-setting-segments > button:disabled { color: var(--tech-muted); cursor: not-allowed; }
 .ui-setting-segments > button.active:disabled { background: #c3d4ef; color: #344f79; }

@@ -435,18 +435,27 @@ export function SettingsApp() {
 
   async function uploadToCloud() {
     if (!supabase || !user || cloudActionPending) return;
-    const currentPayload = buildCurrentUserDataPayload();
-    const localTimestamp = getLocalPackageTimestamp(currentPayload) ?? new Date().toISOString();
-    if (cloudSnapshotMetadata) {
-      const message = isNewerTimestamp(getCloudSnapshotTimestamp(cloudSnapshotMetadata), localTimestamp)
-        ? t("云端数据包更新时间晚于本地。继续上传会覆盖较新的云端数据。是否继续？")
-        : t("云端已有数据，上传将覆盖云端备份。本地数据保持不变。");
-      const confirmed = (await requestDialog({ title: t("上传到云端"), message, confirmLabel: t("上传到云端"), danger: true })) !== null;
-      if (!confirmed) return;
-    }
-
     setCloudActionPending(true);
     try {
+      const snapshot = await loadCloudSnapshot(supabase);
+      const currentPayload = buildCurrentUserDataPayload();
+      if (snapshot) {
+        const cloudData = parseUserDataImport(snapshot.payload);
+        if (!cloudData) throw new Error("Invalid cloud data package");
+        const cloudCount = cloudData.history.length;
+        const localCount = currentPayload.practice.history.length;
+        if (cloudCount > localCount) {
+          const confirmed = (await requestDialog({
+            title: t("上传到云端"),
+            message: t("cloud.confirmOverwriteMoreSolves")
+              .replace("{cloudCount}", String(cloudCount))
+              .replace("{localCount}", String(localCount)),
+            confirmLabel: t("上传到云端"),
+            danger: true,
+          })) !== null;
+          if (!confirmed) return;
+        }
+      }
       const clientUpdatedAt = touchLocalUserDataPackageUpdatedAt() ?? new Date().toISOString();
       const payload = buildCurrentUserDataPayload();
       await saveCloudSnapshot({ supabase, userId: user.id, payload, clientUpdatedAt });

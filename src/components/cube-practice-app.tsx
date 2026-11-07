@@ -10,7 +10,7 @@ import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/solve-record-details";
 import { useLanguage } from "@/components/language-provider";
-import { useGyroPowerNotice } from "@/components/gyro-power-notice";
+import { useGyroPowerNotice, useTimedNotice } from "@/components/gyro-power-notice";
 import { isTextEntryTarget } from "@/lib/keyboard-shortcuts";
 import {
   useCubeConnection,
@@ -641,6 +641,7 @@ export function CubePracticeApp() {
   const [freeNotice, setFreeNotice] = useState<string | null>(null);
   const [gyroDisabled, setGyroDisabled] = useState(false);
   const { notifyGyroEnabled, gyroPowerNotice } = useGyroPowerNotice();
+  const { showNotice: notifySmartSolveDisconnected, notice: smartSolveConnectionNotice } = useTimedNotice(t("请先连接智能魔方，再使用智能求解。"));
   const [formulaRecognitionEnabled, setFormulaRecognitionEnabled] = useState(false);
   const [recognizedFormula, setRecognizedFormula] = useState<FormulaRecognitionResult | null>(null);
   const [formulaLearningStatuses, setFormulaLearningStatuses] = useState<Record<string, FormulaLearningStatus>>({});
@@ -2485,7 +2486,7 @@ export function CubePracticeApp() {
 
   async function beginSmartSolve() {
     if (!isConnected) {
-      failSmartSolve(t("请先连接智能魔方，再使用智能求解。"));
+      notifySmartSolveDisconnected();
       return;
     }
 
@@ -2809,6 +2810,7 @@ export function CubePracticeApp() {
     <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}`}>
       <AppTopbar />
       {gyroPowerNotice}
+      {smartSolveConnectionNotice}
 
       <main className="practice-layout">
         <div className="practice-info" inert={isManualTimerFocused}>

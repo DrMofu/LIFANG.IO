@@ -23,7 +23,6 @@ export function CubeFaceLabel({ face }: { face: CubeFace }) {
 
   return (
     <span className="cube-inline-face" role="img" aria-label={`${face} ${t(COLOR_LABEL[color])}`}>
-      {face}
       <span className="cube-inline-face-swatch" style={{ background: faceColors[face] }} aria-hidden="true" />
     </span>
   );

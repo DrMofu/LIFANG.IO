@@ -1,6 +1,5 @@
 "use client";
 
-import { CubeD, CubeU } from "@/components/cube-inline-labels";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { TutorialStaticCube } from "@/components/tutorial-static-cube";
 import type { CubeOrientation } from "@/lib/cube-appearance";
@@ -345,7 +344,6 @@ export function TutorialSolveFlow() {
 
   return (
     <>
-      <p>先完成底层（<CubeD />），再复原中间层，最后处理顶层（<CubeU />）的棱块与角块。</p>
       <ol className="tutorial-solve-flow" aria-label="层先法复原流程">
         {SOLVE_FLOW.map(({ stage, label, heading }, index) => (
           <li key={stage}>

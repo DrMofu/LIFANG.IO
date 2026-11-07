@@ -443,7 +443,7 @@ html[lang="en"] .ui-section-kicker {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 26px;
-  background: rgba(248, 251, 255, 0.97);
+  background: #f8fbff;
   box-shadow: 0 32px 90px rgba(26, 48, 86, 0.28);
   color: var(--tech-ink);
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;

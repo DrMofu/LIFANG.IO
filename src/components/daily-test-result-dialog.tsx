@@ -39,10 +39,8 @@ export function DailyTestResultDialog({ entry, onClose }: { entry: DailyLevelEnt
       }}
     >
       <header className="daily-result-head">
-        <div>
-          <div className="ui-section-title-line"><h2 id="daily-result-title" className="ui-section-title">{t("dailyResult.title")}</h2><span className="ui-section-kicker" aria-hidden="true">DAILY TEST</span></div>
-          <time dateTime={entry.localDate}>{entry.localDate}</time>
-        </div>
+        <div className="ui-section-title-line"><h2 id="daily-result-title" className="ui-section-title">{t("dailyResult.title")}</h2><span className="ui-section-kicker" aria-hidden="true">DAILY TEST</span></div>
+        <time dateTime={entry.localDate}>{entry.localDate}</time>
       </header>
       <div className="daily-result-score">
         <span>{t("dailyResult.average")} <span className="daily-result-ao5">Ao5</span></span>

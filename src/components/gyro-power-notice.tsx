@@ -6,8 +6,7 @@ import { useLanguage } from "@/components/language-provider";
 
 const NOTICE_DURATION_MS = 3500;
 
-export function useGyroPowerNotice() {
-  const { t } = useLanguage();
+export function useTimedNotice(message: string) {
   const [visible, setVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -15,7 +14,7 @@ export function useGyroPowerNotice() {
     if (timerRef.current !== null) clearTimeout(timerRef.current);
   }, []);
 
-  const notifyGyroEnabled = useCallback((enabled: boolean) => {
+  const showNotice = useCallback((enabled = true) => {
     if (timerRef.current !== null) clearTimeout(timerRef.current);
     timerRef.current = null;
     setVisible(enabled);
@@ -27,12 +26,18 @@ export function useGyroPowerNotice() {
     }
   }, []);
 
-  const gyroPowerNotice = visible ? createPortal(
+  const notice = visible ? createPortal(
     <div className="gyro-power-notice" role="status">
-      {t("connection.gyroPowerNotice")}
+      {message}
     </div>,
     document.body,
   ) : null;
 
-  return { notifyGyroEnabled, gyroPowerNotice };
+  return { showNotice, notice };
+}
+
+export function useGyroPowerNotice() {
+  const { t } = useLanguage();
+  const { showNotice, notice } = useTimedNotice(t("connection.gyroPowerNotice"));
+  return { notifyGyroEnabled: showNotice, gyroPowerNotice: notice };
 }

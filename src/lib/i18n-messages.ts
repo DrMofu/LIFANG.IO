@@ -2,6 +2,7 @@ import type { Locale } from "@/lib/i18n";
 
 export const messages = {
   zh: {
+    "cloud.confirmOverwriteMoreSolves": "云端有 {cloudCount} 条复原记录，本地有 {localCount} 条。上传将覆盖云端备份，是否继续？",
     "formulaCatalog.count": "{count}个公式",
     "formulaCatalog.masteredCount": "{count}个公式已掌握",
     "formulaCatalog.learningCount": "{count}个公式学习中",
@@ -122,7 +123,7 @@ export const messages = {
     "connection.platformSupportTitle": "支持平台",
     "connection.platformSupport": "电脑：推荐 Chrome浏览器\n安卓设备：推荐 Chrome浏览器\niPhone、iPad ：请使用 Bluefy浏览器",
     "connection.environment.os": "当前系统",
-    "connection.environment.bluefyRequired": "iPhone、iPad使用非 Bluefy 浏览器时无法使用魔方蓝牙连接功能。若想连接魔方，请使用 BlueFfy浏览器。",
+    "connection.environment.bluefyRequired": "iPhone、iPad使用非 Bluefy 浏览器时无法使用魔方蓝牙连接功能。若想连接魔方，请使用 Bluefy浏览器。",
     "connection.bluefyNoticeTitle": "请使用 Bluefy 浏览器",
     "connection.bluefyNoticeClose": "关闭浏览器提醒",
     "connection.environment.browser": "当前浏览器",
@@ -160,6 +161,7 @@ export const messages = {
     "connection.batteryUnknown": "电量未知",
   },
   en: {
+    "cloud.confirmOverwriteMoreSolves": "The cloud has {cloudCount} solve records and local data has {localCount}. Uploading will overwrite the cloud backup. Continue?",
     "formulaCatalog.count": "{count} algorithms",
     "formulaCatalog.masteredCount": "{count} algorithms mastered",
     "formulaCatalog.learningCount": "{count} algorithms in progress",

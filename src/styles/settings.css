@@ -350,7 +350,6 @@
   background: #ffffff;
   box-shadow: 0 18px 38px rgba(45, 78, 128, 0.18);
   padding: 6px;
-  backdrop-filter: blur(18px);
 }
 
 .settings-palette-menu {

@@ -26,6 +26,16 @@ By convention, many tutorials place yellow on top (`U`) and white on the bottom 
 The same notation works with every color scheme. As long as you keep the same grip, `R` always means the face on your right.
 
 
+## Edges, Corners, and Centers
+
+A 3×3 cube has 26 visible pieces, divided into three types by their position and number of colors.
+
+<!-- tutorial-widget:notation-gallery {"group":"pieces"} -->
+
+- **Edges** sit where two faces meet. There are 12 edges.
+- **Corners** sit where three faces meet. There are 8 corners.
+- **Centers** sit in the middle of each face. There are 6 centers.
+
 ## Face Turns
 
 The face letters also describe turns.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthProvider } from "@/components/auth-provider";
+import { ButtonFocusManager } from "@/components/button-focus-manager";
 import { CubeAppearanceProvider } from "@/components/cube-appearance-provider";
 import { CubeConnectionProvider } from "@/components/cube-connection-provider";
 import { LanguageProvider } from "@/components/language-provider";
@@ -33,6 +34,7 @@ export default async function RootLayout({
   return (
     <html lang={initialLocale === "zh" ? "zh-CN" : "en"}>
       <body suppressHydrationWarning>
+        <ButtonFocusManager />
         <LanguageProvider initialLocale={initialLocale}>
           <SystemNotificationProvider>
             <AuthProvider>

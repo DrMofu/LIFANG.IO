@@ -748,7 +748,6 @@ export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorS
                 </select>
               </div>
               <div className="top-connect-prompt-note">
-                <span className={connecting ? "dot dot-pulse" : "dot"} aria-hidden="true" />
                 {t("connection.ganOnly")}
               </div>
             </div>

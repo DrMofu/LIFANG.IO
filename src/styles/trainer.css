@@ -160,7 +160,7 @@
 }
 
 .formula-library-dialog {
-  --tech-panel: #fff;
+  --tech-panel: var(--tech-floating-panel);
   width: min(800px, calc(100vw - 32px));
   max-height: min(850px, calc(100dvh - 32px));
   margin: auto;

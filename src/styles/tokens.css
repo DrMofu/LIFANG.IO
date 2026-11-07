@@ -10,6 +10,7 @@
 }:root {
   --tech-bg: #f4f8ff;
   --tech-panel: rgba(255, 255, 255, 0.82);
+  --tech-floating-panel: #ffffff;
   --tech-ink: #101827;
   --tech-ink-2: #253656;
   --tech-muted: #7382a0;
