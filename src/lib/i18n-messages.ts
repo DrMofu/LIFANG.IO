@@ -2,6 +2,10 @@ import type { Locale } from "@/lib/i18n";
 
 export const messages = {
   zh: {
+    "cloud.reading": "正在读取云端数据…",
+    "cloud.uploading": "正在上传到云端…",
+    "cloud.restoring": "正在从云端恢复…",
+    "cloud.sendCodeFailed": "发送验证码失败，请稍后重试。",
     "cloud.confirmOverwriteMoreSolves": "云端有 {cloudCount} 条复原记录，本地有 {localCount} 条。上传将覆盖云端备份，是否继续？",
     "formulaCatalog.count": "{count}个公式",
     "formulaCatalog.masteredCount": "{count}个公式已掌握",
@@ -150,7 +154,7 @@ export const messages = {
     "connection.field.softwareVersion": "软件版本",
     "connection.field.productDate": "生产日期",
     "connection.field.gyro": "陀螺仪",
-    "connection.gyroPowerNotice": "开启陀螺仪会增加魔方耗电。",
+    "connection.gyroPowerNotice": "开启陀螺仪会增加本项目功耗",
     "connection.field.facelets": "面块状态",
     "connection.field.lastMove": "最近转动",
     "connection.field.updated": "更新时间",
@@ -161,6 +165,10 @@ export const messages = {
     "connection.batteryUnknown": "电量未知",
   },
   en: {
+    "cloud.reading": "Reading cloud data…",
+    "cloud.uploading": "Uploading to the cloud…",
+    "cloud.restoring": "Restoring from the cloud…",
+    "cloud.sendCodeFailed": "Could not send the verification code. Please try again.",
     "cloud.confirmOverwriteMoreSolves": "The cloud has {cloudCount} solve records and local data has {localCount}. Uploading will overwrite the cloud backup. Continue?",
     "formulaCatalog.count": "{count} algorithms",
     "formulaCatalog.masteredCount": "{count} algorithms mastered",
@@ -309,7 +317,7 @@ export const messages = {
     "connection.field.softwareVersion": "SW Version",
     "connection.field.productDate": "Product Date",
     "connection.field.gyro": "Gyro",
-    "connection.gyroPowerNotice": "Enabling the gyroscope increases your cube’s battery usage.",
+    "connection.gyroPowerNotice": "Enabling the gyroscope increases this app’s power consumption",
     "connection.field.facelets": "Facelets",
     "connection.field.lastMove": "Last Move",
     "connection.field.updated": "Updated",

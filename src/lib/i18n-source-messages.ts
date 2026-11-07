@@ -1,6 +1,5 @@
 // Source-text keys keep the initial migration compact. New copy should prefer semantic keys.
 export const englishSourceMessages: Record<string, string> = {
-  "云端已有数据，上传将覆盖云端备份。本地数据保持不变。": "Uploading replaces the existing cloud backup. Your local data stays unchanged.",
   "处理中": "Processing",
   "上传失败，请检查网络后重试。": "Upload failed. Check your connection and try again.",
   "云端同步暂不可用，本地数据不受影响。": "Cloud sync is unavailable. Your local data is unaffected.",
@@ -251,7 +250,6 @@ export const englishSourceMessages: Record<string, string> = {
 
   "切换到自由练习后，请先连接并复原魔方。": "After switching to free practice, connect and solve the cube first.",
   "点击开始打乱后，按公式转动真实魔方。": "Select Start Scramble, then follow the algorithm on your physical cube.",
-  "点击智能求解后，将根据真实魔方状态生成复原公式。": "Smart Solve generates a solution from the physical cube's current state.",
   "无限观察": "Unlimited inspection",
   "未收到 facelets，无法确认打乱完成；请再转一下或重新同步魔方状态。": "No facelets received, so the scramble cannot be confirmed. Make another turn or sync the cube again.",
   "检测到魔方仍为复原态，可继续自由打乱。": "The cube is still solved. Continue scrambling freely.",
@@ -275,7 +273,6 @@ export const englishSourceMessages: Record<string, string> = {
   "检测到魔方已复原，本次自由练习未开始计时。": "The cube is solved, so this free-practice timer did not start.",
   "智能魔方连接已断开，智能求解已停止。": "The smart cube disconnected, so Smart Solve stopped.",
   "请先连接智能魔方，再使用智能求解。": "Connect the smart cube before using Smart Solve.",
-  "正在同步真实魔方状态并计算复原公式。": "Syncing the physical cube and calculating a solution.",
   "未收到真实魔方状态，请确认连接稳定后再试。": "No physical cube state received. Check the connection and try again.",
   "求解失败，请重新同步魔方状态后再试。": "Solve failed. Sync the cube state and try again.",
   "已取消每日五次测试。": "Daily five-solve test canceled.",
@@ -375,7 +372,6 @@ export const englishSourceMessages: Record<string, string> = {
   "退出失败，请稍后重试。": "Sign-out failed. Try again later.",
   "已刷新云端状态。": "Cloud status refreshed.",
   "读取云端数据失败。": "Could not read cloud data.",
-  "云端数据包更新时间晚于本地。继续上传会覆盖较新的云端数据。是否继续？": "The cloud data is newer than the local data. Uploading will overwrite it. Continue?",
   "已上传当前存档到云端。": "Current archive uploaded to the cloud.",
   "上传失败，请检查网络和 Supabase 配置。": "Upload failed. Check the network and Supabase configuration.",
   "云端还没有可恢复的数据。": "There is no cloud data to restore.",

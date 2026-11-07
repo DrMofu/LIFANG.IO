@@ -3,7 +3,8 @@
 import { handleSettingMenuKeyDown, SettingNumber, SettingToggle } from "@/components/setting-controls";
 import { useSettingsDialog } from "@/components/settings-dialog";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNotification } from "@/components/notification-provider";
 import { useAuth } from "@/components/auth-provider";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { PaletteSelectField } from "@/components/palette-select-field";
@@ -94,7 +95,7 @@ import {
 } from "@/lib/user-data-package";
 
 type StatusKind = "info" | "success" | "error";
-type StatusMessage = { kind: StatusKind; text: string; scope?: "archive" | "cloud" | "debug" };
+type StatusMessage = { kind: StatusKind; text: string };
 
 const CONSOLE_LOGGING_OPTIONS: Array<{
   key: Exclude<ConsoleLoggingSettingKey, "enabled">;
@@ -140,6 +141,10 @@ function rememberCloudSnapshotMetadata(userId: string, metadata: CloudSnapshotMe
 
 export function SettingsApp() {
   const { locale, setLocale, t } = useLanguage();
+  const { notify, startTask, finishTask } = useNotification();
+  const flashStatus = useCallback((kind: StatusKind, text: string, scope = "archive") => {
+    notify(kind, text, `${scope}:${text}`);
+  }, [notify]);
   const { request: requestDialog, dialog: settingsDialog } = useSettingsDialog();
   const { openSystemNotification } = useSystemNotification();
   const { configured: authConfigured, loading: authLoading, user, supabase } = useAuth();
@@ -180,11 +185,9 @@ export function SettingsApp() {
   const [cloudSnapshotMetadata, setCloudSnapshotMetadata] = useState<CloudSnapshotMetadata | null>(null);
   const [cloudLoading, setCloudLoading] = useState(false);
   const [cloudActionPending, setCloudActionPending] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<StatusMessage | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
-  const statusTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     function refreshArchiveData() {
@@ -226,25 +229,18 @@ export function SettingsApp() {
   }, [backFaceProjectionDistance]);
 
   useEffect(() => {
-    return () => {
-      if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     const url = new URL(window.location.href);
     const authResult = url.searchParams.get("auth");
     if (authResult !== "success" && authResult !== "error") return;
 
     const timer = window.setTimeout(() => {
-      setAuthStatusMessage(authResult === "success"
-        ? { kind: "success", text: t("已登录，可以同步云端数据。") }
-        : { kind: "error", text: t("登录链接无效或已过期，请重新发送验证码。") });
+      if (authResult === "success") flashStatus("success", t("已登录，可以同步云端数据。"), "cloud");
+      else setAuthStatusMessage({ kind: "error", text: t("登录链接无效或已过期，请重新发送验证码。") });
     }, 0);
     url.searchParams.delete("auth");
     window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     return () => window.clearTimeout(timer);
-  }, [t]);
+  }, [flashStatus, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -280,16 +276,7 @@ export function SettingsApp() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, user, t]);
-
-  function flashStatus(kind: StatusKind, text: string, scope: "archive" | "cloud" | "debug" = "archive") {
-    setStatusMessage({ kind, text, scope });
-    if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current);
-    statusTimerRef.current = window.setTimeout(() => {
-      setStatusMessage(null);
-      statusTimerRef.current = null;
-    }, 4000);
-  }
+  }, [supabase, user, t, flashStatus]);
 
   function buildCurrentUserDataPayload() {
     return buildUserDataExportPayload({
@@ -368,12 +355,9 @@ export function SettingsApp() {
       if (error) throw error;
       setAuthCodeSent(true);
       const successMessage = t("验证码已发送，请查看邮箱。若未在收件箱中找到验证码，请检查垃圾邮件。");
-      setAuthStatusMessage({ kind: "success", text: successMessage });
       flashStatus("success", successMessage, "cloud");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : t("请稍后重试。");
-      setAuthStatusMessage({ kind: "error", text: t(`发送验证码失败：${message}`) });
-      flashStatus("error", t(`发送验证码失败：${message}`), "cloud");
+    } catch {
+      flashStatus("error", t("cloud.sendCodeFailed"), "cloud");
     } finally {
       setAuthActionPending(false);
     }
@@ -393,11 +377,10 @@ export function SettingsApp() {
       if (error) throw error;
       setAuthCode("");
       setAuthCodeSent(false);
-      setAuthStatusMessage({ kind: "success", text: t("已登录，可以同步云端数据。") });
+      setAuthStatusMessage(null);
       flashStatus("success", t("已登录，可以同步云端数据。"), "cloud");
     } catch {
       setAuthStatusMessage({ kind: "error", text: t("验证码无效或已过期。") });
-      flashStatus("error", t("验证码无效或已过期。"), "cloud");
     } finally {
       setAuthActionPending(false);
     }
@@ -421,13 +404,14 @@ export function SettingsApp() {
   async function refreshCloudSnapshot() {
     if (!supabase || !user || cloudActionPending) return;
     setCloudLoading(true);
+    const task = startTask(t("cloud.reading"), "cloud-refresh");
     try {
       const metadata = await loadCloudSnapshotMetadata(supabase);
       rememberCloudSnapshotMetadata(user.id, metadata);
       setCloudSnapshotMetadata(metadata);
-      flashStatus("success", t("已刷新云端状态。"), "cloud");
+      finishTask(task, "success", t("已刷新云端状态。"));
     } catch {
-      flashStatus("error", t("读取云端数据失败。"), "cloud");
+      finishTask(task, "error", t("读取云端数据失败。"));
     } finally {
       setCloudLoading(false);
     }
@@ -436,6 +420,7 @@ export function SettingsApp() {
   async function uploadToCloud() {
     if (!supabase || !user || cloudActionPending) return;
     setCloudActionPending(true);
+    let task = startTask(t("cloud.reading"), "cloud-upload");
     try {
       const snapshot = await loadCloudSnapshot(supabase);
       const currentPayload = buildCurrentUserDataPayload();
@@ -445,6 +430,7 @@ export function SettingsApp() {
         const cloudCount = cloudData.history.length;
         const localCount = currentPayload.practice.history.length;
         if (cloudCount > localCount) {
+          finishTask(task);
           const confirmed = (await requestDialog({
             title: t("上传到云端"),
             message: t("cloud.confirmOverwriteMoreSolves")
@@ -456,16 +442,18 @@ export function SettingsApp() {
           if (!confirmed) return;
         }
       }
+      task = startTask(t("cloud.uploading"), "cloud-upload");
       const clientUpdatedAt = touchLocalUserDataPackageUpdatedAt() ?? new Date().toISOString();
       const payload = buildCurrentUserDataPayload();
       await saveCloudSnapshot({ supabase, userId: user.id, payload, clientUpdatedAt });
       const metadata = await loadCloudSnapshotMetadata(supabase);
       rememberCloudSnapshotMetadata(user.id, metadata);
       setCloudSnapshotMetadata(metadata);
-      flashStatus("success", t("已上传当前存档到云端。"), "cloud");
+      finishTask(task, "success", t("已上传当前存档到云端。"));
     } catch {
-      flashStatus("error", t("上传失败，请检查网络后重试。"), "cloud");
+      finishTask(task, "error", t("上传失败，请检查网络后重试。"));
     } finally {
+      finishTask(task);
       setCloudActionPending(false);
     }
   }
@@ -473,12 +461,13 @@ export function SettingsApp() {
   async function downloadFromCloud() {
     if (!supabase || !user || cloudActionPending) return;
     setCloudActionPending(true);
+    let task = startTask(t("cloud.reading"), "cloud-download");
     try {
       const snapshot = await loadCloudSnapshot(supabase);
       if (!snapshot) {
         rememberCloudSnapshotMetadata(user.id, null);
         setCloudSnapshotMetadata(null);
-        flashStatus("info", t("云端还没有可恢复的数据。"), "cloud");
+        finishTask(task, "info", t("云端还没有可恢复的数据。"));
         return;
       }
       const metadata: CloudSnapshotMetadata = {
@@ -490,7 +479,7 @@ export function SettingsApp() {
       setCloudSnapshotMetadata(metadata);
       const imported = parseUserDataImport(snapshot.payload);
       if (!imported) {
-        flashStatus("error", t("云端数据格式异常，未覆盖本地数据。"), "cloud");
+        finishTask(task, "error", t("云端数据格式异常，未覆盖本地数据。"));
         return;
       }
       const cloudTimestamp = getCloudSnapshotTimestamp(snapshot);
@@ -499,14 +488,17 @@ export function SettingsApp() {
       const confirmMessage = isNewerTimestamp(localTimestamp, cloudTimestamp)
         ? t("本地数据包更新时间晚于云端。继续恢复会覆盖较新的本地数据。是否继续？")
         : t(`将以云端数据覆盖${activeArchiveName}中的练习数据、公式数据和设置偏好。是否继续？`);
+      finishTask(task);
       const confirmed = (await requestDialog({ title: t("从云端恢复"), message: `${t("当前存档")}: ${activeArchiveName}\n${confirmMessage}`, confirmLabel: t("从云端恢复"), danger: true })) !== null;
       if (!confirmed) return;
+      task = startTask(t("cloud.restoring"), "cloud-download");
       applyImportedUserData(imported);
       touchLocalUserDataPackageUpdatedAt(cloudTimestamp ?? getPayloadTimestamp(snapshot.payload) ?? new Date());
-      flashStatus("success", t(`已从云端恢复到${activeArchiveName}。`), "cloud");
+      finishTask(task, "success", t(`已从云端恢复到${activeArchiveName}。`));
     } catch {
-      flashStatus("error", t("恢复失败，请稍后重试。"), "cloud");
+      finishTask(task, "error", t("恢复失败，请稍后重试。"));
     } finally {
+      finishTask(task);
       setCloudActionPending(false);
     }
   }
@@ -706,7 +698,6 @@ export function SettingsApp() {
     ? new Date(localUpdatedAt).toLocaleString(locale === "zh" ? "zh-CN" : "en-US", { hour12: false })
     : t("尚未记录");
   const cloudBusy = cloudLoading || cloudActionPending || authLoading;
-  const cloudFeedback = statusMessage?.scope === "cloud";
   return (
     <div className="app lf-stats-app lf-settings-app">
       <AppTopbar />
@@ -896,8 +887,6 @@ export function SettingsApp() {
             </div>
           </div>
           <div className="settings-card-body settings-card-body-cloud" aria-busy={cloudBusy}>
-            {cloudActionPending && <div className="settings-status settings-status-info" role="status">{t("处理中")}</div>}
-            {cloudFeedback && statusMessage && <div className={`settings-status settings-status-${statusMessage.kind}`} role="status">{statusMessage.text}</div>}
             {!authConfigured ? (
               <div className="settings-data-note">{t("云端同步暂不可用，本地数据不受影响。")}</div>
             ) : user ? (
@@ -941,7 +930,10 @@ export function SettingsApp() {
                     inputMode="email"
                     autoComplete="email"
                     value={authEmail}
-                    onChange={(event) => setAuthEmail(event.target.value)}
+                    onChange={(event) => {
+                      setAuthEmail(event.target.value);
+                      setAuthStatusMessage(null);
+                    }}
                     placeholder="name@example.com"
                     disabled={authActionPending || authLoading}
                   />
@@ -954,7 +946,10 @@ export function SettingsApp() {
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       value={authCode}
-                      onChange={(event) => setAuthCode(event.target.value)}
+                      onChange={(event) => {
+                        setAuthCode(event.target.value);
+                        setAuthStatusMessage(null);
+                      }}
                       placeholder={t("8 位验证码")}
                       disabled={authActionPending}
                     />
@@ -966,8 +961,8 @@ export function SettingsApp() {
                   </button>
                   {authCodeSent && <button type="button" className="ui-setting-action ui-setting-action-primary" onClick={verifyAuthCode} disabled={!authCode.trim() || authActionPending}>{authActionPending ? t("处理中") : t("登录")}</button>}
                 </div>
-                {authStatusMessage && !cloudFeedback && (
-                  <div className={`settings-status settings-status-${authStatusMessage.kind}`} role="status">
+                {authStatusMessage && (
+                  <div className={`settings-status settings-status-${authStatusMessage.kind}`} role="alert">
                     {authStatusMessage.text}
                   </div>
                 )}
@@ -1029,7 +1024,6 @@ export function SettingsApp() {
                 {activeArchiveId === DEFAULT_STATISTICS_ARCHIVE_ID ? t("清空当前存档") : t("删除当前存档")}
               </button>
             </div>
-            {statusMessage?.scope === "archive" && <div className={`settings-status settings-status-${statusMessage.kind}`} role="status">{statusMessage.text}</div>}
           </div>
         </section>
 
@@ -1074,7 +1068,6 @@ export function SettingsApp() {
                   </div>
                 </div>
                 <div className="settings-card-body settings-card-body-console">
-                  {statusMessage?.scope === "debug" && <div className={`settings-status settings-status-${statusMessage.kind}`} role="status">{statusMessage.text}</div>}
                   <div className="settings-debug-actions">
                     <div className="settings-debug-action-item">
                       <button type="button" className="ui-setting-action" onClick={cleanupDeprecatedFormulaData}>{t("清理弃用数据")}</button>

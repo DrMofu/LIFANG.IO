@@ -703,22 +703,10 @@
   font-weight: var(--ui-weight-support);
 }
 
-.settings-status-success {
-  border-color: rgba(34, 160, 82, 0.28);
-  background: var(--tech-green-soft);
-  color: var(--tech-green);
-}
-
 .settings-status-error {
   border-color: rgba(201, 53, 42, 0.24);
   background: #fff0ef;
   color: #c9352a;
-}
-
-.settings-status-info {
-  border-color: rgba(47, 111, 242, 0.28);
-  background: var(--tech-blue-soft);
-  color: var(--tech-blue);
 }
 
 @media (width <= 1240px) {

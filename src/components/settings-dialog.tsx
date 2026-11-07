@@ -16,17 +16,28 @@ type DialogOptions = {
 export function useSettingsDialog() {
   const [options, setOptions] = useState<DialogOptions | null>(null);
   const pending = useRef<((value: string | null) => void) | null>(null);
+  const completed = useRef<{ resolve: (value: string | null) => void; value: string | null } | null>(null);
   const request = useCallback((next: DialogOptions) => new Promise<string | null>((resolve) => {
     pending.current?.(null);
     pending.current = resolve;
     setOptions(next);
   }), []);
   const finish = useCallback((value: string | null) => {
-    pending.current?.(value);
+    if (pending.current) completed.current = { resolve: pending.current, value };
     pending.current = null;
     setOptions(null);
   }, []);
-  useEffect(() => () => { pending.current?.(null); }, []);
+  // Resume the operation after the modal has left the DOM, so its result can be announced.
+  useEffect(() => {
+    if (options || !completed.current) return;
+    const result = completed.current;
+    completed.current = null;
+    result.resolve(result.value);
+  }, [options]);
+  useEffect(() => () => {
+    pending.current?.(null);
+    completed.current?.resolve(null);
+  }, []);
   return {
     request,
     dialog: options ? <SettingsDialog options={options} onFinish={finish} /> : null,

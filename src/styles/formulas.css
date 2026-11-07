@@ -794,43 +794,6 @@
   transform: translateY(0);
 }
 
-.lf-tech-app .formula-practice-toast {
-  --formula-toast-accent: var(--accent);
-  --formula-toast-bg: #fcf3f2;
-  --formula-toast-border: rgba(201, 53, 42, 0.34);
-  position: absolute;
-  z-index: 8;
-  top: 60px;
-  left: 50%;
-  width: max-content;
-  max-width: min(420px, calc(100% - 36px));
-  border: 1px solid var(--formula-toast-border);
-  border-radius: 13px;
-  background: var(--formula-toast-bg);
-  padding: 11px 15px;
-  color: var(--formula-toast-accent);
-  font-size: var(--ui-type-md);
-  font-weight: var(--ui-weight-support);
-  text-align: center;
-  transform: translateX(-50%);
-  transition: opacity 0.26s ease, transform 0.26s ease;
-}
-
-.lf-tech-app .formula-practice-toast.formula-pb-toast {
-  --formula-toast-accent: var(--tech-green);
-  --formula-toast-bg: #f2f9f5;
-  --formula-toast-border: rgba(34, 160, 82, 0.34);
-}
-
-.lf-tech-app .formula-practice-toast.stacked {
-  top: 114px;
-}
-
-.lf-tech-app .formula-practice-toast.fading {
-  opacity: 0;
-  transform: translate(-50%, -6px);
-}
-
 .lf-tech-app .formula-main-section,
 .lf-tech-app .formula-keypad-section,
 .lf-tech-app .formula-stats-section {

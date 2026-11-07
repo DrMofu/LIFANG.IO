@@ -10,7 +10,8 @@ import { DailyTestResultDialog } from "@/components/daily-test-result-dialog";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
 import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/solve-record-details";
 import { useLanguage } from "@/components/language-provider";
-import { useGyroPowerNotice, useTimedNotice } from "@/components/gyro-power-notice";
+import { useNotification } from "@/components/notification-provider";
+import { useGyroPowerNotice } from "@/components/gyro-power-notice";
 import { isTextEntryTarget } from "@/lib/keyboard-shortcuts";
 import {
   useCubeConnection,
@@ -234,7 +235,7 @@ type PracticeUiPreferences = {
 type ManualTimerArmState = "idle" | "holding" | "ready";
 type FreePracticeState = "waitingSolved" | "ready" | "scrambling" | "armed";
 type ScrambleStepStatus = "pending" | "partial" | "correct";
-type SmartSolveStatus = "idle" | "loading" | "active" | "done" | "error";
+type SmartSolveStatus = "idle" | "loading" | "active" | "done";
 type SmartSolveStepStatus = "pending" | "partial" | "correct";
 type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
 type F2lSubphaseKey = "one" | "two" | "three" | "four";
@@ -640,8 +641,9 @@ export function CubePracticeApp() {
   const [, setFreeScrambleMoveCount] = useState(0);
   const [freeNotice, setFreeNotice] = useState<string | null>(null);
   const [gyroDisabled, setGyroDisabled] = useState(false);
-  const { notifyGyroEnabled, gyroPowerNotice } = useGyroPowerNotice();
-  const { showNotice: notifySmartSolveDisconnected, notice: smartSolveConnectionNotice } = useTimedNotice(t("请先连接智能魔方，再使用智能求解。"));
+  const { notifyGyroEnabled } = useGyroPowerNotice();
+  const { notify, dismiss } = useNotification();
+  const smartSolveRunRef = useRef(0);
   const [formulaRecognitionEnabled, setFormulaRecognitionEnabled] = useState(false);
   const [recognizedFormula, setRecognizedFormula] = useState<FormulaRecognitionResult | null>(null);
   const [formulaLearningStatuses, setFormulaLearningStatuses] = useState<Record<string, FormulaLearningStatus>>({});
@@ -667,7 +669,7 @@ export function CubePracticeApp() {
   const [smartSolveSteps, setSmartSolveSteps] = useState<string[]>([]);
   const [smartSolveIndex, setSmartSolveIndex] = useState(0);
   const [smartSolveStepStatus, setSmartSolveStepStatus] = useState<SmartSolveStepStatus[]>([]);
-  const [smartSolveNotice, setSmartSolveNotice] = useState(t("点击智能求解后，将根据真实魔方状态生成复原公式。"));
+  const [smartSolveNotice, setSmartSolveNotice] = useState("");
   const [smartSolveWrong, setSmartSolveWrong] = useState(false);
   const [smartSolveUndoDisplay, setSmartSolveUndoDisplay] = useState<string[]>([]);
   const [cfopTimes, setCfopTimes] = useState<LiveCfopMetrics>(EMPTY_CFOP);
@@ -1540,6 +1542,7 @@ export function CubePracticeApp() {
 
   const resetSmartSolveState = useCallback(() => {
     clearSmartSolveFaceletsWait();
+    smartSolveRunRef.current += 1;
     smartSolveStatusRef.current = "idle";
     smartSolveStepsRef.current = [];
     smartSolveIndexRef.current = 0;
@@ -1552,10 +1555,10 @@ export function CubePracticeApp() {
     setSmartSolveSteps([]);
     setSmartSolveIndex(0);
     setSmartSolveStepStatus([]);
-    setSmartSolveNotice(t("点击智能求解后，将根据真实魔方状态生成复原公式。"));
+    setSmartSolveNotice("");
     setSmartSolveWrong(false);
     setSmartSolveUndoDisplay([]);
-  }, [clearSmartSolveFaceletsWait, t]);
+  }, [clearSmartSolveFaceletsWait]);
 
   const resetAttempt = useCallback((
     nextScramble = scramble,
@@ -1636,7 +1639,7 @@ export function CubePracticeApp() {
 
   const failSmartSolve = useCallback((message: string) => {
     clearSmartSolveFaceletsWait();
-    smartSolveStatusRef.current = "error";
+    smartSolveStatusRef.current = "idle";
     smartSolveStepsRef.current = [];
     smartSolveIndexRef.current = 0;
     smartSolvePendingMovesRef.current = [];
@@ -1644,14 +1647,16 @@ export function CubePracticeApp() {
     smartSolvePendingUndoMovesRef.current = [];
     smartSolvePendingUndoAnimatedCountRef.current = 0;
     smartSolveUndoStackRef.current = [];
-    setSmartSolveStatus("error");
+    setSmartSolveStatus("idle");
     setSmartSolveSteps([]);
     setSmartSolveIndex(0);
     setSmartSolveStepStatus([]);
     setSmartSolveWrong(false);
     setSmartSolveUndoDisplay([]);
-    setSmartSolveNotice(message);
-  }, [clearSmartSolveFaceletsWait]);
+    cubeApiRef.current?.setHintMove(null);
+    notify("error", message, "smart-solve");
+    smartSolveRunRef.current += 1;
+  }, [clearSmartSolveFaceletsWait, notify]);
 
   const handleSmartSolveMove = useCallback(
     (move: string) => {
@@ -2409,6 +2414,7 @@ export function CubePracticeApp() {
       clearVisualPendingTimer();
       clearAutoNextScrambleTimer();
       clearPendingAutoNextScrambleMoves();
+      smartSolveRunRef.current += 1;
       clearSmartSolveFaceletsWait();
       if (historyScrollTimerRef.current) {
         clearTimeout(historyScrollTimerRef.current);
@@ -2486,13 +2492,15 @@ export function CubePracticeApp() {
 
   async function beginSmartSolve() {
     if (!isConnected) {
-      notifySmartSolveDisconnected();
+      notify("warning", t("请先连接智能魔方，再使用智能求解。"), "smart-solve");
       return;
     }
 
     dailyTestRef.current = null;
     setDailyTest(null);
     resetAttempt();
+    dismiss("smart-solve");
+    const run = ++smartSolveRunRef.current;
     smartSolveStatusRef.current = "loading";
     smartSolveStepsRef.current = [];
     smartSolveIndexRef.current = 0;
@@ -2502,22 +2510,21 @@ export function CubePracticeApp() {
     setSmartSolveStepStatus([]);
     setSmartSolveWrong(false);
     setSmartSolveUndoDisplay([]);
-    setSmartSolveNotice(t("正在同步真实魔方状态并计算复原公式。"));
-
-    const faceletsPromise = waitForSmartSolveFacelets();
-    await requestFacelets();
-    const latestFacelets = (await faceletsPromise) ?? faceletsRef.current;
-
-    if (smartSolveStatusRef.current !== "loading") return;
-    if (!latestFacelets) {
-      failSmartSolve(t("未收到真实魔方状态，请确认连接稳定后再试。"));
-      return;
-    }
 
     try {
+      const faceletsPromise = waitForSmartSolveFacelets();
+      await requestFacelets();
+      const latestFacelets = (await faceletsPromise) ?? faceletsRef.current;
+
+      if (smartSolveRunRef.current !== run || smartSolveStatusRef.current !== "loading") return;
+      if (!latestFacelets) {
+        failSmartSolve(t("未收到真实魔方状态，请确认连接稳定后再试。"));
+        return;
+      }
+
       const steps = (await solveFacelets(latestFacelets)).map((move) => mapMoveToOrientation(move, orientation));
-      if (smartSolveStatusRef.current !== "loading") return;
-      smartSolveStatusRef.current = "active";
+      if (smartSolveRunRef.current !== run || smartSolveStatusRef.current !== "loading") return;
+      smartSolveStatusRef.current = steps.length ? "active" : "done";
       smartSolveStepsRef.current = steps;
       smartSolveIndexRef.current = 0;
       smartSolvePendingMovesRef.current = [];
@@ -2525,19 +2532,21 @@ export function CubePracticeApp() {
       smartSolvePendingUndoMovesRef.current = [];
       smartSolvePendingUndoAnimatedCountRef.current = 0;
       smartSolveUndoStackRef.current = [];
-      setSmartSolveStatus("active");
+      setSmartSolveStatus(steps.length ? "active" : "done");
       setSmartSolveSteps(steps);
       setSmartSolveIndex(0);
       setSmartSolveStepStatus(freshSmartSolveStatus(steps.length));
       setSmartSolveWrong(false);
       setSmartSolveUndoDisplay([]);
-      setSmartSolveNotice(t(`已生成 ${steps.length} 步复原公式，请转第 1 步：${steps[0]}`));
+      setSmartSolveNotice(steps.length
+        ? t(`已生成 ${steps.length} 步复原公式，请转第 1 步：${steps[0]}`)
+        : t("智能求解完成，真实魔方已复原。"));
       if (cubeApiRef.current?.setFacelets(latestFacelets)) {
         lastAppliedFaceletsRef.current = latestFacelets;
         hasRealtimeMovesRef.current = false;
       }
-    } catch (error) {
-      failSmartSolve(error instanceof Error ? error.message : t("求解失败，请重新同步魔方状态后再试。"));
+    } catch {
+      if (smartSolveRunRef.current === run) failSmartSolve(t("求解失败，请重新同步魔方状态后再试。"));
     }
   }
 
@@ -2757,9 +2766,9 @@ export function CubePracticeApp() {
   const dailyTestProgress = dailyTest?.solves.length ?? 0;
   const dailyTestDisplayDate = dailyTest?.localDate ?? todayLocalDate;
   const dailyTestDisplaySolves = dailyTest?.solves ?? todayDailyLevel?.solves ?? [];
-  const smartSolveVisible = smartSolveStatus !== "idle";
+  const smartSolveVisible = smartSolveStatus === "active" || smartSolveStatus === "done";
   const smartSolveBusy = smartSolveStatus === "loading" || smartSolveStatus === "active";
-  const freePracticeVisible = !isManualTimer && practiceMode === "free" && isConnected && !smartSolveVisible && phase !== "solving";
+  const freePracticeVisible = !isManualTimer && practiceMode === "free" && isConnected && smartSolveStatus === "idle" && phase !== "solving";
   const stageGuidanceVisible = !isManualTimer && (smartSolveVisible || phase === "scrambling" || freePracticeVisible);
   const canInterruptScrambleAttempt = practiceMode === "scramble" && (phase === "scrambling" || phase === "inspect");
   const canStartDailyTestFromScramble = practiceMode === "scramble" && (phase === "idle" || phase === "done" || canInterruptScrambleAttempt);
@@ -2809,8 +2818,6 @@ export function CubePracticeApp() {
   return (
     <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}`}>
       <AppTopbar />
-      {gyroPowerNotice}
-      {smartSolveConnectionNotice}
 
       <main className="practice-layout">
         <div className="practice-info" inert={isManualTimerFocused}>
@@ -3353,7 +3360,7 @@ export function CubePracticeApp() {
                       </div>
                     )}
                     <button className="sh-cancel" onClick={cancelSmartSolve} aria-label={t("关闭智能求解")}>
-                      {smartSolveStatus === "active" || smartSolveStatus === "loading" ? t("取消") : t("关闭")}
+                      {smartSolveStatus === "active" ? t("取消") : t("关闭")}
                     </button>
                   </div>
                   {smartSolveSteps.length > 0 && (
@@ -3379,8 +3386,8 @@ export function CubePracticeApp() {
                       })}
                     </div>
                   )}
-                  {(smartSolveUndoDisplay.length > 0 || smartSolveStatus === "error" || smartSolveStatus === "loading") && (
-                    <div className={`sh-notice${smartSolveUndoExpected || smartSolveStatus === "error" ? " error" : ""}`}>
+                  {(smartSolveUndoDisplay.length > 0 || smartSolveStatus === "done") && (
+                    <div className={`sh-notice${smartSolveUndoExpected ? " error" : ""}`}>
                       {smartSolveUndoDisplay.length > 0 ? (
                         <>
                           <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>

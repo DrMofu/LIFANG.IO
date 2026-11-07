@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Image from "next/image";
 import { AlgorithmStepToken } from "@/components/algorithm-step-token";
 import { AppFooter, AppTopbar } from "@/components/app-shell";
+import { useNotification } from "@/components/notification-provider";
 import { useLanguage } from "@/components/language-provider";
 import { useCubeAppearance } from "@/components/cube-appearance-provider";
 import { useCubeConnection } from "@/components/cube-connection-provider";
@@ -113,7 +114,6 @@ const FORMULA_PLAY_START_DELAY_MS = 0;
 const FORMULA_PLAY_STEP_INTERVAL_MS = 1000;
 const FORMULA_PLAY_MOVE_DURATION_MS = 600;
 const FORMULA_PLAY_FINISH_DELAY_MS = 2000;
-const FORMULA_TOAST_FADE_MS = 260;
 const MAX_STRUCTURE_NOTATION_MOVE_COUNT = 5;
 const TRIGGER_NAME_BY_ALGORITHM = new Map(
   FORMULAS.triggers.items.flatMap((item) => {
@@ -767,6 +767,7 @@ function FormulaStage({
   onChooseFormula(): void;
 }) {
   const { t } = useLanguage();
+  const { notify, dismiss } = useNotification();
   const smallScreen = useSyncExternalStore(subscribeSmallFormulaLayout, isSmallFormulaLayout, serverSmallFormulaLayout);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
@@ -788,8 +789,6 @@ function FormulaStage({
   const roundStartRef = useRef(0);
   const nextRoundTimerRef = useRef<number | null>(null);
   const practiceTimerRef = useRef<number | null>(null);
-  const practiceToastTimerRef = useRef<number | null>(null);
-  const pbToastTimerRef = useRef<number | null>(null);
   const playTimerRefs = useRef<number[]>([]);
   const [rotationOffset, setRotationOffset] = useState<FormulaRotationOffset>(0);
   const canRotateF2lVariant = active.sourceCat === "f2l";
@@ -818,10 +817,6 @@ function FormulaStage({
   const [practiceStats, setPracticeStats] = useState<FormulaStats>({ count: 0, times: [] });
   const [practiceMs, setPracticeMs] = useState(0);
   const [practiceTiming, setPracticeTiming] = useState(false);
-  const [practiceToast, setPracticeToast] = useState<string | null>(null);
-  const [practiceToastFading, setPracticeToastFading] = useState(false);
-  const [pbToast, setPbToast] = useState<string | null>(null);
-  const [pbToastFading, setPbToastFading] = useState(false);
   const [researchMode, setResearchMode] = useState(false);
   const [transparentDisplay, setTransparentDisplay] = useState(false);
   const [lowerLayerHidden, setLowerLayerHidden] = useState(false);
@@ -916,46 +911,12 @@ function FormulaStage({
     setPracticeTiming(false);
   }
 
-  function clearPracticeToastTimer() {
-    if (practiceToastTimerRef.current !== null) {
-      window.clearTimeout(practiceToastTimerRef.current);
-      practiceToastTimerRef.current = null;
-    }
+  function notifyFormulaError(message: string) {
+    notify("error", message, "formula-error");
   }
 
-  function clearPbToastTimer() {
-    if (pbToastTimerRef.current !== null) {
-      window.clearTimeout(pbToastTimerRef.current);
-      pbToastTimerRef.current = null;
-    }
-  }
-
-  function showPracticeToast(message: string) {
-    clearPracticeToastTimer();
-    setPracticeToastFading(false);
-    setPracticeToast(message);
-    practiceToastTimerRef.current = window.setTimeout(() => {
-      setPracticeToastFading(true);
-      practiceToastTimerRef.current = window.setTimeout(() => {
-        practiceToastTimerRef.current = null;
-        setPracticeToast(null);
-        setPracticeToastFading(false);
-      }, FORMULA_TOAST_FADE_MS);
-    }, 2400);
-  }
-
-  function showPbToast(message: string) {
-    clearPbToastTimer();
-    setPbToastFading(false);
-    setPbToast(message);
-    pbToastTimerRef.current = window.setTimeout(() => {
-      setPbToastFading(true);
-      pbToastTimerRef.current = window.setTimeout(() => {
-        pbToastTimerRef.current = null;
-        setPbToast(null);
-        setPbToastFading(false);
-      }, FORMULA_TOAST_FADE_MS);
-    }, 3200);
+  function notifyFormulaSuccess(message: string) {
+    notify("success", message, "formula-success");
   }
 
   function clearPlayTimers() {
@@ -1010,9 +971,7 @@ function FormulaStage({
   function resetPracticeFlow(resetMs = true) {
     clearNextRoundTimer();
     clearPracticeTimer();
-    clearPracticeToastTimer();
-    setPracticeToast(null);
-    setPracticeToastFading(false);
+    dismiss("formula-error");
     wrongWaitRef.current = false;
     pendingPracticeMovesRef.current = [];
     pendingPracticeAnimatedCountRef.current = 0;
@@ -1064,9 +1023,7 @@ function FormulaStage({
 
   function resetPractice() {
     resetPracticeFlow();
-    clearPbToastTimer();
-    setPbToast(null);
-    setPbToastFading(false);
+    dismiss("formula-success");
     practiceActiveRef.current = false;
     setPracticeActive(false);
     setPracticeIndex(0);
@@ -1146,9 +1103,7 @@ function FormulaStage({
     const nextOffset = normalizeFormulaRotationOffset(rotationOffset + delta);
     stopPlayback();
     resetPractice();
-    clearPbToastTimer();
-    setPbToast(null);
-    setPbToastFading(false);
+    dismiss("formula-success");
     setPracticeStats(readFormulaStats(formulaPracticeStatsKey(active.key, active.sourceCat, nextOffset)));
     setLearningMenuOpen(false);
     setRotationOffset(nextOffset);
@@ -1249,8 +1204,6 @@ function FormulaStage({
       stopPlaybackEffect();
       clearNextRoundTimer();
       clearPracticeTimer();
-      clearPracticeToastTimer();
-      clearPbToastTimer();
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
@@ -1342,7 +1295,7 @@ function FormulaStage({
         setPracticeStats(newStats);
         onStatsChange(displayStatsKey, newStats);
         if (typeof previousBest === "number" && elapsed < previousBest) {
-          showPbToast(t(`${fmtShort(elapsed)} 打破最佳成绩！`));
+          notifyFormulaSuccess(t(`${fmtShort(elapsed)} 打破最佳成绩！`));
         }
         nextRoundTimerRef.current = window.setTimeout(() => {
           nextRoundTimerRef.current = null;
@@ -1377,7 +1330,7 @@ function FormulaStage({
       setPracticeMs(0);
       setPreviewStartState();
       cubeApiRef.current?.setHintMove(algoMoves[nextInteractiveMoveIndex(0)] ?? null);
-      showPracticeToast(t(`转动错误，检测到${detected}，应该为${expected}，请重新开始`));
+      notifyFormulaError(t(`转动错误，检测到${detected}，应该为${expected}，请重新开始`));
     }
   }
 
@@ -1394,9 +1347,9 @@ function FormulaStage({
     if (researchMovesRef.current.length === 0) return;
     try {
       await navigator.clipboard.writeText(researchMovesRef.current.join(" "));
-      showPbToast(t("研究记录已复制"));
+      notifyFormulaSuccess(t("研究记录已复制"));
     } catch {
-      showPracticeToast(t("复制失败，请重试"));
+      notifyFormulaError(t("复制失败，请重试"));
     }
   }
 
@@ -1490,16 +1443,6 @@ function FormulaStage({
         <div className="crosshair ch-tr"></div>
         <div className="crosshair ch-bl"></div>
         <div className="crosshair ch-br"></div>
-        {practiceToast && (
-          <div className={`formula-practice-toast${practiceToastFading ? " fading" : ""}`} role="status" aria-live="polite">
-            {practiceToast}
-          </div>
-        )}
-        {pbToast && (
-          <div className={`formula-practice-toast formula-pb-toast${practiceToast ? " stacked" : ""}${pbToastFading ? " fading" : ""}`} role="status" aria-live="polite">
-            {pbToast}
-          </div>
-        )}
         <div className="cube-mount" ref={cubeMountRef}></div>
         <TurnSpeed />
         {!researchMode && (

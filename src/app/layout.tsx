@@ -6,6 +6,7 @@ import { ButtonFocusManager } from "@/components/button-focus-manager";
 import { CubeAppearanceProvider } from "@/components/cube-appearance-provider";
 import { CubeConnectionProvider } from "@/components/cube-connection-provider";
 import { LanguageProvider } from "@/components/language-provider";
+import { NotificationProvider } from "@/components/notification-provider";
 import { ScrollbarVisibilityProvider } from "@/components/scrollbar-visibility-provider";
 import { SystemNotificationProvider } from "@/components/system-notification-dialog";
 import { getSiteTitle } from "@/lib/i18n";
@@ -36,16 +37,18 @@ export default async function RootLayout({
       <body suppressHydrationWarning>
         <ButtonFocusManager />
         <LanguageProvider initialLocale={initialLocale}>
-          <SystemNotificationProvider>
-            <AuthProvider>
-              <CubeAppearanceProvider>
-                <CubeConnectionProvider>
-                  <ScrollbarVisibilityProvider />
-                  <ScreenWakeLockProvider>{children}</ScreenWakeLockProvider>
-                </CubeConnectionProvider>
-              </CubeAppearanceProvider>
-            </AuthProvider>
-          </SystemNotificationProvider>
+          <NotificationProvider>
+            <SystemNotificationProvider>
+              <AuthProvider>
+                <CubeAppearanceProvider>
+                  <CubeConnectionProvider>
+                    <ScrollbarVisibilityProvider />
+                    <ScreenWakeLockProvider>{children}</ScreenWakeLockProvider>
+                  </CubeConnectionProvider>
+                </CubeAppearanceProvider>
+              </AuthProvider>
+            </SystemNotificationProvider>
+          </NotificationProvider>
         </LanguageProvider>
         <Analytics />
         <SpeedInsights />

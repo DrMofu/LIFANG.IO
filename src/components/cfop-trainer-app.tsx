@@ -436,7 +436,7 @@ function CfopTrainerClient() {
   const [formulaHintUndoDisplay, setFormulaHintUndoDisplay] = useState<string[]>([]);
   const [f2lFocusMode, setF2lFocusMode] = useState(readF2lFocusModeEnabled);
   const [gyroDisabled, setGyroDisabled] = useState(loadPracticeGyroDisabled);
-  const { notifyGyroEnabled, gyroPowerNotice } = useGyroPowerNotice();
+  const { notifyGyroEnabled } = useGyroPowerNotice();
   const [sessionRoundLimit, setSessionRoundLimit] = useState(readStoredTrainerSessionRounds);
   const [sessionInProgress, setSessionInProgress] = useState(false);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
@@ -1314,7 +1314,6 @@ function CfopTrainerClient() {
   return (
     <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
       <AppTopbar />
-      {gyroPowerNotice}
       <main className="practice-layout trainer-layout">
         <div className="practice-info">
         <section className="practice-left trainer-left">
