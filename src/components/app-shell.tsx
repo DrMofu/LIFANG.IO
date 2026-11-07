@@ -46,7 +46,7 @@ function navItemActive(pathname: string, href: string) {
 }
 
 export function AppTopbar({ showCompactConnection = true }: { showCompactConnection?: boolean }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const pathname = usePathname();
   const clientReady = useClientReady();
   const [practiceMenuState, setPracticeMenuState] = useState({ pathname, open: false });
@@ -121,7 +121,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
       observer.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (!routePracticeItem) return;
@@ -173,7 +173,7 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
           <div className="brand-text">
             <div className="brand-name" data-mobile-domain={mobileDomainVisible}>
               <span ref={brandTitleRef}>{t("brand.name")}</span>
-              <span ref={brandDomainRef} className="brand-domain">LIFANG.IO</span>
+              {locale === "zh" && <span ref={brandDomainRef} className="brand-domain">LIFANG.IO</span>}
             </div>
             <div className="brand-sub">{t("brand.subtitle")} · {settings.version}</div>
           </div>
@@ -348,7 +348,7 @@ function MobileNavigation({ compactNavigation = false }: { compactNavigation?: b
         trigger.focus({ preventScroll: true });
       }
     };
-  }, [close, compactNavigation, open]);
+  }, [close, compactNavigation, locale, open]);
 
   const renderLink = (item: (typeof NAV)[number]) => (
     <Link
@@ -418,7 +418,7 @@ function MobileNavigation({ compactNavigation = false }: { compactNavigation?: b
               <BrandMark />
               <span className="mobile-nav-brand-name" data-domain-visible={menuDomainVisible}>
                 <span ref={menuTitleRef}>{t("brand.name")}</span>
-                <span ref={menuDomainRef} className="brand-domain">LIFANG.IO</span>
+                {locale === "zh" && <span ref={menuDomainRef} className="brand-domain">LIFANG.IO</span>}
               </span>
             </Link>
             <button ref={closeRef} type="button" className="mobile-nav-close" aria-label={t("nav.closeMenu")} onClick={close}>

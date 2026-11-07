@@ -187,7 +187,7 @@ export const messages = {
     "dailyResult.details": "Five test results",
     "dailyResult.continue": "Continue practicing",
 
-    "brand.name": "Cube",
+    "brand.name": "LIFANG.IO",
     "brand.subtitle": "Smart Cube Practice",
     "nav.home": "Back to home",
     "nav.switchLanguage": "切换到中文",

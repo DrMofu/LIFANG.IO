@@ -2990,8 +2990,8 @@ export function CubePracticeApp() {
           <div className="stats ui-info-panel">
             <div className="practice-card-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("统计摘要")}</div>
-                <span className="practice-kicker" aria-hidden="true">SUMMARY</span>
+                <div className="practice-card-title">{t("数据统计")}</div>
+                <span className="practice-kicker" aria-hidden="true">STATISTICS</span>
               </div>
             </div>
             <div className="stat-grid">

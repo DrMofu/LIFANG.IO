@@ -154,7 +154,7 @@ export const getTutorials = cache(async function getTutorials(requestedLocale = 
   const metadata = await readAllMetadata();
 
   return metadata
-    .filter((item) => item.draft !== true)
+    .filter((item) => item.draft !== true && (requestedLocale !== "en" || Boolean(item.locales.en)))
     .sort((a, b) => a.order - b.order)
     .map((item) => toSummary(item, requestedLocale));
 });
@@ -165,7 +165,7 @@ export const getTutorial = cache(async function getTutorial(
 ): Promise<TutorialArticle | null> {
   try {
     const metadata = await findVisibleMetadata(articleIdentifier);
-    if (!metadata) return null;
+    if (!metadata || (requestedLocale === "en" && !metadata.locales.en)) return null;
     const summary = toSummary(metadata, requestedLocale);
     const markdown = await fs.readFile(
       path.join(TUTORIALS_ROOT, metadata.slug, summary.contentFile),

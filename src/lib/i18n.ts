@@ -7,7 +7,7 @@ export const LANGUAGE_STORAGE_KEY = "cube-language";
 
 const SITE_TITLES: Record<Locale, string> = {
   zh: "立方 - 魔方练习网站",
-  en: "Cube - Rubik's Cube Practice Website",
+  en: "LIFANG.IO - Rubik's Cube Practice Website",
 };
 
 export function getSiteTitle(locale: Locale) {
