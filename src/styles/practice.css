@@ -488,8 +488,7 @@
   font-size: 17px;
 }
 .lf-practice-app .solve-metrics,
-.lf-practice-app .stats,
-.lf-practice-app .hist {
+.lf-practice-app .stats {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -499,17 +498,16 @@
   z-index: 2;
 }
 
-.lf-practice-app .hist {
-  overflow-x: clip;
-}
-.lf-practice-app .practice-right .hist-right {
-  flex: 0 0 auto;
-}
 .lf-practice-app .hist-more-btn {
   flex: 0 0 auto;
+  align-self: center;
+  min-width: 72px;
+  min-height: 44px;
+  margin-top: 0;
   border: 0;
+  border-radius: 10px;
   background: transparent;
-  padding: 2px 0;
+  padding: 0 16px;
   color: var(--tech-muted);
   font: inherit;
   font-size: 12px;
@@ -709,10 +707,6 @@
 
   .lf-practice-app .formula-recognition-panel {
     order: 80;
-  }
-
-  .lf-practice-app .hist-right {
-    order: 90;
   }
 
   .lf-practice-app .legend {
@@ -1295,16 +1289,6 @@
   overflow: visible;
 }
 
-.practice-focus-app .practice-history-panel {
-  order: 3;
-  flex: 1 1 auto;
-  min-height: 110px;
-}
-
-.practice-focus-app .practice-history-panel .practice-card-head {
-  margin-bottom: 8px;
-}
-
 .practice-focus-app .solve-metrics {
   overflow: visible;
   flex: 0 0 auto;
@@ -1574,12 +1558,13 @@
   color: #8292aa;
 }
 
-.practice-focus-app .hist-right {
-  flex: 1 1 auto;
-  min-height: 0;
-  margin-top: 0;
-  border-top: 0;
-  padding-top: 0;
+.practice-focus-app .practice-summary-history {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-top: 12px;
+  border-top: 1px solid var(--tech-line);
+  padding-top: 8px;
 }
 
 :is(.practice-focus-app, .lf-tech-app) .hist-list {
@@ -1609,6 +1594,9 @@
 }
 
 .practice-focus-app .hist-list {
+  flex: 0 0 auto;
+  height: auto;
+  overflow: visible;
   grid-auto-rows: var(--history-row-size);
   grid-template-columns: max-content minmax(12px, 1fr) repeat(3, max-content);
   column-gap: 5px;
@@ -1684,6 +1672,20 @@
 @media (width > 1240px) {
   .practice-focus-app {
     overflow: hidden;
+  }
+
+  .practice-focus-app .practice-right > .stats {
+    padding-bottom: 8px;
+  }
+
+  .practice-focus-app .hist-more-btn {
+    min-height: 24px;
+    padding-block: 2px;
+    line-height: 20px;
+  }
+
+  .practice-focus-app .hist-row:last-child {
+    border-bottom: 0;
   }
 
   .practice-focus-app .practice-layout {
@@ -1778,15 +1780,8 @@
   .practice-focus-app .practice-info .practice-control-panel { order: 20; }
   .practice-focus-app .practice-info .formula-recognition-panel { order: 25; }
   .practice-focus-app .practice-info .stats { order: 30; }
-  .practice-focus-app .practice-info .practice-history-panel { order: 40; }
   .practice-focus-app .practice-info .daily-test-card { order: 50; }
   .practice-focus-app .practice-info .legend { order: 60; }
-
-  .practice-focus-app .practice-info .practice-history-panel {
-    height: 300px;
-    min-height: 300px;
-    flex: 0 0 auto;
-  }
 
   .practice-focus-app .stats .practice-card-head {
     margin-bottom: 8px;
@@ -1906,16 +1901,6 @@
     right: 0;
     bottom: 18px;
     left: 0;
-  }
-
-  .practice-focus-app .practice-history-panel {
-    height: 420px;
-    min-height: 420px;
-    flex: 0 0 auto;
-  }
-
-  .practice-focus-app .hist-list {
-    --history-row-size: 44px;
   }
 
   .practice-focus-app .manual-timer-stage {

@@ -1429,8 +1429,9 @@
 }
 
 @media (width > 1240px) {
-  .solve-history-dialog .solve-history-phase-column {
+  .solve-history-dialog .solve-history-table .solve-history-phase-column {
     display: table-cell;
+    text-align: center;
   }
 }
 

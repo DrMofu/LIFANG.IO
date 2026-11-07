@@ -16,20 +16,3 @@
 .lf-practice-app {
   --panel-shadow-gutter: 28px;
 }
-
-:is(.lf-practice-app .hist-right) {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
-}
-
-:is(.lf-practice-app .hist-list) {
-  flex: 1 1 auto;
-  max-height: none;
-}
-
-.lf-practice-app .hist-list {
-  min-height: 0;
-}

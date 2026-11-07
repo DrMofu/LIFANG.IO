@@ -111,9 +111,8 @@ const DAILY_TEST_TARGET = 5;
 const SOLVED_TRAILING_MOVE_SUPPRESS_MS = 900;
 const DISPLAY_STATE_EPSILON = 0.001;
 const CUBE_MOVE_ANIMATION_MS = 150;
-const HISTORY_ROW_SIZE = 32;
-const HISTORY_ROW_GAP = 7;
-const HISTORY_FALLBACK_ROWS = 1;
+const HISTORY_ROW_SIZE = 44;
+const HISTORY_PREVIEW_LIMIT = 5;
 const MAX_UNDO_HINT_QUEUE_LENGTH = 20;
 const HISTORY_CFOP_TIP_GAP = 12;
 const HISTORY_CFOP_TIP_MARGIN = 14;
@@ -559,7 +558,6 @@ export function CubePracticeApp() {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visualPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const visualPendingMoveRef = useRef<string | null>(null);
-  const historyScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoNextScrambleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const beginAutoNextScrambleRef = useRef<() => void>(() => undefined);
   const inspectionAudioContextRef = useRef<AudioContext | null>(null);
@@ -678,9 +676,8 @@ export function CubePracticeApp() {
   const [historyCfopTip, setHistoryCfopTip] = useState<HistoryCfopTip | null>(null);
   const portalReady = useClientReady();
   const canResetDisplayOrientation = viewResetEnabled || !gyroDisabled;
-  const [historyRows, setHistoryRows] = useState(HISTORY_FALLBACK_ROWS);
+  const [historyRows, setHistoryRows] = useState(HISTORY_PREVIEW_LIMIT);
   const [historyRowSize, setHistoryRowSize] = useState(HISTORY_ROW_SIZE);
-  const [historyScrolling, setHistoryScrolling] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 
   const {
@@ -803,39 +800,45 @@ export function CubePracticeApp() {
 
   useLayoutEffect(() => {
     const list = historyListRef.current;
-    if (!list) return;
-
-    const panel = list.closest<HTMLElement>(".practice-history-panel");
-    const head = list.parentElement?.querySelector<HTMLElement>(".practice-card-head");
-    if (!panel) return;
+    const summary = list?.closest<HTMLElement>(".stats");
+    const sidebar = summary?.closest<HTMLElement>(".practice-right");
+    const more = summary?.querySelector<HTMLElement>(".hist-more-btn");
+    if (!list || !summary || !sidebar || !more) return;
+    const desktop = window.matchMedia("(width > 1240px)");
 
     const updateRows = () => {
-      const panelStyle = window.getComputedStyle(panel);
-      const listStyle = window.getComputedStyle(list);
-      const contentBottom = panel.getBoundingClientRect().bottom
-        - parseFloat(panelStyle.paddingBottom) - parseFloat(panelStyle.borderBottomWidth);
-      const listBorderY = parseFloat(listStyle.borderTopWidth) + parseFloat(listStyle.borderBottomWidth);
-      const rowSpace = Math.max(0, contentBottom - list.getBoundingClientRect().top - listBorderY);
-      const computedRowSize = parseFloat(listStyle.getPropertyValue("--history-base-row-size"));
-      const computedRowGap = parseFloat(listStyle.getPropertyValue("--history-row-gap"));
-      const baseRowSize = Number.isFinite(computedRowSize) && computedRowSize > 0 ? computedRowSize : HISTORY_ROW_SIZE;
-      const rowGap = Number.isFinite(computedRowGap) && computedRowGap >= 0 ? computedRowGap : HISTORY_ROW_GAP;
-      // A small reduction can fit an extra complete row near the height threshold.
-      const minimumRowSize = Math.max(1, baseRowSize - 2);
-      const rows = Math.max(1, Math.floor((rowSpace + rowGap) / (minimumRowSize + rowGap)));
-      // Spread the remainder across complete rows rather than leaving it below the list.
-      const rowSize = Math.max(minimumRowSize, Math.floor((rowSpace - rowGap * (rows - 1)) / rows * 64) / 64);
+      if (!desktop.matches) {
+        setHistoryRows(HISTORY_PREVIEW_LIMIT);
+        setHistoryRowSize(HISTORY_ROW_SIZE);
+        return;
+      }
+      const sidebarStyle = window.getComputedStyle(sidebar);
+      const summaryStyle = window.getComputedStyle(summary);
+      const moreStyle = window.getComputedStyle(more);
+      const available = sidebar.getBoundingClientRect().bottom
+        - parseFloat(sidebarStyle.paddingBottom)
+        - parseFloat(summaryStyle.paddingBottom)
+        - parseFloat(summaryStyle.borderBottomWidth)
+        - list.getBoundingClientRect().top
+        - more.getBoundingClientRect().height
+        - parseFloat(moreStyle.marginTop);
+      const space = Math.max(0, available);
+      const rows = Math.min(HISTORY_PREVIEW_LIMIT, Math.floor(space / (HISTORY_ROW_SIZE - 2)));
       setHistoryRows(rows);
-      setHistoryRowSize(rowSize);
+      setHistoryRowSize(rows > 0 ? Math.min(HISTORY_ROW_SIZE, Math.floor(space / rows * 64) / 64) : HISTORY_ROW_SIZE);
     };
 
     updateRows();
     const observer = new ResizeObserver(updateRows);
-    observer.observe(list);
-    if (list.parentElement) observer.observe(list.parentElement);
-    observer.observe(panel);
-    if (head) observer.observe(head);
-    return () => observer.disconnect();
+    observer.observe(sidebar);
+    observer.observe(summary);
+    const score = sidebar.querySelector<HTMLElement>(".practice-score-panel");
+    if (score) observer.observe(score);
+    desktop.addEventListener("change", updateRows);
+    return () => {
+      observer.disconnect();
+      desktop.removeEventListener("change", updateRows);
+    };
   }, [history.length]);
 
   const clearSolveTick = useCallback(() => {
@@ -2416,9 +2419,6 @@ export function CubePracticeApp() {
       clearPendingAutoNextScrambleMoves();
       smartSolveRunRef.current += 1;
       clearSmartSolveFaceletsWait();
-      if (historyScrollTimerRef.current) {
-        clearTimeout(historyScrollTimerRef.current);
-      }
     };
   }, [
     cancelInspectionAudio,
@@ -2433,17 +2433,6 @@ export function CubePracticeApp() {
 
   async function startConnection() {
     await connectRealCube();
-  }
-
-  function handleHistoryScroll() {
-    setHistoryScrolling(true);
-    if (historyScrollTimerRef.current) {
-      clearTimeout(historyScrollTimerRef.current);
-    }
-    historyScrollTimerRef.current = setTimeout(() => {
-      historyScrollTimerRef.current = null;
-      setHistoryScrolling(false);
-    }, 900);
   }
 
   function deleteHistoryEntry(historyIndex: number, entry: SolveHistoryEntry) {
@@ -2745,7 +2734,7 @@ export function CubePracticeApp() {
       count: history.length,
     };
   }, [averageSettings, history]);
-  const recentHistory = useMemo(() => history.slice(0, 50), [history]);
+  const recentHistory = useMemo(() => history.slice(0, historyRows), [history, historyRows]);
   const recentSlowest = useMemo(
     () => (recentHistory.length === 0 ? 0 : Math.max(...recentHistory.map((entry) => entry.ms))),
     [recentHistory],
@@ -3017,6 +3006,88 @@ export function CubePracticeApp() {
                 </span>
               </div>
             </div>
+            <div className="practice-summary-history" aria-label={t("历史成绩")}>
+              {history.length === 0 ? (
+                <div className="hist-empty">{t("尚无记录")}</div>
+              ) : (
+                <div
+                  className="hist-list"
+                  ref={historyListRef}
+                  style={{ "--history-row-size": `${historyRowSize}px` } as CSSProperties}
+                >
+                  {recentHistory.map((entry, index) => {
+                    const barWidth = recentSlowest > 0 ? `${Math.max(12, (entry.ms / recentSlowest) * 100)}%` : "0%";
+                    const isBest = stats.best === entry.ms;
+                    const historyNumber = history.length - index;
+                    return (
+                      <div
+                        key={`${entry.ts}-${index}`}
+                        className={`hist-row${isBest ? " best" : ""}`}
+                        tabIndex={0}
+                        aria-label={t(`历史记录 #${historyNumber}，${
+                          fmtShort(entry.ms)
+                        }，${entry.source === "timer" ? t("纯计时器") : entry.moves == null ? t("步数未知") : t(`${entry.moves}步`)}`)}
+                        onBlur={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget)) setHistoryCfopTip(null);
+                        }}
+                        onFocus={(event) => {
+                          if (event.target === event.currentTarget) showHistoryCfopTip(event.currentTarget, entry, historyNumber);
+                        }}
+                        onMouseEnter={(event) => showHistoryCfopTip(event.currentTarget, entry, historyNumber, { x: event.clientX, y: event.clientY })}
+                        onMouseLeave={() => setHistoryCfopTip(null)}
+                      >
+                        <span className="hr-i">#{String(historyNumber).padStart(3, "0")}</span>
+                        <span className="hr-track" aria-hidden="true">
+                          <span className="hr-bar" style={{ width: barWidth }}></span>
+                        </span>
+                        <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
+                          {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
+                        </span>
+                        {entry.source !== "timer" && <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>}
+                        <span className="hr-t">{fmtShort(entry.ms)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <button
+                className="hist-more-btn"
+                type="button"
+                aria-label={t("查看更多")}
+                aria-haspopup="dialog"
+                aria-expanded={historyDialogOpen}
+                onClick={() => {
+                  setHistoryCfopTip(null);
+                  setHistoryDialogOpen(true);
+                }}
+              >
+                {t("更多")}
+              </button>
+              {portalReady && historyCfopTip && createPortal((
+                <div
+                  className={`stats-cfop-floating-tip practice-cfop-floating-tip tip-${historyCfopTip.placement}`}
+                  role="tooltip"
+                  style={{
+                    left: historyCfopTip.left,
+                    top: historyCfopTip.top,
+                    "--tip-arrow-left": `${historyCfopTip.arrowLeft}px`,
+                  } as CSSProperties}
+                >
+                  <div className="hcf-head">
+                    <span>#{String(historyCfopTip.historyNumber).padStart(3, "0")}</span>
+                    <b>{fmtSolveDate(historyCfopTip.entry.ts)}</b>
+                  </div>
+                  <SolveRecordDetails entry={historyCfopTip.entry} />
+                </div>
+              ), document.body)}
+              {historyDialogOpen && (
+                <SolveHistoryDialog
+                  history={history}
+                  onClose={() => setHistoryDialogOpen(false)}
+                  onDelete={deleteHistoryEntry}
+                />
+              )}
+            </div>
           </div>
 
           <div className="practice-live-panel practice-score-panel ui-info-panel">
@@ -3119,100 +3190,6 @@ export function CubePracticeApp() {
           </div>
           </div>
 
-          <div className="practice-live-panel practice-history-panel ui-info-panel">
-          <div className="hist hist-right">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("历史成绩")}</div>
-                <span className="practice-kicker" aria-hidden="true">HISTORY</span>
-              </div>
-              {history.length > 0 && (
-                <button
-                  className="hist-more-btn"
-                  type="button"
-                  aria-label={t("查看更多")}
-                  aria-haspopup="dialog"
-                  aria-expanded={historyDialogOpen}
-                  onClick={() => {
-                    setHistoryCfopTip(null);
-                    setHistoryDialogOpen(true);
-                  }}
-                >
-                  {t("更多")}
-                </button>
-              )}
-            </div>
-            {history.length === 0 ? (
-              <div className="hist-empty">{t("尚无记录")}</div>
-            ) : (
-              <div
-                className={`hist-list${historyScrolling ? " scrolling" : ""}`}
-                ref={historyListRef}
-                style={{ "--history-rows": historyRows, "--history-row-size": `${historyRowSize}px` } as CSSProperties}
-                onScroll={handleHistoryScroll}
-                onPointerLeave={() => setHistoryScrolling(false)}
-              >
-                {recentHistory.map((entry, index) => {
-                  const barWidth = recentSlowest > 0 ? `${Math.max(12, (entry.ms / recentSlowest) * 100)}%` : "0%";
-                  const isBest = stats.best === entry.ms;
-                  const historyNumber = history.length - index;
-                  return (
-                    <div
-                      key={`${entry.ts}-${index}`}
-                      className={`hist-row${isBest ? " best" : ""}`}
-                      tabIndex={0}
-                      aria-label={t(`历史记录 #${historyNumber}，${
-                        fmtShort(entry.ms)
-                      }，${entry.source === "timer" ? t("纯计时器") : entry.moves == null ? t("步数未知") : t(`${entry.moves}步`)}`)}
-                      onBlur={(event) => {
-                        if (!event.currentTarget.contains(event.relatedTarget)) setHistoryCfopTip(null);
-                      }}
-                      onFocus={(event) => {
-                        if (event.target === event.currentTarget) showHistoryCfopTip(event.currentTarget, entry, historyNumber);
-                      }}
-                      onMouseEnter={(event) => showHistoryCfopTip(event.currentTarget, entry, historyNumber, { x: event.clientX, y: event.clientY })}
-                      onMouseLeave={() => setHistoryCfopTip(null)}
-                    >
-                      <span className="hr-i">#{String(historyNumber).padStart(3, "0")}</span>
-                      <span className="hr-track" aria-hidden="true">
-                        <span className="hr-bar" style={{ width: barWidth }}></span>
-                      </span>
-                      <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
-                        {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
-                      </span>
-                      {entry.source !== "timer" && <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>}
-                      <span className="hr-t">{fmtShort(entry.ms)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {portalReady && historyCfopTip && createPortal((
-              <div
-                className={`stats-cfop-floating-tip practice-cfop-floating-tip tip-${historyCfopTip.placement}`}
-                role="tooltip"
-                style={{
-                  left: historyCfopTip.left,
-                  top: historyCfopTip.top,
-                  "--tip-arrow-left": `${historyCfopTip.arrowLeft}px`,
-                } as CSSProperties}
-              >
-                <div className="hcf-head">
-                  <span>#{String(historyCfopTip.historyNumber).padStart(3, "0")}</span>
-                  <b>{fmtSolveDate(historyCfopTip.entry.ts)}</b>
-                </div>
-                <SolveRecordDetails entry={historyCfopTip.entry} />
-              </div>
-            ), document.body)}
-            {historyDialogOpen && (
-              <SolveHistoryDialog
-                history={history}
-                onClose={() => setHistoryDialogOpen(false)}
-                onDelete={deleteHistoryEntry}
-              />
-            )}
-          </div>
-          </div>
         </section>
         </div>
 
