@@ -1,4 +1,4 @@
-import { CfopTrainerApp } from "@/components/cfop-trainer-app";
+import { CfopTrainerApp } from "@/components/trainer/cfop-trainer-app";
 
 export default function TrainerPage() {
   return <CfopTrainerApp />;

@@ -1,0 +1,912 @@
+"use client";
+
+import { type CSSProperties, type FocusEvent, type SetStateAction, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { useCubeConnection } from "@/components/connection/cube-connection-provider";
+import { useLanguage } from "@/components/i18n/language-provider";
+import { ConnectionEnvironment } from "@/components/connection/connection-environment";
+import type { MessageKey } from "@/lib/i18n/i18n-messages";
+import { isSmartCubeBrandId } from "@/lib/connection/smart-cube-connection";
+import { classifyCubeConnectionError } from "@/lib/connection/cube-connection-error";
+import { useClientReady } from "@/lib/browser/client-ready";
+import settings from "@/settings.json";
+
+const NAV: Array<{ href: string; labelKey: MessageKey; icon: string }> = [
+  { href: "/practice", labelKey: "nav.practice", icon: "practice" },
+  { href: "/trainer", labelKey: "nav.trainer", icon: "trainer" },
+  { href: "/formulas", labelKey: "nav.formulas", icon: "cube" },
+  { href: "/articles", labelKey: "nav.tutorials", icon: "tutorials" },
+  { href: "/stats", labelKey: "nav.stats", icon: "stats" },
+  { href: "/settings", labelKey: "nav.settings", icon: "settings" },
+];
+
+const PRACTICE_NAV = NAV.slice(0, 2);
+const SECONDARY_NAV = NAV.slice(2);
+const PRACTICE_NAV_MEMORY_KEY = "cube-topnav-practice-entry";
+
+function isPracticeNavHref(value: unknown): value is (typeof PRACTICE_NAV)[number]["href"] {
+  return typeof value === "string" && PRACTICE_NAV.some((item) => item.href === value);
+}
+
+function readPracticeNavMemory(): (typeof PRACTICE_NAV)[number]["href"] {
+  if (typeof window === "undefined") return "/practice";
+  try {
+    const saved = window.localStorage.getItem(PRACTICE_NAV_MEMORY_KEY);
+    return isPracticeNavHref(saved) ? saved : "/practice";
+  } catch {
+    return "/practice";
+  }
+}
+
+function navItemActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function AppTopbar({ showCompactConnection = true }: { showCompactConnection?: boolean }) {
+  const { t, locale } = useLanguage();
+  const pathname = usePathname();
+  const clientReady = useClientReady();
+  const [practiceMenuState, setPracticeMenuState] = useState({ pathname, open: false });
+  const practiceMenuOpen = practiceMenuState.pathname === pathname && practiceMenuState.open;
+  const setPracticeMenuOpen = useCallback((next: SetStateAction<boolean>) => {
+    setPracticeMenuState((current) => {
+      const currentOpen = current.pathname === pathname && current.open;
+      return {
+        pathname,
+        open: typeof next === "function" ? next(currentOpen) : next,
+      };
+    });
+  }, [pathname]);
+  const rememberedPracticeHref = clientReady ? readPracticeNavMemory() : "/practice";
+  const practiceGroupRef = useRef<HTMLDivElement | null>(null);
+  const mobilePracticeGroupRef = useRef<HTMLDivElement | null>(null);
+  const brandTitleRef = useRef<HTMLSpanElement | null>(null);
+  const topRightRef = useRef<HTMLDivElement | null>(null);
+  const topbarRef = useRef<HTMLElement | null>(null);
+  const inlineNavRef = useRef<HTMLElement | null>(null);
+  const [navigationCollapsed, setNavigationCollapsed] = useState(false);
+  const routePracticeItem = PRACTICE_NAV.find((item) => navItemActive(pathname, item.href)) ?? null;
+  const activePracticeItem = routePracticeItem ?? PRACTICE_NAV.find((item) => item.href === rememberedPracticeHref) ?? PRACTICE_NAV[0];
+  const practiceGroupActive = Boolean(routePracticeItem);
+
+  useLayoutEffect(() => {
+    const topbar = topbarRef.current;
+    const nav = inlineNavRef.current;
+    const brand = brandTitleRef.current?.closest(".brand-link");
+    const controls = topRightRef.current;
+    if (!topbar || !nav || !brand || !controls) return;
+    const measure = () => {
+      if (!window.matchMedia("(width > 700px) and (width <= 1240px)").matches) {
+        setNavigationCollapsed(false);
+        return;
+      }
+      const style = getComputedStyle(topbar);
+      const gap = parseFloat(style.columnGap) || 0;
+      const inlineControls = Array.from(controls.children).filter((element) => !element.classList.contains("mobile-nav-trigger"));
+      const controlsWidth = inlineControls.reduce((width, element) => width + element.getBoundingClientRect().width, 0)
+        + Math.max(0, inlineControls.length - 1) * (parseFloat(getComputedStyle(controls).columnGap) || 0);
+      const available = topbar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      setNavigationCollapsed(brand.getBoundingClientRect().width + nav.getBoundingClientRect().width + controlsWidth + gap * 2 > available);
+    };
+    const observer = new ResizeObserver(measure);
+    [topbar, brand, nav, ...Array.from(controls.children)].forEach((element) => observer.observe(element));
+    window.addEventListener("resize", measure);
+    measure();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [showCompactConnection]);
+
+  useEffect(() => {
+    if (!routePracticeItem) return;
+    try {
+      window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, routePracticeItem.href);
+    } catch {
+      // localStorage can be unavailable in restricted browsing modes.
+    }
+  }, [routePracticeItem]);
+
+  useEffect(() => {
+    if (!practiceMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (
+        !(target instanceof Node) ||
+        practiceGroupRef.current?.contains(target) ||
+        mobilePracticeGroupRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setPracticeMenuOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setPracticeMenuOpen(false);
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [practiceMenuOpen, setPracticeMenuOpen]);
+
+  const closePracticeMenuOnBlur = (event: FocusEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    setPracticeMenuOpen(false);
+  };
+
+  return (
+    <header ref={topbarRef} className="topbar" data-navigation-collapsed={navigationCollapsed}>
+      <div className="brand">
+        <Link href="/" className="brand-link" aria-label={t("nav.home")}>
+          <BrandMark />
+          <div className="brand-text">
+            <div className="brand-name">
+              <span ref={brandTitleRef}>{t("brand.name")}</span>
+              {locale === "zh" && <span className="brand-domain">LIFANG.IO</span>}
+            </div>
+            <div className="brand-sub">{t("brand.subtitle")} · {settings.version}</div>
+          </div>
+        </Link>
+      </div>
+      <nav className="topnav topnav-desktop" aria-label={t("nav.main")}>
+        <div
+          ref={practiceGroupRef}
+          className={`navgroup${practiceMenuOpen ? " open" : ""}`}
+          onPointerEnter={() => setPracticeMenuOpen(true)}
+          onPointerLeave={() => setPracticeMenuOpen(false)}
+          onFocus={() => setPracticeMenuOpen(true)}
+          onBlur={closePracticeMenuOnBlur}
+        >
+          <Link
+            href={activePracticeItem.href}
+            className={`navitem navitem-button navgroup-trigger${practiceGroupActive ? " active" : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={practiceMenuOpen}
+            onClick={() => setPracticeMenuOpen(false)}
+          >
+            <NavIcon name={activePracticeItem.icon} />
+            <span>{t(activePracticeItem.labelKey)}</span>
+            <small>01</small>
+          </Link>
+          <div className="nav-dropdown" role="menu" aria-label={t("nav.practiceMenu")}>
+            {PRACTICE_NAV.map((item) => {
+              const active = navItemActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-dropdown-item${active ? " active" : ""}`}
+                  role="menuitem"
+                  onClick={() => {
+                    try {
+                      window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href);
+                    } catch {
+                      // localStorage can be unavailable in restricted browsing modes.
+                    }
+                    setPracticeMenuOpen(false);
+                  }}
+                >
+                  <NavIcon name={item.icon} />
+                  <span>{t(item.labelKey)}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+        {SECONDARY_NAV.map((item, index) => {
+          const active = navItemActive(pathname, item.href);
+          return (
+            <Link key={item.href} href={item.href} className={`navitem${active ? " active" : ""}`}>
+              <NavIcon name={item.icon} />
+              <span>{t(item.labelKey)}</span>
+              <small>{String(index + 2).padStart(2, "0")}</small>
+            </Link>
+          );
+        })}
+      </nav>
+      <nav ref={inlineNavRef} className="topnav topnav-mobile" aria-label={t("nav.main")} inert={navigationCollapsed}>
+        <div
+          ref={mobilePracticeGroupRef}
+          className={`navgroup${practiceMenuOpen ? " open" : ""}`}
+          onBlur={closePracticeMenuOnBlur}
+        >
+          <button
+            type="button"
+            className={`navitem navitem-button navgroup-trigger${practiceGroupActive ? " active" : ""}`}
+            aria-haspopup="menu"
+            aria-expanded={practiceMenuOpen}
+            onClick={() => setPracticeMenuOpen((open) => !open)}
+          >
+            <NavIcon name={activePracticeItem.icon} />
+            <span>{t(activePracticeItem.labelKey)}</span>
+            <small>01</small>
+          </button>
+          <div className="nav-dropdown" role="menu" aria-label={t("nav.practiceMenu")}>
+            {PRACTICE_NAV.map((item) => {
+              const active = navItemActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`nav-dropdown-item${active ? " active" : ""}`}
+                  role="menuitem"
+                  onClick={() => {
+                    try {
+                      window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href);
+                    } catch {
+                      // localStorage can be unavailable in restricted browsing modes.
+                    }
+                    setPracticeMenuOpen(false);
+                  }}
+                >
+                  <NavIcon name={item.icon} />
+                  <span>{t(item.labelKey)}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+        {SECONDARY_NAV.map((item, index) => {
+          const active = navItemActive(pathname, item.href);
+          return (
+            <Link key={item.href} href={item.href} className={`navitem${active ? " active" : ""}`}>
+              <NavIcon name={item.icon} />
+              <span>{t(item.labelKey)}</span>
+              <small>{String(index + 2).padStart(2, "0")}</small>
+            </Link>
+          );
+        })}
+      </nav>
+      <div ref={topRightRef} className="topright">
+        {showCompactConnection && <CompactConnectButton />}
+        <LanguageToggleButton />
+        <MobileNavigation compactNavigation={navigationCollapsed} />
+      </div>
+    </header>
+  );
+}
+
+function MobileNavigation({ compactNavigation = false }: { compactNavigation?: boolean }) {
+  const { t, locale, setLocale } = useLanguage();
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const [practiceExpanded, setPracticeExpanded] = useState(true);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  const menuTitleRef = useRef<HTMLSpanElement | null>(null);
+  const menuDomainRef = useRef<HTMLSpanElement | null>(null);
+  const [menuDomainVisible, setMenuDomainVisible] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const trigger = triggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.showModal();
+    closeRef.current?.focus();
+    const measureBrand = () => {
+      const title = menuTitleRef.current;
+      const domain = menuDomainRef.current;
+      const closeButton = closeRef.current;
+      if (!title || !domain || !closeButton) return;
+      const header = closeButton.parentElement!;
+      const closeLeft = header.getBoundingClientRect().right - parseFloat(getComputedStyle(header).paddingRight) - closeButton.getBoundingClientRect().width;
+      const gap = parseFloat(getComputedStyle(title.parentElement!).columnGap) || 0;
+      setMenuDomainVisible(title.getBoundingClientRect().right + gap + domain.getBoundingClientRect().width <= closeLeft - 12);
+    };
+    const observer = new ResizeObserver(measureBrand);
+    [dialog, menuTitleRef.current, menuDomainRef.current, closeRef.current].forEach((element) => {
+      if (element) observer.observe(element);
+    });
+    measureBrand();
+    const query = window.matchMedia("(width <= 700px)");
+    const handleResize = () => { if (!query.matches && !compactNavigation) close(); };
+    query.addEventListener("change", handleResize);
+    handleResize();
+    return () => {
+      query.removeEventListener("change", handleResize);
+      observer.disconnect();
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (trigger?.isConnected && trigger.offsetParent) {
+        trigger.focus({ preventScroll: true });
+      }
+    };
+  }, [close, compactNavigation, locale, open]);
+
+  const renderLink = (item: (typeof NAV)[number]) => (
+    <Link
+      key={item.href}
+      href={item.href}
+      className={`mobile-nav-link${navItemActive(pathname, item.href) ? " active" : ""}`}
+      aria-current={navItemActive(pathname, item.href) ? "page" : undefined}
+      onClick={close}
+    >
+      <NavIcon name={item.icon} />
+      <span>{t(item.labelKey)}</span>
+      <NavIcon name="chevron" />
+    </Link>
+  );
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        className="mobile-nav-trigger"
+        aria-label={t("nav.openMenu")}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={open ? "mobile-navigation" : undefined}
+        onClick={() => { setPracticeExpanded(true); setOpen(true); }}
+      ><NavIcon name="menu" /></button>
+      {open && createPortal(
+        <dialog
+          ref={dialogRef}
+          id="mobile-navigation"
+          className="mobile-nav-drawer"
+          aria-label={t("nav.main")}
+          onCancel={(event) => { event.preventDefault(); close(); }}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") event.stopPropagation();
+            if (event.key !== "Tab") return;
+            const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not([disabled])")).filter((element) => element.getClientRects().length > 0);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          }}
+          onKeyUp={(event) => { if (event.key !== "Escape") event.stopPropagation(); }}
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            const bounds = event.currentTarget.getBoundingClientRect();
+            if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) close();
+          }}
+          onPointerDown={(event) => {
+            if (event.pointerType === "touch") swipeStart.current = { x: event.clientX, y: event.clientY };
+          }}
+          onPointerUp={(event) => {
+            const start = swipeStart.current;
+            swipeStart.current = null;
+            if (start && event.clientX - start.x > 64 && Math.abs(event.clientY - start.y) < 48) close();
+          }}
+          onPointerCancel={() => { swipeStart.current = null; }}
+        >
+          <header className="mobile-nav-head">
+            <Link href="/" className="brand-link" aria-label={t("nav.home")} onClick={close}>
+              <BrandMark />
+              <span className="mobile-nav-brand-name" data-domain-visible={menuDomainVisible}>
+                <span ref={menuTitleRef}>{t("brand.name")}</span>
+                {locale === "zh" && <span ref={menuDomainRef} className="brand-domain">LIFANG.IO</span>}
+              </span>
+            </Link>
+            <button ref={closeRef} type="button" className="mobile-nav-close" aria-label={t("nav.closeMenu")} onClick={close}>
+              <NavIcon name="close" />
+            </button>
+          </header>
+          <nav className="mobile-nav-body" aria-label={t("nav.main")}>
+            <button
+              type="button"
+              className="mobile-nav-link mobile-nav-practice"
+              aria-expanded={practiceExpanded}
+              aria-controls="mobile-practice-links"
+              onClick={() => setPracticeExpanded((expanded) => !expanded)}
+            >
+              <NavIcon name="cube" /><span>{t("nav.practice")}</span><NavIcon name="chevron" />
+            </button>
+            <div id="mobile-practice-links" className="mobile-nav-children" hidden={!practiceExpanded}>
+              {PRACTICE_NAV.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`mobile-nav-child${navItemActive(pathname, item.href) ? " active" : ""}`}
+                  aria-current={navItemActive(pathname, item.href) ? "page" : undefined}
+                  onClick={() => {
+                    try { window.localStorage.setItem(PRACTICE_NAV_MEMORY_KEY, item.href); } catch { /* Navigation works without storage. */ }
+                    close();
+                  }}
+                >
+                  <span>{t(item.href === "/practice" ? "nav.solvePractice" : "nav.targetedTraining")}</span><NavIcon name="chevron" />
+                </Link>
+              ))}
+            </div>
+            {SECONDARY_NAV.slice(0, -1).map(renderLink)}
+            <div className="mobile-nav-utilities">{renderLink(SECONDARY_NAV[SECONDARY_NAV.length - 1])}</div>
+          </nav>
+          <footer className="mobile-nav-language">
+            <span>{t("settings.language.label")}</span>
+            <div className="mobile-nav-language-options" role="group" aria-label={t("settings.language.aria")}>
+              {(["zh", "en"] as const).map((language) => (
+                <button key={language} type="button" aria-pressed={locale === language} lang={language === "zh" ? "zh-CN" : "en"} onClick={() => setLocale(language)}>
+                  {language === "zh" ? "中文" : "EN"}
+                </button>
+              ))}
+            </div>
+          </footer>
+        </dialog>, document.body,
+      )}
+    </>
+  );
+}
+
+export function LanguageToggleButton() {
+  const { t, locale, setLocale } = useLanguage();
+
+  return (
+    <button
+      type="button"
+      className="ghost-link language-toggle"
+      onClick={() => setLocale(locale === "zh" ? "en" : "zh")}
+      aria-label={t("nav.switchLanguage")}
+      title={t("nav.switchLanguage")}
+    >
+      {/* Bootstrap Icons Translate (MIT); see THIRD_PARTY_NOTICES.md. */}
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M4.545 6.714 4.11 8H3l1.862-5h1.284L8 8H6.833l-.435-1.286zm1.634-.736L5.5 3.956h-.049l-.679 2.022z" />
+        <path d="M0 2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v3h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zm7.138 9.995q.289.451.63.846c-.748.575-1.673 1.001-2.768 1.292.178.217.451.635.555.867 1.125-.359 2.08-.844 2.886-1.494.777.665 1.739 1.165 2.93 1.472.133-.254.414-.673.629-.89-1.125-.253-2.057-.694-2.82-1.284.681-.747 1.222-1.651 1.621-2.757H14V8h-3v1.047h.765c-.318.844-.74 1.546-1.272 2.13a6 6 0 0 1-.415-.492 2 2 0 0 1-.94.31" />
+      </svg>
+    </button>
+  );
+}
+
+export function AppFooter() {
+  return <footer className="footbar">© 2026 LiFang.io</footer>;
+}
+
+export function BrandMark() {
+  return (
+    <div className="brand-mark" aria-hidden="true">
+      <Image src="/li-fang-logo.png" alt="" width={32} height={32} />
+    </div>
+  );
+}
+
+export function CompactConnectButton({ tooltipAnchorSelector }: { tooltipAnchorSelector?: string }) {
+  const { t } = useLanguage();
+  const {
+    connectionState,
+    connectionInfo,
+    connectionPromptVisible,
+    cubeBrands,
+    selectedCubeBrand,
+    telemetry,
+    facelets,
+    setSelectedCubeBrand,
+    closeConnectionPrompt,
+    connectRealCube,
+    disconnectCube,
+    requestBattery,
+  } = useCubeConnection();
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const actionRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ left: 16, top: 16, maxHeight: "calc(100dvh - 32px)", maxWidth: "calc(100vw - 32px)" });
+  const quaternionParts = parseTelemetryParts(telemetry.quaternion, ["x", "y", "z", "w"]);
+
+  const connected = connectionState === "connected";
+  const connecting = connectionState === "connecting";
+  const failure = connectionInfo.error ? classifyCubeConnectionError(connectionInfo.error) : null;
+  const label = connected
+    ? connectionInfo.deviceName
+    : connecting
+      ? t("connection.connecting")
+      : t("connection.disconnected");
+  const tooltipOpen = connected && tooltipVisible;
+
+  useLayoutEffect(() => {
+    if (!tooltipOpen) return;
+    const action = actionRef.current;
+    const tooltip = tooltipRef.current;
+    const anchorElement = (tooltipAnchorSelector ? document.querySelector(tooltipAnchorSelector) : null) ?? action;
+    if (!action || !tooltip || !anchorElement) return;
+
+    const updatePosition = () => {
+      const anchor = anchorElement.getBoundingClientRect();
+      const { width, height } = tooltip.getBoundingClientRect();
+      const margin = 16;
+      const viewport = window.visualViewport;
+      const viewportLeft = viewport?.offsetLeft ?? 0;
+      const viewportTop = viewport?.offsetTop ?? 0;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const spaceBelow = Math.max(0, viewportTop + viewportHeight - margin - anchor.bottom - 12);
+      const spaceAbove = Math.max(0, anchor.top - viewportTop - margin - 12);
+      const placeBelow = spaceBelow >= Math.min(height, 240) || spaceBelow >= spaceAbove;
+      const viewportMaxHeight = Math.max(0, viewportHeight - margin * 2);
+      const maxHeight = tooltipAnchorSelector ? viewportMaxHeight : Math.min(viewportMaxHeight, placeBelow ? spaceBelow : spaceAbove);
+      const preferredTop = tooltipAnchorSelector
+        ? anchor.top + (anchor.height - height) / 2
+        : placeBelow
+          ? anchor.bottom + 12
+          : anchor.top - Math.min(height, maxHeight) - 12;
+      const next = {
+        left: Math.max(viewportLeft + margin, Math.min(anchor.left + (anchor.width - width) / 2, viewportLeft + viewportWidth - width - margin)),
+        top: Math.max(viewportTop + margin, Math.min(preferredTop, viewportTop + viewportHeight - Math.min(height, maxHeight) - margin)),
+        maxHeight: `${Math.max(0, maxHeight)}px`,
+        maxWidth: `${Math.max(0, viewportWidth - margin * 2)}px`,
+      };
+      setTooltipPosition((previous) => previous.left === next.left && previous.top === next.top && previous.maxHeight === next.maxHeight && previous.maxWidth === next.maxWidth ? previous : next);
+    };
+
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(anchorElement);
+    observer.observe(tooltip);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+    };
+  }, [tooltipAnchorSelector, tooltipOpen]);
+
+  useEffect(() => {
+    if (connected) return;
+    const timer = window.setTimeout(() => {
+      setTooltipVisible(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [connected]);
+
+  useEffect(() => {
+    if (!tooltipOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node) || actionRef.current?.contains(target) || tooltipRef.current?.contains(target)) return;
+      setTooltipVisible(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setTooltipVisible(false);
+      actionRef.current?.querySelector("button")?.focus();
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [tooltipOpen]);
+
+  const refreshBatteryOnPeek = () => {
+    if (!connected) return;
+    void requestBattery({ minIntervalMs: 60_000 });
+  };
+
+  const toggleTooltip = () => {
+    if (!connected) return;
+    if (!tooltipOpen) refreshBatteryOnPeek();
+    setTooltipVisible((visible) => !visible);
+  };
+
+  return (
+    <div
+      ref={actionRef}
+      className="top-connect-action"
+    >
+      {connected ? (
+        <button
+          className="ghost-link"
+          type="button"
+          onClick={toggleTooltip}
+          aria-haspopup="dialog"
+          aria-controls={tooltipOpen ? "top-connect-detail" : undefined}
+          aria-expanded={tooltipOpen}
+        >
+          <span className="dot dot-on"></span>
+          {label}
+          <BatteryIndicator level={connectionInfo.batteryLevel} />
+        </button>
+      ) : (
+        <button
+          className="ghost-link"
+          type="button"
+          onClick={() => void connectRealCube(selectedCubeBrand)}
+          disabled={connecting}
+          aria-haspopup="dialog"
+          aria-expanded={connectionPromptVisible}
+          aria-controls={connectionPromptVisible ? "top-connect-prompt" : undefined}
+        >
+          <span className={connecting ? "dot dot-pulse" : "dot"}></span>
+          {label}
+        </button>
+      )}
+      {connectionPromptVisible && typeof document !== "undefined" && createPortal(
+        <>
+          <div className="top-connect-prompt-backdrop" aria-hidden="true" />
+          <div
+            className="top-connect-prompt"
+            id="top-connect-prompt"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="top-connect-prompt-title"
+          >
+            <button
+              type="button"
+              className="top-connect-prompt-close"
+              onClick={closeConnectionPrompt}
+              disabled={connecting}
+              aria-label={t("connection.cancelPairing")}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+            <div className="top-connect-prompt-head">
+              <div className="top-connect-prompt-visual" aria-hidden="true">
+                <Image src="/li-fang-logo.png" alt="" width={42} height={42} />
+              </div>
+              <div>
+                <div className="top-connect-prompt-title" id="top-connect-prompt-title">
+                  {t("connection.pairingTitle")}
+                </div>
+                <div className="top-connect-prompt-intro">
+                  {t(connecting ? "connection.pairingConnectingIntro" : "connection.pairingIntro")}
+                </div>
+              </div>
+            </div>
+            <ol className="top-connect-prompt-steps">
+              <li>{t("connection.pairingStepWake")}</li>
+              <li>{t("connection.pairingStepSelect")}</li>
+              <li>{t("connection.pairingStepWait")}</li>
+            </ol>
+            <ConnectionEnvironment />
+            {failure && (
+              <div className="top-connect-environment top-connect-error" data-status="error" role="alert">
+                <p className="top-connect-environment-status">
+                  <span className="top-connect-environment-icon" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 5v6m0 4h.01" />
+                    </svg>
+                  </span>
+                  <span>{t(`connection.failure.${failure}`)}</span>
+                </p>
+                <div className="top-connect-error-help">
+                  <p>{t(`connection.failure.${failure}Help`)}</p>
+                  {failure === "mac" && (
+                    <ol className="top-connect-error-checks">
+                      <li>
+                        <strong>{t("connection.failure.otherConnectionCheck")}</strong>
+                        <p>{t("connection.failure.otherConnectionHelp")}</p>
+                      </li>
+                      <li>
+                        <strong>{t("connection.failure.chromeFlagsCheck")}</strong>
+                        <code>chrome://flags/#enable-experimental-web-platform-features</code>
+                        <p>{t("connection.failure.chromeFlagsHelp")}</p>
+                      </li>
+                    </ol>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="top-connect-brand-field">
+              <label htmlFor="top-connect-brand">{t("connection.cubeBrand")}</label>
+              <div className="top-connect-brand-select-wrap">
+                <select
+                  id="top-connect-brand"
+                  value={selectedCubeBrand}
+                  disabled={connecting}
+                  autoFocus
+                  onChange={(event) => {
+                    if (isSmartCubeBrandId(event.target.value)) {
+                      setSelectedCubeBrand(event.target.value);
+                    }
+                  }}
+                >
+                  {cubeBrands.map((brand) => (
+                    <option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="top-connect-prompt-note">
+                {t("connection.ganOnly")}
+              </div>
+            </div>
+            <div className="top-connect-prompt-actions">
+              <button type="button" onClick={closeConnectionPrompt} disabled={connecting}>
+                {t("connection.cancelPairing")}
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => void connectRealCube(selectedCubeBrand)}
+                disabled={connecting}
+              >
+                {t(connecting ? "connection.waitingForPairing" : failure ? "connection.failure.retry" : "connection.startPairing")}
+              </button>
+            </div>
+          </div>
+        </>,
+        document.body,
+      )}
+      {tooltipOpen && createPortal(<div
+        ref={tooltipRef}
+        className="top-connect-tooltip"
+        id="top-connect-detail"
+        role="dialog"
+        aria-label={t("connection.device")}
+        style={tooltipPosition}
+      >
+        <div className="top-connect-grid">
+          <div className="top-connect-section">
+            <div className="top-connect-title">{t("connection.device")}</div>
+            <TopInfoRow label={t("connection.field.name")} value={connectionInfo.deviceName} />
+            <TopInfoRow label={t("connection.field.mac")} value={connectionInfo.deviceMAC} />
+            <TopInfoRow label={t("connection.field.battery")} value={connectionInfo.batteryLevel == null ? "—" : `${connectionInfo.batteryLevel}%`} />
+            <TopInfoRow label={t("connection.field.protocol")} value={connectionInfo.protocol} />
+            <TopInfoRow label={t("connection.field.hardware")} value={connectionInfo.hardwareName} />
+            <TopInfoRow label={t("connection.field.hardwareVersion")} value={connectionInfo.hardwareVersion} />
+            <TopInfoRow label={t("connection.field.softwareVersion")} value={connectionInfo.softwareVersion} />
+            <TopInfoRow label={t("connection.field.productDate")} value={connectionInfo.productDate} />
+            <TopInfoRow label={t("connection.field.gyro")} value={connectionInfo.gyroSupported} />
+            <TopInfoRow label={t("connection.field.facelets")} value={facelets ? "READY" : "—"} />
+          </div>
+          <div className="top-connect-section">
+            <div className="top-connect-title">{t("connection.telemetry")}</div>
+            <TopInfoRow label={t("connection.field.lastMove")} value={telemetry.lastMove} />
+            <TopInfoRow label={t("connection.field.updated")} value={telemetry.updatedAt} />
+            <TopInfoRow label={t("connection.field.clockSkew")} value={telemetry.clockSkew} />
+            <TopVectorGrid label={t("connection.field.quaternion")} parts={quaternionParts} fallback={telemetry.quaternion} />
+            <TopInfoRow label={t("connection.field.angularVelocity")} value={telemetry.angularVelocity} />
+            {connected && (
+              <div className="top-connect-actions">
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    setTooltipVisible(false);
+                    void disconnectCube();
+                  }}
+                >
+                  {t("connection.disconnect")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>, document.body)}
+    </div>
+  );
+}
+
+function BatteryIndicator({ level }: { level: number | null }) {
+  const { t } = useLanguage();
+  const percent = level == null ? null : Math.max(0, Math.min(100, Math.round(level)));
+  const style = { "--battery-level": `${percent ?? 0}%` } as CSSProperties;
+  const label = percent == null ? "--" : `${percent}%`;
+
+  return (
+    <span className="top-battery" style={style} aria-label={percent == null ? t("connection.batteryUnknown") : `Battery ${percent}%`}>
+      <span className="top-battery-fill" aria-hidden="true"></span>
+      <span className="top-battery-text">{label}</span>
+      <span className="top-battery-text top-battery-text-invert" aria-hidden="true">{label}</span>
+    </span>
+  );
+}
+
+export function NavIcon({ name }: { name: string }) {
+  if (name === "menu" || name === "close" || name === "chevron") {
+    const paths = { menu: "M4 6h16M4 12h16M4 18h16", close: "m6 6 12 12M6 18 18 6", chevron: "m9 5 7 7-7 7" };
+    return <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[name]} /></svg>;
+  }
+  if (name === "practice") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 2.8h4" />
+        <path d="M12 5.2a7.8 7.8 0 1 1 0 15.6 7.8 7.8 0 0 1 0-15.6Z" />
+        <path d="M12 9.1v4.2l2.7 1.6" />
+        <path d="m17.6 6.4 1.2-1.2" />
+      </svg>
+    );
+  }
+  if (name === "cube") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3.2 19.5 7.4v8.8L12 20.8l-7.5-4.6V7.4L12 3.2Z" />
+        <path d="m4.9 7.7 7.1 4.1 7.1-4.1M12 11.8v8.1" />
+      </svg>
+    );
+  }
+  if (name === "stats") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5.5 19V9.8M12 19V5M18.5 19v-6.2" />
+      </svg>
+    );
+  }
+  if (name === "tutorials") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 5.2A2.2 2.2 0 0 1 6.7 3h4.1c.7 0 1.2.5 1.2 1.2V20c0-1.1-.9-2-2-2H4.5V5.2Z" />
+        <path d="M19.5 5.2A2.2 2.2 0 0 0 17.3 3h-4.1c-.7 0-1.2.5-1.2 1.2V20c0-1.1.9-2 2-2h5.5V5.2Z" />
+      </svg>
+    );
+  }
+  if (name === "settings") {
+    return (
+      <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.2a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.2a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.2a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.2a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z" />
+        <path d="M9 12a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 3.8 19.1 8v8L12 20.2 4.9 16V8L12 3.8Z" />
+      <path d="m8.2 10.1 3.8 2.2 3.8-2.2M12 12.3v4.2" />
+    </svg>
+  );
+}
+
+function parseTelemetryParts(value: string, keys: string[]) {
+  const parts = new Map(value.split(",").map((part) => {
+    const [key, ...rest] = part.trim().split(":");
+    return [key, rest.join(":").trim()];
+  }));
+  return keys.map((key) => ({ key, value: parts.get(key) || "—" }));
+}
+
+function TopVectorGrid({
+  label,
+  parts,
+  fallback,
+}: {
+  label: string;
+  parts: Array<{ key: string; value: string }>;
+  fallback: string;
+}) {
+  const hasValue = parts.some((part) => part.value !== "—");
+  return (
+    <div className="top-vector-row">
+      <div className="top-vector-label">{label}</div>
+      {hasValue ? (
+        <div className="top-vector-grid" title={fallback}>
+          {parts.map((part) => (
+            <div key={part.key} className="top-vector-cell">
+              <span>{part.key}</span>
+              <b>{part.value}</b>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="top-vector-empty">—</div>
+      )}
+    </div>
+  );
+}
+
+function TopInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="top-info-row" data-label={label}>
+      <span>{label}</span>
+      <b title={value}>{value}</b>
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { createSupabaseServerClient } from "@/lib/account/supabase-server";
 
 const EMAIL_OTP_TYPES = new Set(["email", "magiclink", "signup", "invite", "recovery", "email_change"]);
 

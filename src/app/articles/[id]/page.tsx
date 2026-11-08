@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AppFooter, AppTopbar } from "@/components/app-shell";
-import { TutorialMarkdown } from "@/components/tutorial-markdown";
-import { TutorialTableOfContents } from "@/components/tutorial-table-of-contents";
-import { getRequestLocale } from "@/lib/request-locale";
-import { getTutorial, getTutorials } from "@/lib/tutorials";
-import { getTutorialHeadings } from "@/lib/tutorial-headings";
+import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
+import { TutorialMarkdown } from "@/components/tutorials/tutorial-markdown";
+import { TutorialTableOfContents } from "@/components/tutorials/tutorial-table-of-contents";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getTutorial, getTutorials } from "@/lib/tutorials/tutorials";
+import { getTutorialHeadings } from "@/lib/tutorials/tutorial-headings";
 
 type ArticlePageProps = {
   params: Promise<{ id: string }>;

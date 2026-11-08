@@ -1,4 +1,4 @@
-import { getTutorialCover } from "@/lib/tutorials";
+import { getTutorialCover } from "@/lib/tutorials/tutorials";
 
 type CoverRouteProps = {
   params: Promise<{ id: string }>;

@@ -3,17 +3,17 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { AppFooter, AppTopbar } from "@/components/app-shell";
-import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as TREND_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as TREND_TIP_HEIGHT } from "@/components/solve-record-details";
-import { useLanguage } from "@/components/language-provider";
+import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
+import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as TREND_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as TREND_TIP_HEIGHT } from "@/components/records/solve-record-details";
+import { useLanguage } from "@/components/i18n/language-provider";
 import {
   DEFAULT_AVERAGE_TIME_SETTINGS,
   loadAverageTimeSettings,
   type AverageTimeSettings,
-} from "@/lib/average-time";
-import { fmtShort } from "@/lib/format";
-import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/tps";
-import { useClientReady } from "@/lib/client-ready";
+} from "@/lib/records/average-time";
+import { fmtShort } from "@/lib/utils/format";
+import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/records/tps";
+import { useClientReady } from "@/lib/browser/client-ready";
 import {
   getDailyTestDateKey,
   getDailyLevelExcludedSolveIndexes,
@@ -26,7 +26,7 @@ import {
   type DailyLevelEntry,
   type DailyPracticeEntry,
   type SolveHistoryEntry,
-} from "@/lib/solve-history";
+} from "@/lib/records/solve-history";
 
 type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
 type CfopAverageSize = 5 | 20 | 100;

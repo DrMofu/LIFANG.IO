@@ -295,6 +295,14 @@
   outline-offset: 2px;
 }
 
+@media (hover: none) {
+  /* Touch browsers can retain :hover after a tap, even after focus is released. */
+  .ghost-link.language-toggle:hover:not(:active):not(:focus-visible) {
+    border-color: rgba(224, 233, 247, 0.92);
+    color: var(--tech-ink-2);
+  }
+}
+
 .ghost-link:disabled {
   cursor: default;
   opacity: 0.6;

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getTutorials } from "@/lib/tutorials";
+import { getTutorials } from "@/lib/tutorials/tutorials";
 
 const SITE_URL = "https://www.lifang.io";
 

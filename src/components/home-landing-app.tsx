@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import banner from "../../public/banner.png";
-import { AppFooter, CompactConnectButton, LanguageToggleButton, NavIcon } from "@/components/app-shell";
-import { useCubeAppearance } from "@/components/cube-appearance-provider";
-import { useCubeConnection, type CubeVisualState } from "@/components/cube-connection-provider";
-import { useLanguage } from "@/components/language-provider";
-import type { MessageKey } from "@/lib/i18n-messages";
-import { expandMoveNotation } from "@/lib/algorithms";
-import { type SmartCubeApi, mountSmartCube } from "@/lib/smart-cube";
+import { AppFooter, CompactConnectButton, LanguageToggleButton, NavIcon } from "@/components/shell/app-shell";
+import { useCubeAppearance } from "@/components/cube/cube-appearance-provider";
+import { useCubeConnection, type CubeVisualState } from "@/components/connection/cube-connection-provider";
+import { useLanguage } from "@/components/i18n/language-provider";
+import type { MessageKey } from "@/lib/i18n/i18n-messages";
+import { expandMoveNotation } from "@/lib/cube/algorithms";
+import { type SmartCubeApi, mountSmartCube } from "@/lib/cube/smart-cube";
 
 const HOME_NAV: Array<{ href: string; labelKey: MessageKey; icon: string; index: string }> = [
   { href: "/practice", labelKey: "nav.practice", icon: "practice", index: "01" },

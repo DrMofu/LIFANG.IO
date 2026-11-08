@@ -2041,7 +2041,19 @@
   }
 
   .practice-mobile-scramble .scramble-stage-hint .ui-section-head {
-    margin-bottom: 8px;
+    flex: none;
+    margin-bottom: 0;
+  }
+
+  .practice-mobile-scramble .scramble-stage-hint {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .practice-mobile-scramble .scramble-stage-hint .sh-grid {
+    flex: none;
+    margin-block: auto;
+    padding-block: 8px;
   }
 
   .practice-focus-app .practice-mobile-panels .daily-test-card {

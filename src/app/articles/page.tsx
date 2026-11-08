@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { AppFooter, AppTopbar } from "@/components/app-shell";
-import { getSiteTitle } from "@/lib/i18n";
-import { getRequestLocale } from "@/lib/request-locale";
-import { getTutorials } from "@/lib/tutorials";
+import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
+import { getSiteTitle } from "@/lib/i18n/i18n";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { getTutorials } from "@/lib/tutorials/tutorials";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();

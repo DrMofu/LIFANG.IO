@@ -1,0 +1,1615 @@
+import * as THREE from "three";
+import { COLOR_HEX, DEFAULT_ORIENTATION, getFaceColors, type CubeColor, type CubeOrientation } from "@/lib/cube/cube-appearance";
+import { expandMoveNotation } from "@/lib/cube/algorithms";
+import { advanceCubeMoveProgress } from "@/lib/cube/cube-move-animation";
+
+export type CubeFace = "U" | "D" | "L" | "R" | "F" | "B";
+export type CubeSlice = "M" | "E" | "S";
+export type CubeMoveLayer = CubeFace | CubeSlice;
+
+export type CubeQuaternion = {
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+};
+
+export type CubeDisplayState = {
+  cameraDistance: number;
+  cameraLatitude: number;
+  cameraLongitude: number;
+};
+
+export type CubeCameraDistanceRange = {
+  min: number;
+  max: number;
+};
+
+export type CubeCameraViewportInsets = {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+};
+
+export type CubeSceneOffset = {
+  x?: number;
+  y?: number;
+  z?: number;
+};
+
+export const DEFAULT_CUBE_DISPLAY_STATE: CubeDisplayState = {
+  cameraDistance: 7,
+  cameraLatitude: 35,
+  cameraLongitude: 45,
+};
+
+export type SmartCubeApi = {
+  applyMove(layer: CubeMoveLayer, dir?: 1 | -1, durationMs?: number): void;
+  applyMoves(moves: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>, durationMs?: number): void;
+  setFacelets(facelets: string): boolean;
+  setFormulaFacelets(facelets: string): boolean;
+  setGyroOrientation(quaternion: CubeQuaternion): void;
+  resetGyroOrientation(): void;
+  resetDisplayOrientation(): void;
+  getDisplayState(): CubeDisplayState;
+  setInteractionLocked(locked: boolean): void;
+  setRenderingPaused(paused: boolean): void;
+  setLowerLayerDimmed(dimmed: boolean): void;
+  setTransparentFormulaFacelets(enabled: boolean): void;
+  setBackFaceProjectionDistance(distance: number): void;
+  reset(): void;
+  setHintMove(move: string | null): void;
+  isAnimating(): boolean;
+  queueLength(): number;
+  dispose(): void;
+};
+
+// Default face colors correspond to the yellow-U, green-F orientation.
+const FACE_COLORS: Record<CubeFace | "inner", string> = {
+  U: "#F2C744",
+  D: "#F5F4EF",
+  F: "#1F6B3A",
+  B: "#1F4FB6",
+  L: "#C9352A",
+  R: "#E7741A",
+  inner: "#0E0E0C",
+};
+const OLL_DIMMED_STICKER = "#9B9B96";
+const LOWER_LAYER_DIMMED_STICKER = OLL_DIMMED_STICKER;
+const TRANSPARENT_FORMULA_CUBIE = "#DCE3E1";
+const TRANSPARENT_FORMULA_CUBIE_OPACITY = 0.045;
+const TRANSPARENT_FORMULA_FACELET_OPACITY = 0.1;
+
+const LAYER_AXIS: Record<CubeMoveLayer, { axis: "x" | "y" | "z"; sign: 1 | -1; coord: -1 | 0 | 1 }> = {
+  R: { axis: "x", sign: 1, coord: 1 },
+  L: { axis: "x", sign: -1, coord: -1 },
+  M: { axis: "x", sign: -1, coord: 0 },
+  U: { axis: "y", sign: 1, coord: 1 },
+  D: { axis: "y", sign: -1, coord: -1 },
+  E: { axis: "y", sign: -1, coord: 0 },
+  F: { axis: "z", sign: 1, coord: 1 },
+  B: { axis: "z", sign: -1, coord: -1 },
+  S: { axis: "z", sign: 1, coord: 0 },
+};
+
+const HOME_ORIENTATION = new THREE.Quaternion();
+const DEFAULT_CAMERA_DISTANCE = DEFAULT_CUBE_DISPLAY_STATE.cameraDistance;
+const MIN_CAMERA_DISTANCE = 5.0;
+const MAX_CAMERA_DISTANCE = 14.0;
+const CAMERA_ZOOM_SPEED = 0.0014;
+const CAMERA_ORBIT_RADIUS_SCALE = Math.sqrt(3);
+const DEFAULT_CAMERA_LATITUDE = DEFAULT_CUBE_DISPLAY_STATE.cameraLatitude;
+const DEFAULT_CAMERA_LONGITUDE = DEFAULT_CUBE_DISPLAY_STATE.cameraLongitude;
+const CAMERA_LATITUDE_LIMIT = 35;
+const CAMERA_ORBIT_DRAG_SPEED = 2;
+const DEFAULT_MAX_FPS = 120;
+const GYRO_SETTLE_ANGLE = 0.001;
+const GYRO_FOLLOW_SLERP = 0.35;
+const DEFAULT_BACK_FACE_PROJECTION_DISTANCE = 1.8;
+const BACK_FACE_PROJECTION_OPACITY = 0.45;
+const BACK_FACE_PROJECTION_BORDER_OFFSET = 0.006;
+const BACK_FACE_PROJECTION_BORDER_OPACITY = 0.82;
+
+const DEFAULT_GYRO_ORIENTATION: CubeOrientation = { top: "white", front: "green" };
+const COLOR_VECTOR: Record<CubeColor, THREE.Vector3> = {
+  white: new THREE.Vector3(0, 1, 0),
+  yellow: new THREE.Vector3(0, -1, 0),
+  green: new THREE.Vector3(0, 0, 1),
+  blue: new THREE.Vector3(0, 0, -1),
+  red: new THREE.Vector3(1, 0, 0),
+  orange: new THREE.Vector3(-1, 0, 0),
+};
+
+const HARDWARE_FACE_COLOR: Record<CubeFace, CubeColor> = {
+  U: "white",
+  D: "yellow",
+  F: "green",
+  B: "blue",
+  R: "red",
+  L: "orange",
+};
+
+const FACE_VECTOR: Record<CubeFace, THREE.Vector3> = {
+  U: new THREE.Vector3(0, 1, 0),
+  D: new THREE.Vector3(0, -1, 0),
+  R: new THREE.Vector3(1, 0, 0),
+  L: new THREE.Vector3(-1, 0, 0),
+  F: new THREE.Vector3(0, 0, 1),
+  B: new THREE.Vector3(0, 0, -1),
+};
+
+type StickerMesh = THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> & {
+  userData: {
+    stickerLocalFace: CubeFace;
+    stickerBaseColor: string;
+    stickerBaseFace: CubeFace;
+    stickerLowerLayerDimmed: boolean;
+    isProjectionSticker?: boolean;
+    projectionLocalNormal?: THREE.Vector3;
+  };
+};
+
+type ProjectionBorderObject = THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial> & {
+  userData: {
+    isProjectionBorder: true;
+    projectionLocalNormal: THREE.Vector3;
+  };
+};
+
+type CubieFaceRecord = {
+  localFace: CubeFace;
+  sticker: StickerMesh;
+  projectionSticker?: StickerMesh;
+  projectionBorder?: ProjectionBorderObject;
+  localNormal: THREE.Vector3;
+};
+
+type Cubie = THREE.Group & {
+  userData: {
+    logicalPos: THREE.Vector3;
+    homePos: THREE.Vector3;
+    faces: CubieFaceRecord[];
+  };
+};
+
+type CubieGeometryAssets = {
+  body: THREE.BoxGeometry;
+  sticker: THREE.PlaneGeometry;
+  projectionBorder: THREE.EdgesGeometry;
+};
+
+type HintArrowAssets = {
+  group: THREE.Group;
+  rings: THREE.Group[];
+  geometries: THREE.BufferGeometry[];
+  material: THREE.Material;
+};
+
+const AXIS_VECTOR: Record<"x" | "y" | "z", THREE.Vector3> = {
+  x: new THREE.Vector3(1, 0, 0),
+  y: new THREE.Vector3(0, 1, 0),
+  z: new THREE.Vector3(0, 0, 1),
+};
+const HINT_LAYER_COORD_SCALE = 1;
+const HINT_MAX_RINGS = 3;
+const CUBIE_SIZE = 0.96;
+const STICKER_SIZE = 0.86;
+
+function freezeLocalTransform(object: THREE.Object3D) {
+  object.updateMatrix();
+  object.matrixAutoUpdate = false;
+}
+
+function createHintArrowRing(material: THREE.Material, geometries: THREE.BufferGeometry[]) {
+  const group = new THREE.Group();
+  const radius = 2.2;
+  const tubeRadius = 0.065;
+  const arcAngle = (Math.PI * 2) / 3; // 120° arc per arrow
+
+  // Two arrows on opposite sides of the face perimeter so the rotation
+  // direction is unambiguous regardless of viewing angle.
+  for (let i = 0; i < 2; i++) {
+    const arrowGroup = new THREE.Group();
+
+    const torusGeom = new THREE.TorusGeometry(radius, tubeRadius, 10, 40, arcAngle);
+    geometries.push(torusGeom);
+    const torus = new THREE.Mesh(torusGeom, material);
+    torus.renderOrder = 10;
+    freezeLocalTransform(torus);
+    arrowGroup.add(torus);
+
+    const headLength = tubeRadius * 7.2;
+    const headRadius = tubeRadius * 3.4;
+    const coneGeom = new THREE.ConeGeometry(headRadius, headLength, 18);
+    geometries.push(coneGeom);
+    const cone = new THREE.Mesh(coneGeom, material);
+    cone.renderOrder = 10;
+    // End point of the arc, with the arrowhead extending slightly past it
+    // along the tangent so the geometry meets the torus cleanly.
+    const tipRadius = radius;
+    cone.position.set(Math.cos(arcAngle) * tipRadius, Math.sin(arcAngle) * tipRadius, 0);
+    cone.rotation.z = arcAngle; // align cone +Y with tangent at end of arc
+    cone.translateY(headLength / 2 - tubeRadius * 0.4);
+    freezeLocalTransform(cone);
+    arrowGroup.add(cone);
+
+    arrowGroup.rotation.z = i * Math.PI;
+    freezeLocalTransform(arrowGroup);
+    group.add(arrowGroup);
+  }
+
+  group.visible = false;
+  return group;
+}
+
+function createHintArrow(): HintArrowAssets {
+  const group = new THREE.Group();
+  const material = new THREE.MeshBasicMaterial({
+    color: 0x0e0e0c,
+    transparent: true,
+    opacity: 0.9,
+    side: THREE.DoubleSide,
+    depthTest: true,
+  });
+  const geometries: THREE.BufferGeometry[] = [];
+  const rings = Array.from({ length: HINT_MAX_RINGS }, () => {
+    const ring = createHintArrowRing(material, geometries);
+    group.add(ring);
+    return ring;
+  });
+  group.visible = false;
+  return { group, rings, geometries, material };
+}
+
+type QueuedMove = {
+  layers: CubeMoveLayer[];
+  axis: "x" | "y" | "z";
+  targetAngle: number;
+  physicalTurn: 1 | -1 | 2;
+  durationMs: number;
+};
+
+type ActiveMove = QueuedMove & {
+  pivot: THREE.Group;
+  cubies: Cubie[];
+  progress: number;
+  lastUpdateTime: number;
+};
+
+function isInitialLowerLayerSticker(face: CubeFace, y: number) {
+  if (face === "D") return true;
+  return (face === "F" || face === "B" || face === "R" || face === "L") && y !== 1;
+}
+
+function makeCubie(
+  x: number,
+  y: number,
+  z: number,
+  geometries: CubieGeometryAssets,
+  colors: Record<CubeFace | "inner", string>,
+  orientation: CubeOrientation,
+  colorByCubeColor: Record<CubeColor, string>,
+  facelets?: string,
+  formulaFacelets?: string | null,
+  transparentFormulaFacelets = false,
+  showBackFaceProjection = false,
+  backFaceProjectionDistance = DEFAULT_BACK_FACE_PROJECTION_DISTANCE,
+  lowerLayerDimmed = false,
+): Cubie {
+  const transparentFormulaMode = transparentFormulaFacelets && Boolean(formulaFacelets);
+  const group = new THREE.Group() as Cubie;
+  group.userData.faces = [];
+  const inner = new THREE.MeshBasicMaterial({
+    color: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE : colors.inner,
+    transparent: transparentFormulaMode,
+    opacity: transparentFormulaMode ? TRANSPARENT_FORMULA_CUBIE_OPACITY : 1,
+    depthWrite: !transparentFormulaMode,
+  });
+  const cube = new THREE.Mesh(geometries.body, inner);
+  if (transparentFormulaMode) cube.renderOrder = -2;
+  freezeLocalTransform(cube);
+  group.add(cube);
+
+  const offset = CUBIE_SIZE / 2 + 0.001;
+
+  const stickers: Array<{
+    face: CubeFace;
+    cond: boolean;
+    pos: [number, number, number];
+    rot: [number, number, number];
+  }> = [
+    { face: "R", cond: x === 1, pos: [offset, 0, 0], rot: [0, Math.PI / 2, 0] },
+    { face: "L", cond: x === -1, pos: [-offset, 0, 0], rot: [0, -Math.PI / 2, 0] },
+    { face: "U", cond: y === 1, pos: [0, offset, 0], rot: [-Math.PI / 2, 0, 0] },
+    { face: "D", cond: y === -1, pos: [0, -offset, 0], rot: [Math.PI / 2, 0, 0] },
+    { face: "F", cond: z === 1, pos: [0, 0, offset], rot: [0, 0, 0] },
+    { face: "B", cond: z === -1, pos: [0, 0, -offset], rot: [0, Math.PI, 0] },
+  ];
+
+  function resolveSticker(sticker: { face: CubeFace }) {
+    let stickerColor = colors[sticker.face];
+    let stickerBaseFace = sticker.face;
+    let transparentFacelet = false;
+
+    if (facelets) {
+      const hardwarePos = displayPositionToHardware(x, y, z, orientation);
+      const hardwareFace = displayFaceToHardware(sticker.face, orientation);
+      const facelet = facelets[faceletIndex(hardwareFace, hardwarePos.x, hardwarePos.y, hardwarePos.z)];
+      const rawFace = toCubeFace(facelet);
+      if (rawFace) {
+        stickerBaseFace = rawFace;
+        stickerColor = colorByCubeColor[HARDWARE_FACE_COLOR[rawFace]];
+      }
+    } else if (formulaFacelets) {
+      const facelet = formulaFacelets[faceletIndex(sticker.face, x, y, z)];
+      if (facelet === "X") {
+        stickerColor = OLL_DIMMED_STICKER;
+        transparentFacelet = transparentFormulaMode;
+      } else {
+        const formulaFace = toCubeFace(facelet);
+        if (formulaFace) {
+          stickerBaseFace = formulaFace;
+          stickerColor = colors[formulaFace];
+        }
+      }
+    }
+
+    return { stickerColor, stickerBaseFace, transparentFacelet };
+  }
+
+  function createStickerMesh(
+    sticker: {
+      face: CubeFace;
+      pos: [number, number, number];
+      rot: [number, number, number];
+    },
+    stickerColor: string,
+    stickerBaseFace: CubeFace,
+    stickerLowerLayerDimmed: boolean,
+    projected: boolean,
+    transparentFacelet: boolean,
+  ) {
+    const transparent = projected || transparentFacelet;
+    const mat = new THREE.MeshBasicMaterial({
+      color: lowerLayerDimmed && stickerLowerLayerDimmed ? LOWER_LAYER_DIMMED_STICKER : stickerColor,
+      side: projected ? THREE.BackSide : transparentFormulaMode ? THREE.DoubleSide : THREE.FrontSide,
+      transparent,
+      opacity: projected
+        ? BACK_FACE_PROJECTION_OPACITY
+        : transparentFacelet
+          ? TRANSPARENT_FORMULA_FACELET_OPACITY
+          : 1,
+      depthWrite: !transparent,
+      forceSinglePass: transparentFacelet,
+    });
+    const mesh = new THREE.Mesh(geometries.sticker, mat) as StickerMesh;
+    if (projected) {
+      const [px, py, pz] = sticker.pos;
+      const localNormal = new THREE.Vector3(px, py, pz).normalize();
+      mesh.position.copy(localNormal.clone().multiplyScalar(backFaceProjectionDistance));
+      mesh.renderOrder = -1;
+      mesh.userData.isProjectionSticker = true;
+      mesh.userData.projectionLocalNormal = localNormal.clone();
+    } else {
+      mesh.position.set(...sticker.pos);
+      if (transparentFacelet) mesh.renderOrder = -1;
+    }
+    mesh.rotation.set(...sticker.rot);
+    mesh.userData.stickerLocalFace = sticker.face;
+    mesh.userData.stickerBaseColor = stickerColor;
+    mesh.userData.stickerBaseFace = stickerBaseFace;
+    mesh.userData.stickerLowerLayerDimmed = stickerLowerLayerDimmed;
+    freezeLocalTransform(mesh);
+    return mesh;
+  }
+
+  function createProjectionBorder(sticker: {
+    pos: [number, number, number];
+    rot: [number, number, number];
+  }) {
+    const [px, py, pz] = sticker.pos;
+    const localNormal = new THREE.Vector3(px, py, pz).normalize();
+    const border = new THREE.LineSegments(
+      geometries.projectionBorder,
+      new THREE.LineBasicMaterial({
+        color: 0x0e0e0c,
+        transparent: true,
+        opacity: BACK_FACE_PROJECTION_BORDER_OPACITY,
+        depthWrite: false,
+      }),
+    ) as ProjectionBorderObject;
+    border.position.copy(localNormal).multiplyScalar(backFaceProjectionDistance + BACK_FACE_PROJECTION_BORDER_OFFSET);
+    border.rotation.set(...sticker.rot);
+    border.renderOrder = 0;
+    // Line segments cannot be culled by THREE.BackSide the way the projection
+    // sticker mesh is, so we tag the border with its outward face normal and
+    // toggle visibility per frame to match the BackSide rule used by the
+    // sticker — only show when the face is pointing away from the camera.
+    border.userData.isProjectionBorder = true;
+    border.userData.projectionLocalNormal = localNormal.clone();
+    freezeLocalTransform(border);
+    return border;
+  }
+
+  stickers.forEach((sticker) => {
+    if (!sticker.cond) return;
+    const { stickerColor, stickerBaseFace, transparentFacelet } = resolveSticker(sticker);
+    const stickerLowerLayerDimmed = isInitialLowerLayerSticker(sticker.face, y);
+    const stickerMesh = createStickerMesh(
+      sticker,
+      stickerColor,
+      stickerBaseFace,
+      stickerLowerLayerDimmed,
+      false,
+      transparentFacelet,
+    );
+    const faceRecord: CubieFaceRecord = {
+      localFace: sticker.face,
+      sticker: stickerMesh,
+      localNormal: FACE_VECTOR[sticker.face],
+    };
+    group.add(stickerMesh);
+    if (showBackFaceProjection && !transparentFormulaMode) {
+      faceRecord.projectionSticker = createStickerMesh(
+        sticker,
+        stickerColor,
+        stickerBaseFace,
+        stickerLowerLayerDimmed,
+        true,
+        false,
+      );
+      faceRecord.projectionBorder = createProjectionBorder(sticker);
+      group.add(faceRecord.projectionSticker, faceRecord.projectionBorder);
+    }
+    group.userData.faces.push(faceRecord);
+  });
+
+  group.position.set(x, y, z);
+  group.userData.logicalPos = new THREE.Vector3(x, y, z);
+  group.userData.homePos = new THREE.Vector3(x, y, z);
+  return group;
+}
+
+function disposeCubie(cubie: Cubie) {
+  const materials = new Set<THREE.Material>();
+  cubie.traverse((child) => {
+    if (child instanceof THREE.Mesh || child instanceof THREE.LineSegments) {
+      if (Array.isArray(child.material)) {
+        child.material.forEach((material) => materials.add(material));
+      } else {
+        materials.add(child.material);
+      }
+    }
+  });
+  materials.forEach((material) => material.dispose());
+}
+
+function toCubeFace(value: string | undefined): CubeFace | null {
+  return value === "U" || value === "D" || value === "L" || value === "R" || value === "F" || value === "B" ? value : null;
+}
+
+function isValidFacelets(facelets: string) {
+  if (facelets.length !== 54) return false;
+  const counts: Record<CubeFace, number> = { U: 0, D: 0, L: 0, R: 0, F: 0, B: 0 };
+  for (const facelet of facelets) {
+    const face = toCubeFace(facelet);
+    if (!face) return false;
+    counts[face] += 1;
+  }
+  return Object.values(counts).every((count) => count === 9);
+}
+
+function isValidFormulaFacelets(facelets: string) {
+  return /^[UDLRFBX]{54}$/.test(facelets);
+}
+
+function faceletIndex(face: CubeFace, x: number, y: number, z: number) {
+  switch (face) {
+    case "U":
+      return (z + 1) * 3 + (x + 1);
+    case "R":
+      return 9 + (1 - y) * 3 + (1 - z);
+    case "F":
+      return 18 + (1 - y) * 3 + (x + 1);
+    case "D":
+      return 27 + (1 - z) * 3 + (x + 1);
+    case "L":
+      return 36 + (1 - y) * 3 + (z + 1);
+    case "B":
+      return 45 + (1 - y) * 3 + (1 - x);
+  }
+}
+
+function vectorToFace(vector: THREE.Vector3): CubeFace {
+  const x = Math.round(vector.x);
+  const y = Math.round(vector.y);
+  const z = Math.round(vector.z);
+  if (y === 1) return "U";
+  if (y === -1) return "D";
+  if (x === 1) return "R";
+  if (x === -1) return "L";
+  if (z === 1) return "F";
+  return "B";
+}
+
+function displayPositionToHardware(x: number, y: number, z: number, orientation: CubeOrientation) {
+  const top = COLOR_VECTOR[orientation.top] ?? COLOR_VECTOR[DEFAULT_ORIENTATION.top];
+  const front = COLOR_VECTOR[orientation.front] ?? COLOR_VECTOR[DEFAULT_ORIENTATION.front];
+  const right = new THREE.Vector3().crossVectors(top, front).normalize();
+  return new THREE.Vector3()
+    .addScaledVector(right, x)
+    .addScaledVector(top, y)
+    .addScaledVector(front, z)
+    .round();
+}
+
+function displayFaceToHardware(face: CubeFace, orientation: CubeOrientation) {
+  const normal = FACE_VECTOR[face];
+  return vectorToFace(displayPositionToHardware(normal.x, normal.y, normal.z, orientation));
+}
+
+function selectLayer(cubies: Cubie[], layer: CubeMoveLayer): Cubie[] {
+  const { axis, coord } = LAYER_AXIS[layer];
+  return cubies.filter((cubie) => Math.round(cubie.userData.logicalPos[axis]) === coord);
+}
+
+function selectLayers(cubies: Cubie[], layers: CubeMoveLayer[]): Cubie[] {
+  const first = layers[0];
+  if (!first) return [];
+  if (layers.length === 1) return selectLayer(cubies, first);
+  const { axis } = LAYER_AXIS[first];
+  const coords = new Set(layers.map((layer) => LAYER_AXIS[layer].coord));
+  return cubies.filter((cubie) => coords.has(Math.round(cubie.userData.logicalPos[axis]) as -1 | 0 | 1));
+}
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+function finiteOrDefault(value: number | undefined, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function makeOrientationBasis(orientation: CubeOrientation) {
+  const top = COLOR_VECTOR[orientation.top] ?? COLOR_VECTOR[DEFAULT_GYRO_ORIENTATION.top];
+  const front = COLOR_VECTOR[orientation.front] ?? COLOR_VECTOR[DEFAULT_GYRO_ORIENTATION.front];
+  const right = new THREE.Vector3().crossVectors(top, front).normalize();
+  const matrix = new THREE.Matrix4().makeBasis(right, top, front);
+  return new THREE.Quaternion().setFromRotationMatrix(matrix).normalize();
+}
+
+export type SmartCubeOptions = {
+  faceColors?: Partial<Record<CubeFace, string>>;
+  orientation?: CubeOrientation;
+  maxFps?: number | null;
+  autoRotateDegPerSecond?: number;
+  compensateInitialGyroOffset?: boolean;
+  interactionLocked?: boolean;
+  wheelZoomEnabled?: boolean;
+  pinchZoomEnabled?: boolean;
+  /** Reserve the canvas edges for page scrolling. */
+  compactGestureRegion?: boolean;
+  preserveDrawingBuffer?: boolean;
+  animateHintArrow?: boolean;
+  initialHintMove?: string | null;
+  showBackFaceProjection?: boolean;
+  transparentFormulaFacelets?: boolean;
+  backFaceProjectionDistance?: number;
+  cameraDistanceRange?: Partial<CubeCameraDistanceRange>;
+  defaultDisplayState?: Partial<CubeDisplayState> | null;
+  initialDisplayState?: CubeDisplayState | null;
+  initialFacelets?: string | null;
+  initialFormulaFacelets?: string | null;
+  initialMoves?: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>;
+  initialGyroQuaternion?: CubeQuaternion | null;
+  cameraViewportInsets?: CubeCameraViewportInsets;
+  sceneOffset?: CubeSceneOffset;
+  onFirstRender?: (canvas: HTMLCanvasElement) => void;
+  onDisplayOrientationChange?: () => void;
+};
+
+export function mountSmartCube(
+  container: HTMLDivElement,
+  options: SmartCubeOptions = {},
+): SmartCubeApi {
+  const colors: Record<CubeFace | "inner", string> = {
+    U: options.faceColors?.U ?? FACE_COLORS.U,
+    D: options.faceColors?.D ?? FACE_COLORS.D,
+    F: options.faceColors?.F ?? FACE_COLORS.F,
+    B: options.faceColors?.B ?? FACE_COLORS.B,
+    L: options.faceColors?.L ?? FACE_COLORS.L,
+    R: options.faceColors?.R ?? FACE_COLORS.R,
+    inner: FACE_COLORS.inner,
+  };
+  const displayOrientation = options.orientation ?? DEFAULT_ORIENTATION;
+  const displayFaceColors = getFaceColors(displayOrientation);
+  const colorByCubeColor = Object.fromEntries(
+    (Object.entries(displayFaceColors) as Array<[CubeFace, CubeColor]>).map(([face, color]) => [color, colors[face]]),
+  ) as Record<CubeColor, string>;
+  const showBackFaceProjection = options.showBackFaceProjection ?? false;
+  let transparentFormulaFacelets = options.transparentFormulaFacelets ?? false;
+  let backFaceProjectionDistance = Number.isFinite(options.backFaceProjectionDistance)
+    ? options.backFaceProjectionDistance ?? DEFAULT_BACK_FACE_PROJECTION_DISTANCE
+    : DEFAULT_BACK_FACE_PROJECTION_DISTANCE;
+  let formulaFacelets: string | null = null;
+  let lowerLayerDimmed = false;
+  const onDisplayOrientationChange = options.onDisplayOrientationChange;
+  const maxFps = options.maxFps === null
+    ? null
+    : Number.isFinite(options.maxFps) && options.maxFps && options.maxFps > 0
+    ? options.maxFps
+    : DEFAULT_MAX_FPS;
+  const targetFrameMs = maxFps === null ? 0 : 1000 / maxFps;
+  const autoRotateDegPerSecond = Number.isFinite(options.autoRotateDegPerSecond)
+    ? options.autoRotateDegPerSecond ?? 0
+    : 0;
+  const compensateInitialGyroOffset = options.compensateInitialGyroOffset ?? true;
+  const wheelZoomEnabled = options.wheelZoomEnabled ?? true;
+  const pinchZoomEnabled = options.pinchZoomEnabled ?? true;
+  const animateHintArrow = options.animateHintArrow ?? true;
+  const minCameraDistance = Math.max(
+    0.1,
+    finiteOrDefault(options.cameraDistanceRange?.min, MIN_CAMERA_DISTANCE),
+  );
+  const maxCameraDistance = Math.max(
+    minCameraDistance,
+    finiteOrDefault(options.cameraDistanceRange?.max, MAX_CAMERA_DISTANCE),
+  );
+
+  const scene = new THREE.Scene();
+  scene.background = null;
+  scene.matrixAutoUpdate = false;
+
+  const camera = new THREE.PerspectiveCamera(32, container.clientWidth / container.clientHeight, 0.1, 100);
+  const defaultDisplayState: CubeDisplayState = {
+    cameraDistance: clamp(
+      finiteOrDefault(options.defaultDisplayState?.cameraDistance, DEFAULT_CAMERA_DISTANCE),
+      minCameraDistance,
+      maxCameraDistance,
+    ),
+    cameraLatitude: clamp(
+      finiteOrDefault(options.defaultDisplayState?.cameraLatitude, DEFAULT_CAMERA_LATITUDE),
+      -CAMERA_LATITUDE_LIMIT,
+      CAMERA_LATITUDE_LIMIT,
+    ),
+    cameraLongitude: normalizeLongitude(
+      finiteOrDefault(options.defaultDisplayState?.cameraLongitude, DEFAULT_CAMERA_LONGITUDE),
+    ),
+  };
+  let cameraDistance = defaultDisplayState.cameraDistance;
+  let cameraLatitude = defaultDisplayState.cameraLatitude;
+  let cameraLongitude = defaultDisplayState.cameraLongitude;
+  let projectionBorderVisibilityDirty = true;
+  const cameraSpherical = new THREE.Spherical();
+
+  function applyCameraViewport(width: number, height: number) {
+    const insets = options.cameraViewportInsets;
+    if (!insets) {
+      camera.clearViewOffset();
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      return;
+    }
+
+    const left = Math.max(0, insets.left ?? 0);
+    const right = Math.max(0, insets.right ?? 0);
+    const top = Math.max(0, insets.top ?? 0);
+    const bottom = Math.max(0, insets.bottom ?? 0);
+    const viewWidth = Math.max(1, width - left - right);
+    const viewHeight = Math.max(1, height - top - bottom);
+    camera.aspect = viewWidth / viewHeight;
+    camera.setViewOffset(viewWidth, viewHeight, -left, -top, width, height);
+    camera.updateProjectionMatrix();
+  }
+
+  function applyCameraOrbit() {
+    cameraSpherical.set(
+      cameraDistance * CAMERA_ORBIT_RADIUS_SCALE,
+      (90 - cameraLatitude) * Math.PI / 180,
+      cameraLongitude * Math.PI / 180,
+    );
+    cameraSpherical.makeSafe();
+    camera.position.setFromSpherical(cameraSpherical);
+    camera.lookAt(0, 0, 0);
+    projectionBorderVisibilityDirty = true;
+  }
+
+  function applyCameraDistance(distance: number) {
+    const nextDistance = clamp(distance, minCameraDistance, maxCameraDistance);
+    const changed = Math.abs(nextDistance - cameraDistance) > 0.001;
+    if (!changed) return false;
+    cameraDistance = nextDistance;
+    applyCameraOrbit();
+    return true;
+  }
+
+  function applyCameraCoordinates(latitude: number, longitude: number) {
+    const nextLatitude = clamp(latitude, -CAMERA_LATITUDE_LIMIT, CAMERA_LATITUDE_LIMIT);
+    const nextLongitude = normalizeLongitude(longitude);
+    const changed =
+      Math.abs(nextLatitude - cameraLatitude) > 0.001 ||
+      Math.abs(nextLongitude - cameraLongitude) > 0.001;
+    if (!changed) return false;
+    cameraLatitude = nextLatitude;
+    cameraLongitude = nextLongitude;
+    applyCameraOrbit();
+    return true;
+  }
+
+  if (options.initialDisplayState) {
+    cameraDistance = clamp(
+      finiteOrDefault(options.initialDisplayState.cameraDistance, defaultDisplayState.cameraDistance),
+      minCameraDistance,
+      maxCameraDistance,
+    );
+    cameraLatitude = clamp(
+      finiteOrDefault(options.initialDisplayState.cameraLatitude, defaultDisplayState.cameraLatitude),
+      -CAMERA_LATITUDE_LIMIT,
+      CAMERA_LATITUDE_LIMIT,
+    );
+    cameraLongitude = normalizeLongitude(
+      finiteOrDefault(options.initialDisplayState.cameraLongitude, defaultDisplayState.cameraLongitude),
+    );
+  }
+  applyCameraOrbit();
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    alpha: true,
+    preserveDrawingBuffer: options.preserveDrawingBuffer ?? false,
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  applyCameraViewport(Math.max(container.clientWidth, 1), Math.max(container.clientHeight, 1));
+  container.appendChild(renderer.domElement);
+
+  const viewRoot = new THREE.Group();
+  viewRoot.position.set(
+    finiteOrDefault(options.sceneOffset?.x, 0),
+    finiteOrDefault(options.sceneOffset?.y, 0),
+    finiteOrDefault(options.sceneOffset?.z, 0),
+  );
+  freezeLocalTransform(viewRoot);
+  scene.add(viewRoot);
+
+  const cubeRoot = new THREE.Group();
+  viewRoot.add(cubeRoot);
+
+  const stickerGeometry = new THREE.PlaneGeometry(STICKER_SIZE, STICKER_SIZE);
+  const cubieGeometries: CubieGeometryAssets = {
+    body: new THREE.BoxGeometry(CUBIE_SIZE, CUBIE_SIZE, CUBIE_SIZE),
+    sticker: stickerGeometry,
+    projectionBorder: new THREE.EdgesGeometry(stickerGeometry),
+  };
+
+  const orientationBasis = makeOrientationBasis(options.orientation ?? DEFAULT_GYRO_ORIENTATION);
+  const defaultCubeOrientation = cubeRoot.quaternion.clone();
+  const targetCubeOrientation = cubeRoot.quaternion.clone();
+
+  const cubies: Cubie[] = [];
+  const projectionSurfaces: Array<StickerMesh | ProjectionBorderObject> = [];
+  const projectionCubies: Cubie[] = [];
+  const queue: QueuedMove[] = [];
+  let current: ActiveMove | null = null;
+  let frameId = 0;
+  let frameTimeoutId = 0;
+  let frameScheduled = false;
+  let disposed = false;
+  let renderingPaused = false;
+  let firstRenderPending = true;
+  let dragging = false;
+  const pointerPositions = new Map<number, { x: number; y: number }>();
+  let pinchDistance = 0;
+  let interactionLocked = Boolean(options.interactionLocked);
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let gyroBasis: THREE.Quaternion | null = null;
+  let gyroActive = false;
+
+  const hintArrow = createHintArrow();
+  cubeRoot.add(hintArrow.group);
+  let lastFrameTime = performance.now();
+  let hintSpinSign = 1;
+  const hintTmpQuat = new THREE.Quaternion();
+  const hintDefaultAxis = new THREE.Vector3(0, 0, 1);
+  const gyroHardwareOrientation = new THREE.Quaternion();
+  const gyroCubeOrientation = new THREE.Quaternion();
+  const rotatedLogicalPosition = new THREE.Vector3();
+  const stickerNormal = new THREE.Vector3();
+  const cubieWorldQuaternion = new THREE.Quaternion();
+  const cubeRootWorldQuaternion = new THREE.Quaternion();
+  const cubeRootWorldQuaternionInverse = new THREE.Quaternion();
+  const cubieToCubeQuaternion = new THREE.Quaternion();
+  const projectionWorldNormal = new THREE.Vector3();
+  const projectionWorldPosition = new THREE.Vector3();
+  const projectionCameraOffset = new THREE.Vector3();
+  const projectionCubieQuaternion = new THREE.Quaternion();
+
+  const gestureRegion = options.compactGestureRegion ? document.createElement("div") : null;
+  const originalPosition = container.style.position;
+  const needsPosition = !!gestureRegion && getComputedStyle(container).position === "static";
+  const gestureCenter = new THREE.Vector3();
+  if (gestureRegion) {
+    if (needsPosition) container.style.position = "relative";
+    gestureRegion.className = "cube-gesture-region";
+    gestureRegion.setAttribute("aria-hidden", "true");
+    Object.assign(gestureRegion.style, {
+      position: "absolute", touchAction: "none",
+      transform: "translate(-50%, -50%)", borderRadius: "50%",
+    });
+    container.appendChild(gestureRegion);
+  }
+  renderer.domElement.style.touchAction = gestureRegion ? "pan-y pinch-zoom" : "none";
+
+  function updateGestureRegion() {
+    if (!gestureRegion) return;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const size = Math.min(width * 0.5, height * 0.5, 640);
+    cubeRoot.getWorldPosition(gestureCenter).project(camera);
+    const x = THREE.MathUtils.clamp((gestureCenter.x + 1) * width / 2, size / 2, width - size / 2);
+    const y = THREE.MathUtils.clamp((1 - gestureCenter.y) * height / 2, size / 2, height - size / 2);
+    Object.assign(gestureRegion.style, {
+      left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`,
+    });
+  }
+
+  function isInsideGestureRegion(clientX: number, clientY: number) {
+    if (!gestureRegion) return true;
+    const rect = gestureRegion.getBoundingClientRect();
+    const radius = rect.width / 2;
+    return radius > 0 && Math.hypot(clientX - rect.left - radius, clientY - rect.top - radius) <= radius;
+  }
+
+  const displayFaceByHardwareColor = Object.fromEntries(
+    (Object.entries(displayFaceColors) as Array<[CubeFace, CubeColor]>).map(([face, color]) => [color, face]),
+  ) as Partial<Record<CubeColor, CubeFace>>;
+
+  function colorForHardwareFace(face: CubeFace) {
+    const hardwareColor = HARDWARE_FACE_COLOR[face];
+    const displayFace = displayFaceByHardwareColor[hardwareColor];
+    return displayFace ? colors[displayFace] : COLOR_HEX[hardwareColor];
+  }
+
+  function registerProjectionObjects(cubie: Cubie) {
+    const projectedFaces = cubie.userData.faces.filter(
+      (face) => face.projectionSticker && face.projectionBorder,
+    );
+    if (projectedFaces.length === 0) return;
+    projectionCubies.push(cubie);
+    projectedFaces.forEach((face) => {
+      projectionSurfaces.push(face.projectionSticker!, face.projectionBorder!);
+    });
+  }
+
+  function rebuildCubies(facelets?: string) {
+    cubies.forEach((cubie) => {
+      cubeRoot.remove(cubie);
+      disposeCubie(cubie);
+    });
+    cubies.length = 0;
+    projectionSurfaces.length = 0;
+    projectionCubies.length = 0;
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+          const cubie = makeCubie(
+            x,
+            y,
+            z,
+            cubieGeometries,
+            colors,
+            displayOrientation,
+            colorByCubeColor,
+            facelets,
+            formulaFacelets,
+            transparentFormulaFacelets,
+            showBackFaceProjection,
+            backFaceProjectionDistance,
+            lowerLayerDimmed,
+          );
+          cubies.push(cubie);
+          registerProjectionObjects(cubie);
+          cubeRoot.add(cubie);
+        }
+      }
+    }
+    projectionBorderVisibilityDirty = true;
+  }
+
+  function applyBackFaceProjectionDistance(distance: number) {
+    const nextDistance = Number.isFinite(distance) ? distance : DEFAULT_BACK_FACE_PROJECTION_DISTANCE;
+    const changed = Math.abs(nextDistance - backFaceProjectionDistance) > 0.001;
+    if (!changed) return false;
+    backFaceProjectionDistance = nextDistance;
+    projectionSurfaces.forEach((surface) => {
+      const offset = surface.userData.isProjectionBorder
+        ? backFaceProjectionDistance + BACK_FACE_PROJECTION_BORDER_OFFSET
+        : backFaceProjectionDistance;
+      surface.position.copy(surface.userData.projectionLocalNormal!).multiplyScalar(offset);
+      surface.updateMatrix();
+    });
+    projectionBorderVisibilityDirty = true;
+    return changed;
+  }
+
+  function paintSticker(mesh: StickerMesh, color: string, baseFace: CubeFace) {
+    mesh.material.color.set(color);
+    mesh.userData.stickerBaseColor = color;
+    mesh.userData.stickerBaseFace = baseFace;
+  }
+
+  function refreshStickerDisplayColors() {
+    cubies.forEach((cubie) => {
+      cubie.userData.faces.forEach(({ sticker, projectionSticker }) => {
+        const color = lowerLayerDimmed && sticker.userData.stickerLowerLayerDimmed
+            ? LOWER_LAYER_DIMMED_STICKER
+            : sticker.userData.stickerBaseColor;
+        sticker.material.color.set(color);
+        projectionSticker?.material.color.set(color);
+      });
+    });
+  }
+
+  function resetCubiesInPlace() {
+    cubies.forEach((cubie) => {
+      cubie.position.copy(cubie.userData.homePos);
+      cubie.quaternion.identity();
+      cubie.scale.set(1, 1, 1);
+      cubie.userData.logicalPos.copy(cubie.userData.homePos);
+      cubie.userData.faces.forEach(({ localFace, sticker, projectionSticker }) => {
+        const color = colors[localFace];
+        paintSticker(sticker, color, localFace);
+        if (projectionSticker) paintSticker(projectionSticker, color, localFace);
+      });
+    });
+    refreshStickerDisplayColors();
+    projectionBorderVisibilityDirty = true;
+  }
+
+  function repaintCubies(facelets: string) {
+    cubeRoot.getWorldQuaternion(cubeRootWorldQuaternion);
+    cubeRootWorldQuaternionInverse.copy(cubeRootWorldQuaternion).invert();
+
+    cubies.forEach((cubie) => {
+      const x = Math.round(cubie.userData.logicalPos.x);
+      const y = Math.round(cubie.userData.logicalPos.y);
+      const z = Math.round(cubie.userData.logicalPos.z);
+      const hardwarePos = displayPositionToHardware(x, y, z, displayOrientation);
+
+      cubie.getWorldQuaternion(cubieWorldQuaternion);
+      cubieToCubeQuaternion.copy(cubeRootWorldQuaternionInverse).multiply(cubieWorldQuaternion).normalize();
+
+      cubie.userData.faces.forEach(({ localFace, sticker, projectionSticker }) => {
+        stickerNormal.copy(FACE_VECTOR[localFace]).applyQuaternion(cubieToCubeQuaternion).normalize();
+        const displayFace = vectorToFace(stickerNormal);
+        const hardwareFace = displayFaceToHardware(displayFace, displayOrientation);
+        const facelet = facelets[faceletIndex(hardwareFace, hardwarePos.x, hardwarePos.y, hardwarePos.z)];
+        const rawFace = toCubeFace(facelet);
+        if (!rawFace) return;
+
+        const color = colorForHardwareFace(rawFace);
+        paintSticker(sticker, color, rawFace);
+        if (projectionSticker) paintSticker(projectionSticker, color, rawFace);
+      });
+    });
+    refreshStickerDisplayColors();
+  }
+
+  function startNext(now = performance.now()) {
+    if (current || queue.length === 0) return;
+    const next = queue.shift();
+    if (!next) return;
+
+    const selectedCubies = selectLayers(cubies, next.layers);
+    const pivot = new THREE.Group();
+    cubeRoot.add(pivot);
+    selectedCubies.forEach((cubie) => pivot.attach(cubie));
+
+    current = {
+      ...next,
+      pivot,
+      cubies: selectedCubies,
+      progress: 0,
+      lastUpdateTime: now,
+    };
+  }
+
+  function rotateLogicalPosition(
+    pos: THREE.Vector3,
+    axis: "x" | "y" | "z",
+    physicalTurn: 1 | -1 | 2,
+    rotated: THREE.Vector3,
+  ) {
+    if (physicalTurn === 2) {
+      if (axis === "x") rotated.set(pos.x, -pos.y, -pos.z);
+      else if (axis === "y") rotated.set(-pos.x, pos.y, -pos.z);
+      else rotated.set(-pos.x, -pos.y, pos.z);
+      return rotated;
+    }
+
+    if (axis === "x") {
+      rotated.set(pos.x, physicalTurn > 0 ? -pos.z : pos.z, physicalTurn > 0 ? pos.y : -pos.y);
+    } else if (axis === "y") {
+      rotated.set(physicalTurn > 0 ? pos.z : -pos.z, pos.y, physicalTurn > 0 ? -pos.x : pos.x);
+    } else {
+      rotated.set(physicalTurn > 0 ? -pos.y : pos.y, physicalTurn > 0 ? pos.x : -pos.x, pos.z);
+    }
+    return rotated;
+  }
+
+  function finishCurrent() {
+    if (!current) return;
+    const { pivot, cubies: activeCubies, axis, targetAngle, physicalTurn } = current;
+    pivot.rotation[axis] = targetAngle;
+
+    activeCubies.forEach((cubie) => {
+      cubeRoot.attach(cubie);
+      const rotated = rotateLogicalPosition(cubie.userData.logicalPos, axis, physicalTurn, rotatedLogicalPosition);
+
+      rotated.x = Math.round(rotated.x);
+      rotated.y = Math.round(rotated.y);
+      rotated.z = Math.round(rotated.z);
+      cubie.userData.logicalPos.copy(rotated);
+    });
+
+    cubeRoot.remove(pivot);
+    current = null;
+    projectionBorderVisibilityDirty = true;
+  }
+
+  function hasActiveRenderWork() {
+    return !!current || queue.length > 0 || gyroActive ||
+      (animateHintArrow && hintArrow.group.visible) || autoRotateDegPerSecond !== 0;
+  }
+
+  function updateProjectionBorderVisibility() {
+    if (!showBackFaceProjection || !projectionBorderVisibilityDirty) return;
+    projectionCubies.forEach((cubie) => {
+      cubie.getWorldQuaternion(projectionCubieQuaternion);
+      cubie.userData.faces.forEach(({ localNormal, projectionSticker, projectionBorder }) => {
+        if (!projectionSticker || !projectionBorder) return;
+        projectionWorldNormal.copy(localNormal).applyQuaternion(projectionCubieQuaternion);
+        projectionWorldPosition
+          .copy(localNormal)
+          .multiplyScalar(backFaceProjectionDistance)
+          .applyMatrix4(cubie.matrixWorld);
+        projectionCameraOffset.subVectors(projectionWorldPosition, camera.position);
+        const visible = projectionCameraOffset.dot(projectionWorldNormal) > 0;
+        projectionSticker.visible = visible;
+        projectionBorder.visible = visible;
+      });
+    });
+    projectionBorderVisibilityDirty = false;
+  }
+
+  function scheduleRender(delayMs = 0) {
+    if (disposed || renderingPaused || frameScheduled) return;
+    frameScheduled = true;
+
+    if (delayMs > 0) {
+      frameTimeoutId = window.setTimeout(() => {
+        frameTimeoutId = 0;
+        frameId = requestAnimationFrame(loop);
+      }, delayMs);
+      return;
+    }
+
+    frameId = requestAnimationFrame(loop);
+  }
+
+  function requestRender() {
+    scheduleRender();
+  }
+
+  function buildQueuedMove(moves: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>, durationMs: number): QueuedMove | null {
+    const first = moves[0];
+    if (!first) return null;
+    const firstAxis = LAYER_AXIS[first.layer].axis;
+    const layerTurns = new Map<CubeMoveLayer, number>();
+
+    for (const move of moves) {
+      const { axis, sign } = LAYER_AXIS[move.layer];
+      if (axis !== firstAxis) return null;
+      const physicalQuarterTurn = -sign * move.dir;
+      layerTurns.set(move.layer, (layerTurns.get(move.layer) ?? 0) + physicalQuarterTurn);
+    }
+
+    const layers: CubeMoveLayer[] = [];
+    let sharedTurn: 1 | -1 | 2 | null = null;
+    let sharedTargetTurn: number | null = null;
+
+    for (const [layer, rawTurn] of layerTurns) {
+      const normalized = ((rawTurn % 4) + 4) % 4;
+      if (normalized === 0) continue;
+      const physicalTurn = (normalized === 3 ? -1 : normalized) as 1 | -1 | 2;
+      const targetTurn = physicalTurn === 2 && rawTurn < 0 ? -2 : physicalTurn;
+      if (sharedTurn !== null && physicalTurn !== sharedTurn) return null;
+      if (sharedTargetTurn !== null && targetTurn !== sharedTargetTurn) return null;
+      sharedTurn = physicalTurn;
+      sharedTargetTurn = targetTurn;
+      layers.push(layer);
+    }
+
+    if (sharedTurn === null || sharedTargetTurn === null || layers.length === 0) return null;
+
+    return {
+      layers,
+      axis: firstAxis,
+      physicalTurn: sharedTurn,
+      targetAngle: sharedTargetTurn * (Math.PI / 2),
+      durationMs,
+    };
+  }
+
+  function applyQueuedMoveImmediately(queuedMove: QueuedMove) {
+    if (current) finishCurrent();
+    const selectedCubies = selectLayers(cubies, queuedMove.layers);
+    const pivot = new THREE.Group();
+    cubeRoot.add(pivot);
+    selectedCubies.forEach((cubie) => pivot.attach(cubie));
+
+    current = {
+      ...queuedMove,
+      durationMs: 0,
+      pivot,
+      cubies: selectedCubies,
+      progress: 0,
+      lastUpdateTime: performance.now(),
+    };
+    finishCurrent();
+  }
+
+  function flushMoveQueueImmediately() {
+    if (current) finishCurrent();
+    let next = queue.shift();
+    while (next) {
+      applyQueuedMoveImmediately(next);
+      next = queue.shift();
+    }
+  }
+
+  function applyMovesImmediately(moves: Array<{ layer: CubeMoveLayer; dir: 1 | -1 }>) {
+    if (current) finishCurrent();
+    const queuedMove = buildQueuedMove(moves, 0);
+    if (!queuedMove) {
+      moves.forEach((move) => applyMovesImmediately([move]));
+      return;
+    }
+    applyQueuedMoveImmediately(queuedMove);
+  }
+
+  function resetGyroDisplayOrientation() {
+    gyroBasis = null;
+    gyroActive = false;
+    targetCubeOrientation.copy(defaultCubeOrientation);
+    cubeRoot.quaternion.copy(defaultCubeOrientation);
+    projectionBorderVisibilityDirty = true;
+  }
+
+  function applyHintMove(move: string | null) {
+    hintArrow.rings.forEach((ring) => {
+      ring.visible = false;
+    });
+    if (!move) {
+      hintArrow.group.visible = false;
+      return;
+    }
+    const queuedMove = buildQueuedMove(expandMoveNotation(move), 0);
+    if (!queuedMove) {
+      hintArrow.group.visible = false;
+      return;
+    }
+
+    hintArrow.group.position.set(0, 0, 0);
+    hintArrow.group.quaternion.identity();
+    hintArrow.group.scale.set(1, 1, 1);
+    const hintDirection: 1 | -1 = queuedMove.targetAngle < 0 ? -1 : 1;
+    hintSpinSign = hintDirection;
+
+    queuedMove.layers.slice(0, HINT_MAX_RINGS).forEach((layer, index) => {
+      const ring = hintArrow.rings[index];
+      const { axis, coord } = LAYER_AXIS[layer];
+      const normal = AXIS_VECTOR[axis];
+
+      ring.position.set(0, 0, 0);
+      ring.position[axis] = coord * HINT_LAYER_COORD_SCALE;
+      // Align the default torus axis (+Z local) with the move axis. The ring
+      // then sits through the moving layer instead of floating outside a face.
+      hintTmpQuat.setFromUnitVectors(hintDefaultAxis, normal);
+      ring.quaternion.copy(hintTmpQuat);
+      ring.scale.set(1, hintDirection, 1);
+      ring.visible = true;
+    });
+    hintArrow.group.visible = true;
+  }
+
+  function applyGyroQuaternion(quaternion: CubeQuaternion, immediate: boolean) {
+    if (interactionLocked) return;
+    const hardwareOrientation = gyroHardwareOrientation.set(
+      quaternion.x,
+      quaternion.z,
+      -quaternion.y,
+      quaternion.w,
+    ).normalize();
+    // GAN gyro is reported in the hardware color basis. The rendered cubies
+    // are already laid out in the selected display basis, so append that basis
+    // instead of conjugating by it.
+    gyroCubeOrientation.copy(hardwareOrientation).multiply(orientationBasis).normalize();
+
+    if (compensateInitialGyroOffset && !gyroBasis) {
+      gyroBasis = gyroCubeOrientation.clone().conjugate();
+    }
+
+    if (compensateInitialGyroOffset && gyroBasis) {
+      targetCubeOrientation.copy(gyroCubeOrientation).premultiply(gyroBasis).premultiply(HOME_ORIENTATION);
+    } else {
+      targetCubeOrientation.copy(gyroCubeOrientation).premultiply(HOME_ORIENTATION);
+    }
+
+    if (immediate) {
+      cubeRoot.quaternion.copy(targetCubeOrientation);
+      gyroActive = false;
+      projectionBorderVisibilityDirty = true;
+    } else {
+      gyroActive = true;
+    }
+  }
+
+  const resizeObserver = new ResizeObserver(() => {
+    const width = Math.max(container.clientWidth, 1);
+    const height = Math.max(container.clientHeight, 1);
+    renderer.setSize(width, height);
+    applyCameraViewport(width, height);
+    requestRender();
+  });
+
+  function getPinchDistance() {
+    if (pointerPositions.size < 2) return 0;
+    const [first, second] = Array.from(pointerPositions.values());
+    if (!first || !second) return 0;
+    return Math.hypot(second.x - first.x, second.y - first.y);
+  }
+
+  function onPointerDown(event: PointerEvent) {
+    if (interactionLocked) return;
+    if (event.button !== 0) return;
+    if (event.pointerType !== "mouse" && !isInsideGestureRegion(event.clientX, event.clientY)) return;
+    pointerPositions.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    renderer.domElement.setPointerCapture(event.pointerId);
+
+    if (pointerPositions.size >= 2) {
+      dragging = false;
+      pinchDistance = getPinchDistance();
+      requestRender();
+      return;
+    }
+
+    dragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    requestRender();
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    if (interactionLocked) return;
+    if (!pointerPositions.has(event.pointerId)) return;
+    pointerPositions.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointerPositions.size >= 2) {
+      const nextPinchDistance = getPinchDistance();
+      if (pinchZoomEnabled && pinchDistance > 0 && nextPinchDistance > 0) {
+        const nextDistance = cameraDistance * (pinchDistance / nextPinchDistance);
+        if (applyCameraDistance(nextDistance)) onDisplayOrientationChange?.();
+      }
+      pinchDistance = nextPinchDistance;
+      requestRender();
+      return;
+    }
+
+    if (!dragging) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    const minDim = Math.max(Math.min(rect.width, rect.height), 1);
+    const deltaX = event.clientX - dragStartX;
+    const deltaY = event.clientY - dragStartY;
+    if (Math.abs(deltaX) < 0.1 && Math.abs(deltaY) < 0.1) return;
+
+    const nextLatitude = cameraLatitude + (deltaY / minDim) * CAMERA_ORBIT_DRAG_SPEED * 180 / Math.PI;
+    const nextLongitude = cameraLongitude - (deltaX / minDim) * CAMERA_ORBIT_DRAG_SPEED * 180 / Math.PI;
+    if (applyCameraCoordinates(nextLatitude, nextLongitude)) {
+      onDisplayOrientationChange?.();
+      requestRender();
+    }
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+  }
+
+  function onPointerUp(event: PointerEvent) {
+    pointerPositions.delete(event.pointerId);
+    pinchDistance = getPinchDistance();
+
+    if (pointerPositions.size === 1) {
+      const remainingPointer = pointerPositions.values().next().value;
+      if (remainingPointer) {
+        dragging = true;
+        dragStartX = remainingPointer.x;
+        dragStartY = remainingPointer.y;
+      }
+    } else {
+      dragging = false;
+    }
+    requestRender();
+  }
+
+  function onWheel(event: WheelEvent) {
+    if (interactionLocked || !isInsideGestureRegion(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    const nextDistance = cameraDistance * (1 + event.deltaY * CAMERA_ZOOM_SPEED);
+    if (applyCameraDistance(nextDistance)) onDisplayOrientationChange?.();
+    requestRender();
+  }
+
+  function loop(now: number) {
+    frameId = 0;
+    frameScheduled = false;
+    if (disposed || renderingPaused) return;
+
+    const frameElapsedMs = now - lastFrameTime;
+    if (targetFrameMs > 0 && frameElapsedMs < targetFrameMs) {
+      scheduleRender(targetFrameMs - frameElapsedMs);
+      return;
+    }
+
+    const deltaSec = Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+    if (autoRotateDegPerSecond !== 0 && !dragging) {
+      applyCameraCoordinates(cameraLatitude, cameraLongitude + autoRotateDegPerSecond * deltaSec);
+    }
+    if (!current) startNext(now);
+    if (current) {
+      const t = advanceCubeMoveProgress(current.progress, now - current.lastUpdateTime, current.durationMs, queue.length + 1);
+      current.progress = t;
+      current.lastUpdateTime = now;
+      current.pivot.rotation[current.axis] = current.targetAngle * easeInOutCubic(t);
+      projectionBorderVisibilityDirty = true;
+      if (t >= 1) {
+        finishCurrent();
+        startNext(now);
+      }
+    }
+    if (gyroActive) {
+      if (cubeRoot.quaternion.angleTo(targetCubeOrientation) < GYRO_SETTLE_ANGLE) {
+        cubeRoot.quaternion.copy(targetCubeOrientation);
+        gyroActive = false;
+      } else {
+        cubeRoot.quaternion.slerp(targetCubeOrientation, GYRO_FOLLOW_SLERP);
+      }
+      projectionBorderVisibilityDirty = true;
+    }
+    if (animateHintArrow && hintArrow.group.visible) {
+      // Slow rotation about each local move axis makes the arrows orbit the
+      // exact layer they describe, including wide and middle-slice moves.
+      hintArrow.rings.forEach((ring) => {
+        if (ring.visible) ring.rotateZ(deltaSec * 0.9 * hintSpinSign);
+      });
+    }
+    updateProjectionBorderVisibility();
+    renderer.render(scene, camera);
+    updateGestureRegion();
+    if (firstRenderPending) {
+      firstRenderPending = false;
+      options.onFirstRender?.(renderer.domElement);
+    }
+    if (hasActiveRenderWork()) scheduleRender();
+  }
+
+  function handleVisibilityChange() {
+    if (disposed || renderingPaused || document.visibilityState !== "visible") return;
+    flushMoveQueueImmediately();
+    lastFrameTime = performance.now();
+    updateProjectionBorderVisibility();
+    renderer.render(scene, camera);
+    updateGestureRegion();
+    requestRender();
+  }
+
+  const initialFormulaFacelets = options.initialFormulaFacelets &&
+    isValidFormulaFacelets(options.initialFormulaFacelets)
+    ? options.initialFormulaFacelets
+    : null;
+  if (initialFormulaFacelets) formulaFacelets = initialFormulaFacelets;
+  const initialFacelets = !initialFormulaFacelets && options.initialFacelets && isValidFacelets(options.initialFacelets)
+    ? options.initialFacelets
+    : undefined;
+  rebuildCubies(initialFacelets);
+  if (options.initialMoves && options.initialMoves.length > 0) {
+    applyMovesImmediately(options.initialMoves);
+  }
+  if (options.initialGyroQuaternion) {
+    applyGyroQuaternion(options.initialGyroQuaternion, true);
+  }
+  applyHintMove(options.initialHintMove ?? null);
+  resizeObserver.observe(container);
+  const interactionSurfaces: HTMLElement[] = gestureRegion ? [renderer.domElement, gestureRegion] : [renderer.domElement];
+  for (const surface of interactionSurfaces) {
+    surface.addEventListener("pointerdown", onPointerDown);
+    surface.addEventListener("pointermove", onPointerMove);
+    surface.addEventListener("pointerup", onPointerUp);
+    surface.addEventListener("pointercancel", onPointerUp);
+    if (wheelZoomEnabled) surface.addEventListener("wheel", onWheel, { passive: false });
+  }
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  requestRender();
+
+  return {
+    applyMove(layer, dir = 1, durationMs = 180) {
+      this.applyMoves([{ layer, dir }], durationMs);
+    },
+    applyMoves(moves, durationMs = 180) {
+      if (moves.length === 0) return;
+      if (document.visibilityState !== "visible") {
+        flushMoveQueueImmediately();
+        applyMovesImmediately(moves);
+        requestRender();
+        return;
+      }
+      if (durationMs <= 0) {
+        applyMovesImmediately(moves);
+        requestRender();
+        return;
+      }
+      const queuedMove = buildQueuedMove(moves, durationMs);
+      if (queuedMove) {
+        queue.push(queuedMove);
+        requestRender();
+        return;
+      }
+      moves.forEach((move) => {
+        const singleMove = buildQueuedMove([move], durationMs);
+        if (singleMove) queue.push(singleMove);
+      });
+      requestRender();
+    },
+    setFacelets(facelets) {
+      if (!isValidFacelets(facelets)) return false;
+      const requiresTopologyRebuild = transparentFormulaFacelets && Boolean(formulaFacelets);
+      formulaFacelets = null;
+      queue.length = 0;
+      if (current) finishCurrent();
+      if (requiresTopologyRebuild) rebuildCubies(facelets);
+      else repaintCubies(facelets);
+      requestRender();
+      return true;
+    },
+    setFormulaFacelets(facelets) {
+      if (!isValidFormulaFacelets(facelets)) return false;
+      formulaFacelets = facelets;
+      queue.length = 0;
+      if (current) finishCurrent();
+      rebuildCubies();
+      requestRender();
+      return true;
+    },
+    setGyroOrientation(quaternion) {
+      applyGyroQuaternion(quaternion, false);
+      requestRender();
+    },
+    resetGyroOrientation() {
+      resetGyroDisplayOrientation();
+      requestRender();
+    },
+    resetDisplayOrientation() {
+      applyCameraDistance(defaultDisplayState.cameraDistance);
+      applyCameraCoordinates(defaultDisplayState.cameraLatitude, defaultDisplayState.cameraLongitude);
+      requestRender();
+    },
+    getDisplayState() {
+      return {
+        cameraDistance,
+        cameraLatitude,
+        cameraLongitude,
+      };
+    },
+    setRenderingPaused(paused) {
+      if (disposed || renderingPaused === paused) return;
+      renderingPaused = paused;
+      cancelAnimationFrame(frameId);
+      window.clearTimeout(frameTimeoutId);
+      frameId = 0;
+      frameTimeoutId = 0;
+      frameScheduled = false;
+      if (!paused) {
+        const now = performance.now();
+        lastFrameTime = now;
+        if (current) current.lastUpdateTime = now;
+        requestRender();
+      }
+    },
+    setInteractionLocked(locked) {
+      if (interactionLocked === locked) return;
+      interactionLocked = locked;
+      if (locked) {
+        dragging = false;
+        pointerPositions.clear();
+        pinchDistance = 0;
+        gyroBasis = null;
+        gyroActive = false;
+        targetCubeOrientation.copy(cubeRoot.quaternion);
+        projectionBorderVisibilityDirty = true;
+      }
+      requestRender();
+    },
+    reset() {
+      queue.length = 0;
+      if (current) finishCurrent();
+      const requiresTopologyRebuild = transparentFormulaFacelets && Boolean(formulaFacelets);
+      formulaFacelets = null;
+      if (requiresTopologyRebuild) rebuildCubies();
+      else resetCubiesInPlace();
+      requestRender();
+    },
+    setLowerLayerDimmed(dimmed) {
+      if (lowerLayerDimmed === dimmed) return;
+      lowerLayerDimmed = dimmed;
+      refreshStickerDisplayColors();
+      requestRender();
+    },
+    setTransparentFormulaFacelets(enabled) {
+      if (transparentFormulaFacelets === enabled) return;
+      transparentFormulaFacelets = enabled;
+      queue.length = 0;
+      if (current) finishCurrent();
+      rebuildCubies();
+      requestRender();
+    },
+    setBackFaceProjectionDistance(distance) {
+      if (applyBackFaceProjectionDistance(distance)) requestRender();
+    },
+    setHintMove(move) {
+      applyHintMove(move);
+      requestRender();
+    },
+    isAnimating() {
+      return !!current || queue.length > 0;
+    },
+    queueLength() {
+      return queue.length + (current ? 1 : 0);
+    },
+    dispose() {
+      disposed = true;
+      cancelAnimationFrame(frameId);
+      if (frameTimeoutId) window.clearTimeout(frameTimeoutId);
+      resizeObserver.disconnect();
+      for (const surface of interactionSurfaces) {
+        surface.removeEventListener("pointerdown", onPointerDown);
+        surface.removeEventListener("pointermove", onPointerMove);
+        surface.removeEventListener("pointerup", onPointerUp);
+        surface.removeEventListener("pointercancel", onPointerUp);
+        surface.removeEventListener("wheel", onWheel);
+      }
+      if (needsPosition) container.style.position = originalPosition;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      cubies.forEach((cubie) => disposeCubie(cubie));
+      cubies.length = 0;
+      projectionSurfaces.length = 0;
+      projectionCubies.length = 0;
+      cubieGeometries.body.dispose();
+      cubieGeometries.sticker.dispose();
+      cubieGeometries.projectionBorder.dispose();
+      hintArrow.geometries.forEach((geom) => geom.dispose());
+      hintArrow.material.dispose();
+      renderer.dispose();
+      renderer.forceContextLoss();
+      container.replaceChildren();
+    },
+  };
+}

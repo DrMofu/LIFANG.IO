@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { AuthProvider } from "@/components/auth-provider";
-import { ButtonFocusManager } from "@/components/button-focus-manager";
-import { CubeAppearanceProvider } from "@/components/cube-appearance-provider";
-import { CubeConnectionProvider } from "@/components/cube-connection-provider";
-import { LanguageProvider } from "@/components/language-provider";
-import { NotificationProvider } from "@/components/notification-provider";
-import { ScrollbarVisibilityProvider } from "@/components/scrollbar-visibility-provider";
-import { SystemNotificationProvider } from "@/components/system-notification-dialog";
-import { getSiteTitle } from "@/lib/i18n";
-import { getRequestLocale } from "@/lib/request-locale";
-import { ScreenWakeLockProvider } from "@/lib/screen-wake-lock";
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { ButtonFocusManager } from "@/components/shell/button-focus-manager";
+import { CubeAppearanceProvider } from "@/components/cube/cube-appearance-provider";
+import { CubeConnectionProvider } from "@/components/connection/cube-connection-provider";
+import { LanguageProvider } from "@/components/i18n/language-provider";
+import { NotificationProvider } from "@/components/notifications/notification-provider";
+import { ScrollbarVisibilityProvider } from "@/components/shell/scrollbar-visibility-provider";
+import { SystemNotificationProvider } from "@/components/notifications/system-notification-dialog";
+import { getSiteTitle } from "@/lib/i18n/i18n";
+import { getRequestLocale } from "@/lib/i18n/request-locale";
+import { ScreenWakeLockProvider } from "@/components/shell/screen-wake-lock";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {

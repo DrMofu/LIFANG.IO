@@ -1,4 +1,4 @@
-import { CubePracticeApp } from "@/components/cube-practice-app";
+import { CubePracticeApp } from "@/components/practice/cube-practice-app";
 
 export default function PracticePage() {
   return <CubePracticeApp />;
