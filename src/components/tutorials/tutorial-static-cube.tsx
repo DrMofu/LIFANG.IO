@@ -73,37 +73,17 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
   } = props;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const key = snapshotKey(props);
-  const [requestedKey, setRequestedKey] = useState<string | null>(null);
   const [renderedSnapshot, setRenderedSnapshot] = useState<{ key: string; src: string } | null>(null);
   const snapshot = renderedSnapshot?.key === key
     ? renderedSnapshot.src
     : snapshotCache.get(key) ?? null;
 
   useEffect(() => {
-    setRequestedKey(null);
     if (snapshotCache.has(key)) return;
 
-    const target = mountRef.current?.parentElement;
-    if (!target || typeof IntersectionObserver === "undefined") {
-      setRequestedKey(key);
-      return;
-    }
-
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting)) return;
-      setRequestedKey(key);
-      observer.disconnect();
-    }, {
-      rootMargin: `${SNAPSHOT_PRELOAD_MARGIN_PX}px 0px`,
-    });
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [key]);
-
-  useEffect(() => {
-    if (requestedKey !== key || snapshotCache.has(key)) return;
-
     let cancelled = false;
+    let queued = false;
+    let observer: IntersectionObserver | null = null;
     let api: SmartCubeApi | null = null;
     let finishJob: (() => void) | null = null;
 
@@ -115,48 +95,65 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
       finishJob = null;
     }
 
-    void enqueueSnapshot(async () => {
-      const container = mountRef.current;
-      if (cancelled || !container?.isConnected) return;
-      const queuedSnapshot = snapshotCache.get(key);
-      if (queuedSnapshot) {
-        setRenderedSnapshot({ key, src: queuedSnapshot });
-        return;
-      }
-
-      await new Promise<void>((resolve) => {
-        finishJob = resolve;
-        try {
-          api = mountSmartCube(container, {
-            faceColors,
-            orientation,
-            interactionLocked: true,
-            wheelZoomEnabled: false,
-            animateHintArrow: false,
-            initialHintMove: hintMove,
-            initialFormulaFacelets: formulaFacelets,
-            transparentFormulaFacelets,
-            maxFps: null,
-            defaultDisplayState: {
-              ...CUBE_CAMERA_PRESETS.formulas.displayState,
-              cameraDistance,
-              cameraLatitude,
-            },
-            onFirstRender(canvas) {
-              const dataUrl = canvas.toDataURL("image/png");
-              cacheSnapshot(key, dataUrl);
-              if (!cancelled) setRenderedSnapshot({ key, src: dataUrl });
-              queueMicrotask(releaseRenderer);
-            },
-          });
-        } catch {
-          releaseRenderer();
+    function startSnapshot() {
+      if (cancelled || queued) return;
+      queued = true;
+      void enqueueSnapshot(async () => {
+        const container = mountRef.current;
+        if (cancelled || !container?.isConnected) return;
+        const queuedSnapshot = snapshotCache.get(key);
+        if (queuedSnapshot) {
+          setRenderedSnapshot({ key, src: queuedSnapshot });
+          return;
         }
+
+        await new Promise<void>((resolve) => {
+          finishJob = resolve;
+          try {
+            api = mountSmartCube(container, {
+              faceColors,
+              orientation,
+              interactionLocked: true,
+              wheelZoomEnabled: false,
+              animateHintArrow: false,
+              initialHintMove: hintMove,
+              initialFormulaFacelets: formulaFacelets,
+              transparentFormulaFacelets,
+              maxFps: null,
+              defaultDisplayState: {
+                ...CUBE_CAMERA_PRESETS.formulas.displayState,
+                cameraDistance,
+                cameraLatitude,
+              },
+              onFirstRender(canvas) {
+                const dataUrl = canvas.toDataURL("image/png");
+                cacheSnapshot(key, dataUrl);
+                if (!cancelled) setRenderedSnapshot({ key, src: dataUrl });
+                queueMicrotask(releaseRenderer);
+              },
+            });
+          } catch {
+            releaseRenderer();
+          }
+        });
       });
-    });
+    }
+
+    const target = mountRef.current?.parentElement;
+    if (!target || typeof IntersectionObserver === "undefined") {
+      startSnapshot();
+    } else {
+      observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer?.disconnect();
+        startSnapshot();
+      }, { rootMargin: `${SNAPSHOT_PRELOAD_MARGIN_PX}px 0px` });
+      observer.observe(target);
+    }
 
     return () => {
       cancelled = true;
+      observer?.disconnect();
       releaseRenderer();
     };
   }, [
@@ -167,7 +164,6 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
     hintMove,
     key,
     orientation,
-    requestedKey,
     transparentFormulaFacelets,
   ]);
 

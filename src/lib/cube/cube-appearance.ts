@@ -440,3 +440,23 @@ export function saveTpsEnabled(enabled: boolean) {
     // local storage might be unavailable in private contexts
   }
 }
+
+const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
+
+export function loadPracticeGyroDisabled() {
+  if (typeof window === "undefined") return false;
+  try {
+    return JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY)) || "false") === true;
+  } catch {
+    return false;
+  }
+}
+
+export function savePracticeGyroDisabled(disabled: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY), JSON.stringify(disabled));
+  } catch {
+    // localStorage can be unavailable in restricted browsing modes.
+  }
+}

@@ -1,100 +1,49 @@
 "use client";
-
-import { PracticeMobileDialog, PracticeMobilePanels, PracticeSettingsButton } from "@/components/practice/practice-mobile-panels";
-import { SettingChoice, SettingToggle } from "@/components/ui/setting-controls";
-
-import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/ui/algorithm-step-token";
-import { SolveHistoryDialog } from "@/components/records/solve-history-dialog";
-import { DailyTestResultDialog } from "@/components/practice/daily-test-result-dialog";
-import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
-import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT } from "@/components/records/solve-record-details";
-import { useLanguage } from "@/components/i18n/language-provider";
-import { useNotification } from "@/components/notifications/notification-provider";
-import { useGyroPowerNotice } from "@/components/notifications/gyro-power-notice";
-import { isTextEntryTarget } from "@/lib/browser/keyboard-shortcuts";
-import {
-  useCubeConnection,
-  type CubeFaceletsSignal,
-  type CubeMoveSignal,
-  type CubeVisualState,
-} from "@/components/connection/cube-connection-provider";
-import { CubeColorLegend } from "@/components/cube/cube-color-legend";
-import { FormulaTopViewImage } from "@/components/cube/formula-cube-image";
-import { MoveToken } from "@/components/ui/move-token";
-import { SolveTimeline, type SolveTimelineRecord } from "@/components/practice/solve-timeline";
-import { getFaceHexColors, mapMoveToOrientation } from "@/lib/cube/cube-appearance";
-import { useClientReady } from "@/lib/browser/client-ready";
-import { useKeyboardHints } from "@/lib/browser/use-keyboard-hints";
-import {
-  expandMoveNotation,
-  hintMoveForDoubleTurnProgress,
-  invertMoveNotation,
-  movePartiallyMatchesExpectedDoubleTurn,
-  moveCanStillMatchExpected,
-  movesMatchExpected,
-  parseMoveNotation,
-} from "@/lib/cube/algorithms";
-import { getInitialCubeVisualState } from "@/lib/cube/cube-visual-state";
-import { detectCfopMilestones, detectF2lSolvedSlotCount, isSolvedFacelets } from "@/lib/cube/cube-state";
-import { solveFacelets } from "@/lib/cube/cubing-solver";
-import { fmtShort, fmtTime } from "@/lib/utils/format";
-import { TurnCounter, calculateTps, formatTps } from "@/lib/records/tps";
-import { TurnSpeed } from "@/components/cube/turn-speed";
-import {
-  DEFAULT_AVERAGE_TIME_SETTINGS,
-  calculateAverageTime,
-  describeAverageTimeSettings,
-  loadAverageTimeSettings,
-  type AverageTimeSettings,
-} from "@/lib/records/average-time";
+import { useCubeConnection,type CubeFaceletsSignal,type CubeMoveSignal,type CubeVisualState,} from "@/components/connection/cube-connection-provider";
 import { useCubeAppearance } from "@/components/cube/cube-appearance-provider";
-import { CUBE_CAMERA_PRESETS } from "@/lib/cube/cube-camera-presets";
-import {
-  FORMULA_LEARNING_STATUSES,
-  getFormulaLearningStatus,
-  readFormulaLearningStatuses,
-  type FormulaLearningStatus,
-} from "@/lib/formulas/formula-learning-status";
-import {
-  type CubeDisplayState,
-  type CubeFace,
-  type CubeQuaternion,
-  type SmartCubeApi,
-  mountSmartCube,
-} from "@/lib/cube/smart-cube";
-import {
-  getDailyTestDateKey,
-  getArchiveScopedStorageKey,
-  MISSING_HISTORY_VALUE,
-  addDailyPracticeDuration,
-  calculateDailyLevelAverage,
-  loadDailyLevels,
-  loadSolveHistory,
-  prependSolveHistoryEntry,
-  saveDailyLevels,
-  saveSolveHistory,
-  subscribeStatisticsArchiveChange,
-  type DailyLevelEntry,
-  type DailyLevelSolve,
-  type CfopPhaseMetrics,
-  type F2lSubphaseMetrics,
-  type HistoryMetricValue,
-  type SolveHistoryEntry,
-  type SolveSource,
-} from "@/lib/records/solve-history";
-import { isCubeSerialAfter, normalizeCubeSerial } from "@/lib/connection/cube-serial";
-import {
-  DEFAULT_PRACTICE_INSPECTION_SETTINGS,
-  getPracticeInspectionDurationMs,
-  loadPracticeInspectionSettings,
-  type PracticeInspectionSettings,
-} from "@/lib/training/practice-inspection";
+import { CubeColorLegend } from "@/components/cube/cube-color-legend";
+import { TurnSpeed } from "@/components/cube/turn-speed";
+import { useLanguage } from "@/components/i18n/language-provider";
+import { useGyroPowerNotice } from "@/components/notifications/gyro-power-notice";
+import { useNotification } from "@/components/notifications/notification-provider";
+import { DailyTestResultDialog } from "@/components/practice/daily-test-result-dialog";
+import { PracticeMobileDialog,PracticeMobilePanels,PracticeSettingsButton } from "@/components/practice/practice-mobile-panels";
+import { PracticeDailyTestPanel,PracticeRecognitionPanel,PracticeSettingsPanel } from "@/components/practice/practice-panels";
+import { HISTORY_PREVIEW_LIMIT,HISTORY_ROW_SIZE,PracticeHistoryPanel,PracticeScorePanel,type HistoryCfopTip } from "@/components/practice/practice-results";
+import { PracticeScramblePanel } from "@/components/practice/practice-scramble-panel";
+import { useInspectionAudio } from "@/components/practice/use-inspection-audio";
+import { SolveHistoryDialog } from "@/components/records/solve-history-dialog";
+import { SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT,SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH,} from "@/components/records/solve-record-details";
+import { AppFooter,AppTopbar } from "@/components/shell/app-shell";
+import { AlgorithmStepToken,type AlgorithmStepStatus } from "@/components/ui/algorithm-step-token";
+import { MoveToken } from "@/components/ui/move-token";
 import { touchLocalUserDataPackageUpdatedAt } from "@/lib/account/user-data-package";
+import { useClientReady } from "@/lib/browser/client-ready";
+import { isTextEntryTarget } from "@/lib/browser/keyboard-shortcuts";
+import { useKeyboardHints } from "@/lib/browser/use-keyboard-hints";
+import { isCubeSerialAfter,normalizeCubeSerial } from "@/lib/connection/cube-serial";
+import { expandMoveNotation,hintMoveForDoubleTurnProgress,moveCanStillMatchExpected,movePartiallyMatchesExpectedDoubleTurn,movesMatchExpected,parseMoveNotation,} from "@/lib/cube/algorithms";
+import { getFaceHexColors,loadPracticeGyroDisabled,mapMoveToOrientation,savePracticeGyroDisabled } from "@/lib/cube/cube-appearance";
+import { detectCfopMilestones,detectF2lSolvedSlotCount,isSolvedFacelets } from "@/lib/cube/cube-state";
+import { getInitialCubeVisualState } from "@/lib/cube/cube-visual-state";
+import { solveFacelets } from "@/lib/cube/cubing-solver";
+import { appendUndoStackMoves,buildUndoStack,getRemainingUndoStack,normalizeMove,splitInvalidPendingMoves,} from "@/lib/cube/move-sequence";
+import { PendingMoveQueue } from "@/lib/cube/pending-move-queue";
+import { mountSmartCube,type CubeFace,type CubeQuaternion,type SmartCubeApi } from "@/lib/cube/smart-cube";
+import { readFormulaLearningStatuses,type FormulaLearningStatus } from "@/lib/formulas/formula-learning-status";
 import type { FormulaRecognitionResult } from "@/lib/formulas/formula-recognition";
+import { DEFAULT_AVERAGE_TIME_SETTINGS,calculateAverageTime,describeAverageTimeSettings,loadAverageTimeSettings,type AverageTimeSettings,} from "@/lib/records/average-time";
+import { addDailyPracticeDuration,calculateDailyLevelAverage,getArchiveScopedStorageKey,getDailyTestDateKey,loadDailyLevels,loadSolveHistory,prependSolveHistoryEntry,saveDailyLevels,saveSolveHistory,subscribeStatisticsArchiveChange,type DailyLevelEntry,type SolveHistoryEntry,type SolveSource,} from "@/lib/records/solve-history";
+import { TurnCounter } from "@/lib/records/tps";
+import { DEFAULT_PRACTICE_INSPECTION_SETTINGS,getPracticeInspectionDurationMs,loadPracticeInspectionSettings,type PracticeInspectionSettings,} from "@/lib/training/practice-inspection";
+import type { SolveTimelineRecord } from "@/lib/training/practice-model";
+import { DAILY_TEST_TARGET,F2L_SUBPHASES,toHistoryCfopMetrics,toHistoryF2lSubphaseMetrics,type CfopPhaseKey,type CurrentPracticeResult,type DailyTestRun,type FreePracticeState,type LiveCfopMetrics,type LiveF2lSubphaseMetrics,type ManualTimerArmState,type Phase,type ScrambleStepStatus,type SmartSolveStatus,type SmartSolveStepStatus } from "@/lib/training/practice-model";
+import { PRACTICE_CUBE_CAMERA_PRESET,PRACTICE_UI_PREFERENCES_KEY,isDefaultDisplayState,loadPracticeDisplayState,loadPracticeFormulaRecognitionEnabled,loadPracticeUiPreferences,savePracticeDisplayState,savePracticeFormulaRecognitionEnabled,savePracticeUiPreferences,type PracticeMode,type TimingMode,} from "@/lib/training/practice-preferences";
+import { fmtShort,fmtTime } from "@/lib/utils/format";
+import { useCallback,useEffect,useLayoutEffect,useMemo,useRef,useState,type PointerEvent as ReactPointerEvent } from "react";
 
 const SCRAMBLE_MOVES: CubeFace[] = ["U", "D", "L", "R", "F", "B"];
+
 const SCRAMBLE_AXES: Record<CubeFace, "ud" | "lr" | "fb"> = {
   U: "ud",
   D: "ud",
@@ -103,213 +52,36 @@ const SCRAMBLE_AXES: Record<CubeFace, "ud" | "lr" | "fb"> = {
   F: "fb",
   B: "fb",
 };
+
 const FREE_SCRAMBLE_IDLE_MS = 6000;
+
 const FREE_SCRAMBLE_FILL_DELAY_MS = 1000;
+
 const FREE_SCRAMBLE_FILL_MS = FREE_SCRAMBLE_IDLE_MS - FREE_SCRAMBLE_FILL_DELAY_MS;
+
 const SCRAMBLE_LENGTH = 20;
+
 const AUTO_NEXT_SCRAMBLE_DELAY_MS = 350;
-const DAILY_TEST_TARGET = 5;
+
 const SOLVED_TRAILING_MOVE_SUPPRESS_MS = 900;
-const DISPLAY_STATE_EPSILON = 0.001;
+
 const CUBE_MOVE_ANIMATION_MS = 150;
-const HISTORY_ROW_SIZE = 44;
-const HISTORY_PREVIEW_LIMIT = 5;
+
 const MAX_UNDO_HINT_QUEUE_LENGTH = 20;
+
 const HISTORY_CFOP_TIP_GAP = 12;
+
 const HISTORY_CFOP_TIP_MARGIN = 14;
-const INSPECTION_AUDIO_CUE_SECONDS = [5, 4, 3, 2, 1] as const;
+
 const INSPECTION_END_CUE_PRESERVE_MS = 320;
+
 const SMART_SOLVE_FACELETS_TIMEOUT_MS = 1300;
+
 const MANUAL_TIMER_ARM_MS = 350;
-const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
-const PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY = "cube-practice-formula-recognition-enabled";
-const PRACTICE_DISPLAY_STATE_KEY = "cube-practice-display-state";
-const PRACTICE_UI_PREFERENCES_KEY = "cube-practice-ui-preferences-v1";
-const PRACTICE_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.practice;
-const LEGACY_PRACTICE_CAMERA_DISTANCES = [6.4, 8] as const;
 
-function loadPracticeGyroDisabled() {
-  if (typeof window === "undefined") return false;
-  try {
-    return JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY)) || "false") === true;
-  } catch {
-    return false;
-  }
-}
-
-function savePracticeGyroDisabled(disabled: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY), JSON.stringify(disabled));
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function loadPracticeFormulaRecognitionEnabled() {
-  if (typeof window === "undefined") return false;
-  try {
-    return JSON.parse(
-      window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY)) || "false",
-    ) === true;
-  } catch {
-    return false;
-  }
-}
-
-function savePracticeFormulaRecognitionEnabled(enabled: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      getArchiveScopedStorageKey(PRACTICE_FORMULA_RECOGNITION_ENABLED_KEY),
-      JSON.stringify(enabled),
-    );
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function isDefaultDisplayState(state: CubeDisplayState) {
-  const defaultState = PRACTICE_CUBE_CAMERA_PRESET.displayState;
-  return (
-    Math.abs(state.cameraDistance - defaultState.cameraDistance) <= DISPLAY_STATE_EPSILON &&
-    Math.abs(state.cameraLatitude - defaultState.cameraLatitude) <= DISPLAY_STATE_EPSILON &&
-    Math.abs(state.cameraLongitude - defaultState.cameraLongitude) <= DISPLAY_STATE_EPSILON
-  );
-}
-
-function isStoredDisplayState(value: unknown): value is CubeDisplayState {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<Record<keyof CubeDisplayState, unknown>>;
-  return (
-    typeof candidate.cameraDistance === "number" &&
-    Number.isFinite(candidate.cameraDistance) &&
-    typeof candidate.cameraLatitude === "number" &&
-    Number.isFinite(candidate.cameraLatitude) &&
-    typeof candidate.cameraLongitude === "number" &&
-    Number.isFinite(candidate.cameraLongitude)
-  );
-}
-
-function loadPracticeDisplayState() {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_DISPLAY_STATE_KEY)) || "null");
-    if (!isStoredDisplayState(parsed)) return null;
-    if (LEGACY_PRACTICE_CAMERA_DISTANCES.some(
-      (distance) => Math.abs(parsed.cameraDistance - distance) <= DISPLAY_STATE_EPSILON,
-    )) {
-      return {
-        ...parsed,
-        cameraDistance: PRACTICE_CUBE_CAMERA_PRESET.displayState.cameraDistance,
-      };
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function savePracticeDisplayState(state: CubeDisplayState | null) {
-  if (typeof window === "undefined") return;
-  try {
-    const key = getArchiveScopedStorageKey(PRACTICE_DISPLAY_STATE_KEY);
-    if (!state || isDefaultDisplayState(state)) {
-      window.localStorage.removeItem(key);
-      return;
-    }
-    window.localStorage.setItem(key, JSON.stringify(state));
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-type Phase = "idle" | "scrambling" | "inspect" | "solving" | "done";
-type PracticeMode = "scramble" | "free";
-type TimingMode = SolveSource;
-type PracticeUiPreferences = {
-  version: 1;
-  practiceMode: PracticeMode;
-  timingMode: TimingMode;
-};
-type ManualTimerArmState = "idle" | "holding" | "ready";
-type FreePracticeState = "waitingSolved" | "ready" | "scrambling" | "armed";
-type ScrambleStepStatus = "pending" | "partial" | "correct";
-type SmartSolveStatus = "idle" | "loading" | "active" | "done";
-type SmartSolveStepStatus = "pending" | "partial" | "correct";
-type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
-type F2lSubphaseKey = "one" | "two" | "three" | "four";
-type LiveCfopMetrics = Record<CfopPhaseKey, number | null>;
-type LiveF2lSubphaseMetrics = Record<F2lSubphaseKey, number | null>;
-type CurrentPracticeResult = {
-  archiveStorageKey: string;
-  ms: number;
-  source: SolveSource;
-  moveCount: number;
-  cfop: LiveCfopMetrics;
-  cfopMoves: LiveCfopMetrics;
-  f2l: LiveF2lSubphaseMetrics;
-  f2lMoves: LiveF2lSubphaseMetrics;
-  formulas: Partial<Record<"oll" | "pll", FormulaRecognitionResult>>;
-  timeline: SolveTimelineRecord | null;
-};
-
-// Client navigation keeps this module alive; a page reload clears the temporary result.
 let lastCompletedPracticeResult: CurrentPracticeResult | null = null;
 
-type InspectionAudioVoice = {
-  gain: GainNode;
-  oscillators: OscillatorNode[];
-};
-
-function loadPracticeUiPreferences(): PracticeUiPreferences | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = JSON.parse(
-      window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY)) || "null",
-    ) as Partial<PracticeUiPreferences> | null;
-    if (
-      parsed?.version !== 1 ||
-      (parsed.practiceMode !== "scramble" && parsed.practiceMode !== "free") ||
-      (parsed.timingMode !== "timer" && parsed.timingMode !== "smart-cube")
-    ) {
-      return null;
-    }
-    return parsed as PracticeUiPreferences;
-  } catch {
-    return null;
-  }
-}
-
-function savePracticeUiPreferences(practiceMode: PracticeMode, timingMode: TimingMode) {
-  if (typeof window === "undefined") return;
-  try {
-    const preferences: PracticeUiPreferences = { version: 1, practiceMode, timingMode };
-    window.localStorage.setItem(
-      getArchiveScopedStorageKey(PRACTICE_UI_PREFERENCES_KEY),
-      JSON.stringify(preferences),
-    );
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-type HistoryCfopTip = {
-  entry: SolveHistoryEntry;
-  historyNumber: number;
-  left: number;
-  top: number;
-  arrowLeft: number;
-  arrowTop?: number;
-  placement: "above" | "below" | "right";
-};
 type FormulaRecognitionModule = typeof import("@/lib/formulas/formula-recognition");
-
-type DailyTestRun = {
-  id: string;
-  localDate: string;
-  solves: DailyLevelSolve[];
-};
 
 const EMPTY_CFOP: LiveCfopMetrics = {
   cross: null,
@@ -325,98 +97,10 @@ const EMPTY_F2L_SUBPHASES: LiveF2lSubphaseMetrics = {
   four: null,
 };
 
-const F2L_SUBPHASES: Array<{ key: F2lSubphaseKey; name: string }> = [
-  { key: "one", name: "F2L 1/4" },
-  { key: "two", name: "F2L 2/4" },
-  { key: "three", name: "F2L 3/4" },
-  { key: "four", name: "F2L 4/4" },
-];
-
-function toHistoryMetric(value: number | null): HistoryMetricValue {
-  return typeof value === "number" && Number.isFinite(value) ? value : MISSING_HISTORY_VALUE;
-}
-
-function toHistoryCfopMetrics(metrics: LiveCfopMetrics): CfopPhaseMetrics {
-  return {
-    cross: toHistoryMetric(metrics.cross),
-    f2l: toHistoryMetric(metrics.f2l),
-    oll: toHistoryMetric(metrics.oll),
-    pll: toHistoryMetric(metrics.pll),
-  };
-}
-
-function toHistoryF2lSubphaseMetrics(metrics: LiveF2lSubphaseMetrics): F2lSubphaseMetrics {
-  return {
-    one: toHistoryMetric(metrics.one),
-    two: toHistoryMetric(metrics.two),
-    three: toHistoryMetric(metrics.three),
-    four: toHistoryMetric(metrics.four),
-  };
-}
-
-function fmtSolveDate(timestamp: number) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function getYesterdayDailyTestDateKey() {
   const date = new Date();
   date.setDate(date.getDate() - 1);
   return getDailyTestDateKey(date);
-}
-
-function formatPhaseTimeDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
-  if (!metrics) return MISSING_HISTORY_VALUE;
-  const current = metrics[key];
-  if (typeof current !== "number") return MISSING_HISTORY_VALUE;
-  if (key === "cross") return fmtShort(current);
-  const previousKey = key === "f2l" ? "cross" : key === "oll" ? "f2l" : "oll";
-  const previous = metrics[previousKey];
-  if (typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return fmtShort(current - previous);
-}
-
-function formatPhaseMoveDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
-  if (!metrics) return MISSING_HISTORY_VALUE;
-  const current = metrics[key];
-  if (typeof current !== "number") return MISSING_HISTORY_VALUE;
-  if (key === "cross") return `${current}步`;
-  const previousKey = key === "f2l" ? "cross" : key === "oll" ? "f2l" : "oll";
-  const previous = metrics[previousKey];
-  if (typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return `${current - previous}步`;
-}
-
-function getF2lSubphasePrevious(
-  cfopMetrics: CfopPhaseMetrics | undefined,
-  f2lMetrics: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  if (key === "one") return cfopMetrics?.cross;
-  const previousKey = key === "two" ? "one" : key === "three" ? "two" : "three";
-  return f2lMetrics?.[previousKey];
-}
-
-function formatF2lSubphaseTimeDelta(
-  cfopMetrics: CfopPhaseMetrics | undefined,
-  f2lMetrics: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  const current = f2lMetrics?.[key];
-  const previous = getF2lSubphasePrevious(cfopMetrics, f2lMetrics, key);
-  if (typeof current !== "number" || typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return fmtShort(current - previous);
-}
-
-function formatF2lSubphaseMoveDelta(
-  cfopMoves: CfopPhaseMetrics | undefined,
-  f2lMoves: F2lSubphaseMetrics | undefined,
-  key: F2lSubphaseKey,
-) {
-  const current = f2lMoves?.[key];
-  const previous = getF2lSubphasePrevious(cfopMoves, f2lMoves, key);
-  if (typeof current !== "number" || typeof previous !== "number" || current < previous) return MISSING_HISTORY_VALUE;
-  return `${current - previous}步`;
 }
 
 const INITIAL_SCRAMBLE = [
@@ -462,75 +146,6 @@ function generateScramble(len = SCRAMBLE_LENGTH) {
   return out;
 }
 
-function normalizeMove(move: string) {
-  return parseMoveNotation(move)?.notation ?? move;
-}
-
-function invertMove(move: string) {
-  return invertMoveNotation(move);
-}
-
-function moveAmount(move: string) {
-  const parsed = parseMoveNotation(move);
-  if (!parsed) return null;
-  const amount: 1 | 2 | 3 = parsed.turns === 2 ? 2 : parsed.dir === -1 ? 3 : 1;
-  return {
-    layer: parsed.layer,
-    amount,
-  };
-}
-
-function formatUndoMove(layer: string, amount: 1 | 2 | 3) {
-  if (amount === 2) return `${layer}2`;
-  if (amount === 3) return `${layer}'`;
-  return layer;
-}
-
-function compressUndoMoveSequence(moves: string[]) {
-  return moves.reduce<string[]>((history, move) => {
-    const nextMove = moveAmount(move);
-    if (!nextMove) return history;
-    const next = [...history];
-    const lastMove = moveAmount(next[next.length - 1]);
-    if (lastMove && lastMove.layer === nextMove.layer) {
-      next.pop();
-      const combined = (lastMove.amount + nextMove.amount) % 4;
-      if (combined !== 0) next.push(formatUndoMove(nextMove.layer, combined as 1 | 2 | 3));
-      return next;
-    }
-    next.push(formatUndoMove(nextMove.layer, nextMove.amount));
-    return next;
-  }, []);
-}
-
-function buildUndoStack(moves: string[]) {
-  return compressUndoMoveSequence(moves.map(invertMove));
-}
-
-function appendUndoStackMoves(undoStack: string[], moves: string[]) {
-  return compressUndoMoveSequence([...undoStack, ...moves.map(invertMove)]);
-}
-
-function getRemainingUndoStack(undoStack: string[], pendingMoves: string[]) {
-  const expectedUndo = undoStack[undoStack.length - 1];
-  if (!expectedUndo || pendingMoves.length === 0) return undoStack;
-  const remainingTop = compressUndoMoveSequence([...pendingMoves.toReversed().map(invertMove), expectedUndo]);
-  return compressUndoMoveSequence([...undoStack.slice(0, -1), ...remainingTop]);
-}
-
-function splitInvalidPendingMoves(pendingMoves: string[], expectedMove: string) {
-  for (let split = pendingMoves.length - 1; split >= 0; split -= 1) {
-    const retainedMoves = pendingMoves.slice(0, split);
-    if (retainedMoves.length === 0 || moveCanStillMatchExpected(retainedMoves, expectedMove)) {
-      return {
-        retainedMoves,
-        wrongMoves: pendingMoves.slice(split),
-      };
-    }
-  }
-  return { retainedMoves: [], wrongMoves: pendingMoves };
-}
-
 function solveHistoryEntryKey(entry: SolveHistoryEntry) {
   return `${entry.ts}:${entry.ms}:${entry.mode ?? ""}:${entry.dailyTest?.id ?? ""}:${entry.dailyTest?.index ?? ""}`;
 }
@@ -571,19 +186,15 @@ export function CubePracticeApp() {
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const visualPendingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const visualPendingMoveRef = useRef<string | null>(null);
   const autoNextScrambleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const beginAutoNextScrambleRef = useRef<() => void>(() => undefined);
-  const inspectionAudioContextRef = useRef<AudioContext | null>(null);
-  const inspectionAudioTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  const inspectionAudioVoicesRef = useRef<InspectionAudioVoice[]>([]);
   const inspectionEndCueUntilRef = useRef(0);
   const freeIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const freeCountdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const freeFaceletsFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const manualTimerArmRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef<Phase>("idle");
+  const { warmInspectionAudio, cancelInspectionAudio, playInspectionBeep, scheduleInspectionAudio } = useInspectionAudio(phaseRef);
   const practiceModeRef = useRef<PracticeMode>("scramble");
   const timingModeRef = useRef<TimingMode>("smart-cube");
   const solveSourceRef = useRef<SolveSource>("timer");
@@ -985,131 +596,6 @@ export function CubePracticeApp() {
   const clearPendingAutoNextScrambleMoves = useCallback(() => {
     pendingAutoNextScrambleMovesRef.current = [];
   }, []);
-
-  const getInspectionAudioContext = useCallback(() => {
-    if (typeof window === "undefined") return null;
-    if (inspectionAudioContextRef.current) return inspectionAudioContextRef.current;
-
-    const AudioContextCtor =
-      window.AudioContext ??
-      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextCtor) return null;
-
-    try {
-      const context = new AudioContextCtor();
-      inspectionAudioContextRef.current = context;
-      return context;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  const warmInspectionAudio = useCallback(() => {
-    const context = getInspectionAudioContext();
-    if (!context || context.state !== "suspended") return;
-    void context.resume().catch(() => {
-      // Audio is optional; timing should continue if the browser blocks it.
-    });
-  }, [getInspectionAudioContext]);
-
-  const forgetInspectionVoice = useCallback((voice: InspectionAudioVoice) => {
-    inspectionAudioVoicesRef.current = inspectionAudioVoicesRef.current.filter((candidate) => candidate !== voice);
-  }, []);
-
-  const stopInspectionVoice = useCallback(
-    (voice: InspectionAudioVoice) => {
-      const context = inspectionAudioContextRef.current;
-      if (!context) {
-        forgetInspectionVoice(voice);
-        return;
-      }
-
-      const now = context.currentTime;
-      try {
-        voice.gain.gain.cancelScheduledValues(now);
-        voice.gain.gain.setTargetAtTime(0, now, 0.012);
-        voice.oscillators.forEach((oscillator) => oscillator.stop(now + 0.05));
-      } catch {
-        // Stopping an already-stopped oscillator throws in some browsers.
-      }
-      forgetInspectionVoice(voice);
-    },
-    [forgetInspectionVoice],
-  );
-
-  const cancelInspectionAudio = useCallback((preserveActiveVoices = false) => {
-    inspectionAudioTimersRef.current.forEach((timer) => clearTimeout(timer));
-    inspectionAudioTimersRef.current = [];
-    if (preserveActiveVoices) return;
-    inspectionAudioVoicesRef.current.forEach(stopInspectionVoice);
-    inspectionAudioVoicesRef.current = [];
-  }, [stopInspectionVoice]);
-
-  const playInspectionBeep = useCallback(
-    (variant: "soft" | "bright") => {
-      if (phaseRef.current !== "inspect") return;
-      const context = getInspectionAudioContext();
-      if (!context) return;
-
-      if (context.state === "suspended") {
-        void context.resume().then(() => {
-          if (phaseRef.current === "inspect") playInspectionBeep(variant);
-        }).catch(() => {
-          // Audio is optional; ignore blocked playback.
-        });
-        return;
-      }
-
-      const now = context.currentTime;
-      const duration = variant === "bright" ? 0.22 : 0.13;
-      const peakGain = 0.30;
-      const releaseAt = now + duration - 0.04;
-      const stopAt = now + duration + 0.04;
-      const gain = context.createGain();
-      const frequencies = variant === "bright" ? [1120, 1680] : [680];
-      const oscillators = frequencies.map((frequency, index) => {
-        const oscillator = context.createOscillator();
-        oscillator.type = variant === "bright" && index === 1 ? "triangle" : "sine";
-        oscillator.frequency.setValueAtTime(frequency, now);
-        oscillator.connect(gain);
-        return oscillator;
-      });
-      const voice: InspectionAudioVoice = { gain, oscillators };
-
-      gain.connect(context.destination);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.012);
-      gain.gain.setValueAtTime(peakGain, releaseAt);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      inspectionAudioVoicesRef.current = [...inspectionAudioVoicesRef.current, voice];
-      oscillators.forEach((oscillator) => {
-        oscillator.onended = () => forgetInspectionVoice(voice);
-        oscillator.start(now);
-        oscillator.stop(stopAt);
-      });
-    },
-    [forgetInspectionVoice, getInspectionAudioContext],
-  );
-
-  const scheduleInspectionAudio = useCallback(
-    (startedAt: number, durationMs: number) => {
-      cancelInspectionAudio();
-      warmInspectionAudio();
-
-      inspectionAudioTimersRef.current = INSPECTION_AUDIO_CUE_SECONDS.flatMap((secondsLeft) => {
-        const delay = durationMs - secondsLeft * 1000 - (performance.now() - startedAt);
-        if (delay <= 0) return [];
-        const timeout = setTimeout(() => {
-          inspectionAudioTimersRef.current = inspectionAudioTimersRef.current.filter((timer) => timer !== timeout);
-          if (phaseRef.current !== "inspect") return;
-          playInspectionBeep("soft");
-        }, delay);
-        return [timeout];
-      });
-    },
-    [cancelInspectionAudio, playInspectionBeep, warmInspectionAudio],
-  );
 
   const confirmFreeScrambleIdle = useCallback(
     (nextFacelets: string | null) => {
@@ -1514,18 +1000,11 @@ export function CubePracticeApp() {
     });
   }, []);
 
-  const clearVisualPendingTimer = useCallback(() => {
-    if (visualPendingTimerRef.current === null) return;
-    clearTimeout(visualPendingTimerRef.current);
-    visualPendingTimerRef.current = null;
-  }, []);
-
-  const flushVisualPendingMove = useCallback(() => {
-    const pending = visualPendingMoveRef.current;
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
-    if (pending) animateCubeMoves([pending]);
-  }, [animateCubeMoves, clearVisualPendingTimer]);
+  const visualMoveQueue = useMemo(() => new PendingMoveQueue(), []);
+  const { flush: flushVisualPendingMove, discard: discardVisualPendingMoves } = visualMoveQueue;
+  const queueVisualMove = useCallback((move: string) => {
+    visualMoveQueue.push(move, (pending) => animateCubeMoves([pending]));
+  }, [animateCubeMoves, visualMoveQueue]);
 
   const animateUnplayedPendingMoves = useCallback(
     (moves: string[], animatedCountRef: { current: number }, fallbackMove?: string) => {
@@ -1796,31 +1275,12 @@ export function CubePracticeApp() {
 
   const syncVisualFacelets = useCallback(
     (nextFacelets: string) => {
-      clearVisualPendingTimer();
-      visualPendingMoveRef.current = null;
+      discardVisualPendingMoves();
       if (cubeApiRef.current?.setFacelets(nextFacelets)) {
         lastAppliedFaceletsRef.current = nextFacelets;
       }
     },
-    [clearVisualPendingTimer],
-  );
-
-  const queueVisualMove = useCallback(
-    (move: string) => {
-      const pending = visualPendingMoveRef.current;
-      if (!pending) {
-        visualPendingMoveRef.current = move;
-        clearVisualPendingTimer();
-        visualPendingTimerRef.current = setTimeout(flushVisualPendingMove, 45);
-        return;
-      }
-
-      clearVisualPendingTimer();
-      animateCubeMoves([pending]);
-      visualPendingMoveRef.current = move;
-      visualPendingTimerRef.current = setTimeout(flushVisualPendingMove, 45);
-    },
-    [animateCubeMoves, clearVisualPendingTimer, flushVisualPendingMove],
+    [discardVisualPendingMoves],
   );
 
   const handleScrambleMove = useCallback(
@@ -2427,11 +1887,10 @@ export function CubePracticeApp() {
 
   useEffect(() => {
     return () => {
-      cancelInspectionAudio();
       clearManualTimerArm();
       clearSolveTick();
       clearFreeTimers();
-      clearVisualPendingTimer();
+      discardVisualPendingMoves();
       clearAutoNextScrambleTimer();
       clearPendingAutoNextScrambleMoves();
       smartSolveRunRef.current += 1;
@@ -2445,7 +1904,7 @@ export function CubePracticeApp() {
     clearFreeTimers,
     clearSolveTick,
     clearSmartSolveFaceletsWait,
-    clearVisualPendingTimer,
+    discardVisualPendingMoves,
   ]);
 
   async function startConnection() {
@@ -2837,417 +2296,97 @@ export function CubePracticeApp() {
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
   const recognitionPanel = !isManualTimer && formulaRecognitionEnabled ? (
-<div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite" inert={!!dailyTest}>
-              <div className="practice-card-head">
-                <div className="practice-title-line">
-                  <div className="practice-card-title">{t("公式识别")}</div>
-                <span className="practice-kicker" aria-hidden="true">OLL · PLL</span>
-                </div>
-              </div>
-              {recognizedFormula ? (
-                <div className="formula-recognition-result">
-                  <div className="formula-recognition-summary">
-                    <FormulaTopViewImage
-                      facelets={recognizedFormula.facelets}
-                      faceColors={formulaTopViewFaceColors}
-                      arrows={recognizedFormula.arrows}
-                      className="formula-recognition-image"
-                      title={t(recognizedFormula.name)}
-                    />
-                    <div className="formula-recognition-info">
-                      <div className="formula-recognition-name">
-                        <strong>{t(recognizedFormula.name)}</strong>
-                      </div>
-                      <div className="formula-recognition-meta">
-                        <span>{recognizedFormula.phase.toUpperCase()}</span>
-                        <div className="formula-recognition-count">
-                          {recognizedFormula.formulas.length} {t("个公式")}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="formula-recognition-list">
-                    {recognizedFormula.formulas.map((formula) => {
-                      const status = getFormulaLearningStatus(
-                        formulaLearningStatuses,
-                        `${recognizedFormula.id}:${formula.id}`,
-                      );
-                      const statusLabel = FORMULA_LEARNING_STATUSES.find((item) => item.key === status)?.shortLabel ?? "未学习";
-                      return (
-                        <div className="formula-recognition-formula-row" key={formula.id}>
-                          <div className="formula-recognition-formula-name">
-                            <span>{t(formula.name)}</span>
-                            <span className={`formula-status-badge status-${status}`}>{t(statusLabel)}</span>
-                          </div>
-                          <div className="formula-recognition-algorithm">{formula.algorithm}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className={`formula-recognition-empty${connectionState === "connected" ? "" : " disconnected"}`}>
-                  {connectionState === "connected" ? t("等待 OLL 或 PLL 状态") : t("连接智能魔方后开始识别")}
-                </div>
-              )}
-            </div>
+<PracticeRecognitionPanel
+    dailyTest={dailyTest}
+    recognizedFormula={recognizedFormula}
+    formulaTopViewFaceColors={formulaTopViewFaceColors}
+    formulaLearningStatuses={formulaLearningStatuses}
+    connectionState={connectionState}
+  />
   ) : null;
   const settingsPanel = (
-    <div className="practice-control-panel practice-settings-panel ui-info-panel" inert={!!dailyTest}>
-            <div className="practice-card-head practice-control-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("练习设置")}</div>
-                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
-              </div>
-            </div>
-            <SettingChoice label={t("练习模式")}><div className="ui-setting-segments" role="group" aria-label={t("练习模式")}>
-              <button
-                type="button"
-                aria-pressed={practiceMode === "scramble"} className={practiceMode === "scramble" ? "active" : ""}
-                onClick={() => changePracticeMode("scramble")}
-                disabled={!canSwitchMode}
-              >{t("打乱练习")}</button>
-              <button
-                type="button"
-                aria-pressed={practiceMode === "free"} className={practiceMode === "free" ? "active" : ""}
-                onClick={() => changePracticeMode("free")}
-                disabled={!canSwitchMode}
-              >{t("自由练习")}</button>
-            </div></SettingChoice>
-
-            <SettingChoice label={t("计时方式")}><div className="ui-setting-segments" role="group" aria-label={t("计时方式")}>
-              <button
-                type="button"
-                aria-pressed={!isManualTimer} className={!isManualTimer ? "active" : ""}
-                onClick={() => changeTimingMode("smart-cube")}
-                disabled={!!dailyTest}
-                aria-disabled={!canSwitchTimingMode}
-              >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
-              <button
-                type="button"
-                aria-pressed={isManualTimer} className={isManualTimer ? "active" : ""}
-                onClick={() => changeTimingMode("timer")}
-                disabled={!!dailyTest}
-                aria-disabled={!canSwitchTimingMode}
-              >{t("纯计时器")}</button>
-            </div></SettingChoice>
-
-            {!isManualTimer && <>
-              <div className="ui-setting-stack ui-setting-divider">
-                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
-                <SettingToggle label={t("公式识别")} checked={formulaRecognitionEnabled} onChange={toggleFormulaRecognition} shortcut="F" />
-              </div>
-              <div className="ui-setting-actions practice-settings-actions ui-setting-divider">
-                <button type="button" className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
-                <button type="button" className="ui-setting-action" onClick={() => { setMobileDialog(null); void beginSmartSolve(); }} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</button>
-              </div>
-            </>}
-          </div>
+    <PracticeSettingsPanel
+    dailyTest={dailyTest}
+    practiceMode={practiceMode}
+    changePracticeMode={changePracticeMode}
+    canSwitchMode={canSwitchMode}
+    isManualTimer={isManualTimer}
+    changeTimingMode={changeTimingMode}
+    canSwitchTimingMode={canSwitchTimingMode}
+    connectionState={connectionState}
+    gyroDisabled={gyroDisabled}
+    toggleGyroDisabled={toggleGyroDisabled}
+    formulaRecognitionEnabled={formulaRecognitionEnabled}
+    toggleFormulaRecognition={toggleFormulaRecognition}
+    resetDisplayOrientation={resetDisplayOrientation}
+    canResetDisplayOrientation={canResetDisplayOrientation}
+    onSmartSolve={() => { setMobileDialog(null); void beginSmartSolve(); }}
+    smartSolveStatus={smartSolveStatus}
+  />
   );
   const dailyPanel = (
-    <div className={`practice-card daily-test-card${isSmallScreen ? " ui-info-panel" : ""}`}>
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("每日测试")}</div>
-                <span className="practice-kicker" aria-hidden="true">DAILY TEST</span>
-              </div>
-              <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
-                {dailyTestDisplayDate}
-              </div>
-            </div>
-            <div className="dt-progress-copy">
-              <strong>{dailyTestDisplaySolves.length}</strong>
-              <span>/ {DAILY_TEST_TARGET}</span>
-            </div>
-            <div className="dt-progress" aria-label={t("每日五次测试进度")}>
-              {Array.from({ length: DAILY_TEST_TARGET }, (_, index) => {
-                const solve = dailyTestDisplaySolves[index];
-                return (
-                  <span key={index} className={`dt-step${solve ? " done" : ""}`}>
-                    <span className="dt-step-time">{solve ? fmtShort(solve.ms) : t("待测")}</span>
-                  </span>
-                );
-              })}
-            </div>
-            <div className={`dt-actions${!dailyTest && showYesterdayMakeupTest ? " dt-actions-split" : ""}`}>
-              {!dailyTest && (
-                showYesterdayMakeupTest ? (
-                  <>
-                    <button
-                      className="practice-btn practice-btn-ghost"
-                      onClick={() => startDailyLevelTest(yesterdayLocalDate)}
-                      disabled={!canStartYesterdayMakeupTest}
-                    >{t("补测昨日成绩")}</button>
-                    <button
-                      className="practice-btn practice-btn-primary"
-                      onClick={() => startDailyLevelTest(todayLocalDate)}
-                      disabled={!canStartTodayDailyTest}
-                    >{t("开始今日测试")}</button>
-                  </>
-                ) : (
-                  <button
-                    className="practice-btn practice-btn-primary"
-                    onClick={() => todayDailyLevel ? setDailyTestResult(todayDailyLevel) : startDailyLevelTest(todayLocalDate)}
-                    disabled={!todayDailyLevel && !canStartTodayDailyTest}
-                  >
-                    {todayDailyLevel && dailyTestAverageLabel ? t(`今日平均用时 ${dailyTestAverageLabel}`) : t("开始今日测试")}
-                  </button>
-                )
-              )}
-              {dailyTest && (
-                <button className="practice-btn practice-btn-ghost" onClick={cancelCurrentAttempt}>{t("取消测试")}</button>
-              )}
-            </div>
-          </div>
+    <PracticeDailyTestPanel
+    isSmallScreen={isSmallScreen}
+    dailyTestDisplayDate={dailyTestDisplayDate}
+    dailyTestDisplaySolves={dailyTestDisplaySolves}
+    dailyTest={dailyTest}
+    showYesterdayMakeupTest={showYesterdayMakeupTest}
+    startDailyLevelTest={startDailyLevelTest}
+    yesterdayLocalDate={yesterdayLocalDate}
+    canStartYesterdayMakeupTest={canStartYesterdayMakeupTest}
+    todayLocalDate={todayLocalDate}
+    canStartTodayDailyTest={canStartTodayDailyTest}
+    todayDailyLevel={todayDailyLevel}
+    onShowDailyResult={(entry) => setDailyTestResult(entry)}
+    dailyTestAverageLabel={dailyTestAverageLabel}
+    cancelCurrentAttempt={cancelCurrentAttempt}
+  />
   );
   const statsPanel = (
-    <div className="stats ui-info-panel" inert={!!dailyTest}>
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("数据统计")}</div>
-                <span className="practice-kicker" aria-hidden="true">STATISTICS</span>
-              </div>
-            </div>
-            <div className="stat-grid">
-              <div className="st st-primary"><div className="st-l">{t("总次数")}</div><div className="st-v">{stats.count}</div></div>
-              <div className="st"><div className="st-l">{t("最佳")}</div><div className="st-v">{fmtShort(stats.best)}</div></div>
-              <div className="st"><div className="st-l">AO5</div><div className="st-v">{fmtShort(stats.avg5)}</div></div>
-              <div className="st st-stable-score" tabIndex={0}>
-                <div className="st-l">{t("稳定成绩")}</div>
-                <div className="st-v">{fmtShort(stats.avg20)}</div>
-                <span className="stable-score-popover" role="tooltip">
-                  {stableScoreDescription}
-                </span>
-              </div>
-            </div>
-            <div className="practice-summary-history" aria-label={t("历史成绩")}>
-              {history.length === 0 ? (
-                <div className="hist-empty">{t("尚无记录")}</div>
-              ) : (
-                <div
-                  className="hist-list"
-                  ref={historyListRef}
-                  style={{ "--history-row-size": `${historyRowSize}px` } as CSSProperties}
-                >
-                  {recentHistory.map((entry, index) => {
-                    const barWidth = recentSlowest > 0 ? `${Math.max(12, (entry.ms / recentSlowest) * 100)}%` : "0%";
-                    const isBest = stats.best === entry.ms;
-                    const historyNumber = history.length - index;
-                    return (
-                      <div
-                        key={`${entry.ts}-${index}`}
-                        className={`hist-row${isBest ? " best" : ""}`}
-                        tabIndex={0}
-                        aria-label={t(`历史记录 #${historyNumber}，${
-                          fmtShort(entry.ms)
-                        }，${entry.source === "timer" ? t("纯计时器") : entry.moves == null ? t("步数未知") : t(`${entry.moves}步`)}`)}
-                        onBlur={(event) => {
-                          if (!event.currentTarget.contains(event.relatedTarget)) setHistoryCfopTip(null);
-                        }}
-                        onFocus={(event) => {
-                          if (event.target === event.currentTarget) showHistoryCfopTip(event.currentTarget, entry, historyNumber);
-                        }}
-                        onMouseEnter={(event) => showHistoryCfopTip(event.currentTarget, entry, historyNumber, { x: event.clientX, y: event.clientY })}
-                        onMouseLeave={() => setHistoryCfopTip(null)}
-                      >
-                        <span className="hr-i">#{String(historyNumber).padStart(3, "0")}</span>
-                        <span className="hr-track" aria-hidden="true">
-                          <span className="hr-bar" style={{ width: barWidth }}></span>
-                        </span>
-                        <span className={`hr-m${entry.source === "timer" ? " source-timer" : ""}`}>
-                          {entry.source === "timer" ? t("计时") : entry.moves == null ? "—" : t(`${entry.moves}步`)}
-                        </span>
-                        {entry.source !== "timer" && <span className="hr-tps">{formatTps(calculateTps(entry.moves, entry.ms))} <small>TPS</small></span>}
-                        <span className="hr-t">{fmtShort(entry.ms)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <button
-                className="hist-more-btn"
-                type="button"
-                aria-label={t("查看更多")}
-                aria-haspopup="dialog"
-                aria-expanded={historyDialogOpen}
-                onClick={() => {
-                  setHistoryCfopTip(null);
-                  setHistoryDialogOpen(true);
-                }}
-              >
-                {t("更多")}
-              </button>
-              {portalReady && historyCfopTip && createPortal((
-                <div
-                  className={`stats-cfop-floating-tip practice-cfop-floating-tip tip-${historyCfopTip.placement}`}
-                  role="tooltip"
-                  style={{
-                    left: historyCfopTip.left,
-                    top: historyCfopTip.top,
-                    "--tip-arrow-left": `${historyCfopTip.arrowLeft}px`,
-                    "--tip-arrow-top": `${historyCfopTip.arrowTop ?? 22}px`,
-                  } as CSSProperties}
-                >
-                  <div className="hcf-head">
-                    <span>#{String(historyCfopTip.historyNumber).padStart(3, "0")}</span>
-                    <b>{fmtSolveDate(historyCfopTip.entry.ts)}</b>
-                  </div>
-                  <SolveRecordDetails entry={historyCfopTip.entry} />
-                </div>
-              ), document.body)}
-
-            </div>
-          </div>
+    <PracticeHistoryPanel
+    dailyTest={dailyTest}
+    stats={stats}
+    stableScoreDescription={stableScoreDescription}
+    history={history}
+    historyListRef={historyListRef}
+    historyRowSize={historyRowSize}
+    recentHistory={recentHistory}
+    recentSlowest={recentSlowest}
+    onCloseHistoryTip={() => setHistoryCfopTip(null)}
+    showHistoryCfopTip={showHistoryCfopTip}
+    historyDialogOpen={historyDialogOpen}
+    onOpenHistory={() => setHistoryDialogOpen(true)}
+    portalReady={portalReady}
+    historyCfopTip={historyCfopTip}
+  />
   );
   const scorePanel = (
-    <div className="practice-live-panel practice-score-panel ui-info-panel">
-            <div className="solve-metrics">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("当前成绩")}</div>
-                <span className="practice-kicker" aria-hidden="true">SCORE</span>
-              </div>
-            </div>
-            <div className={`solve-current-grid${isManualTimer ? " timer-only" : ""}`}>
-              <div
-                className="solve-metric-main"
-                aria-label={isManualTimer ? fmtShort(solveMs) : `${fmtShort(solveMs)}, ${solveMoveCount} ${t("步")}, ${formatTps(calculateTps(solveMoveCount, solveMs))} TPS`}
-              >
-                <span
-                  className="solve-timeline-trigger"
-                  tabIndex={currentSolveTimeline ? 0 : undefined}
-                  aria-describedby={currentSolveTimeline ? "current-solve-timeline" : undefined}
-                >
-                  <em>{fmtShort(solveMs)}</em>
-                  {currentSolveTimeline && (
-                    <SolveTimeline record={currentSolveTimeline} label={t("CFOP 阶段用时")} moveUnit={t("步")} placementKey={`${phase}:${stageGuidanceVisible}`} />
-                  )}
-                </span>
-                {isManualTimer ? (
-                  <b className="solve-source-label">{t("纯计时器")}</b>
-                ) : (
-                  <div className="solve-metric-secondary">
-                    <b className="score-moves">{solveMoveCount} <small>{t("步")}</small></b>
-                    <b className="score-tps">{formatTps(calculateTps(solveMoveCount, solveMs))} <small>TPS</small></b>
-                  </div>
-                )}
-              </div>
-              {!isManualTimer && <div className="solve-phase-grid" aria-label={t("CFOP 阶段用时")}>
-                <div className={`solve-phase-card solve-phase-card-cross${cfopTimes.cross !== null ? " completed" : phase === "solving" ? " active" : ""}`}>
-                  <span>Cross</span>
-                  <b>
-                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "cross")}
-                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "cross")}</small>
-                  </b>
-                </div>
-                <div
-                  className={`solve-phase-card solve-phase-card-f2l${cfopTimes.f2l !== null ? " completed" : phase === "solving" && cfopTimes.cross !== null ? " active" : ""}`}
-                  tabIndex={0}
-                  aria-describedby="current-f2l-subphase-tooltip"
-                >
-                  <span>F2L</span>
-                  <b>
-                    {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), "f2l")}
-                    <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), "f2l")}</small>
-                  </b>
-                  <div
-                    id="current-f2l-subphase-tooltip"
-                    className="f2l-subphase-popover"
-                    role="tooltip"
-                    aria-label={t("F2L 子阶段用时和步数")}
-                  >
-                    {F2L_SUBPHASES.map((subphase, index) => (
-                      <span key={subphase.key}>
-                        <strong>{index + 1}/4</strong>
-                        <em>{formatF2lSubphaseTimeDelta(toHistoryCfopMetrics(cfopTimes), toHistoryF2lSubphaseMetrics(f2lSubTimes), subphase.key)}</em>
-                        <b>{formatF2lSubphaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), toHistoryF2lSubphaseMetrics(f2lSubMoves), subphase.key)}</b>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                {(["oll", "pll"] as const).map((key) => {
-                  const formula = solveFormulas[key];
-                  const previousPhase = key === "oll" ? "f2l" : "oll";
-                  return (
-                    <div
-                      key={key}
-                      className={`solve-phase-card solve-phase-card-${key}${cfopTimes[key] !== null ? " completed" : phase === "solving" && cfopTimes[previousPhase] !== null ? " active" : ""}`}
-                      tabIndex={formula ? 0 : undefined}
-                      aria-describedby={formula ? `current-${key}-formula-tooltip` : undefined}
-                    >
-                      <span>{key.toUpperCase()}</span>
-                      <b>
-                        {formatPhaseTimeDelta(toHistoryCfopMetrics(cfopTimes), key)}
-                        <small className="solve-phase-moves"> / {formatPhaseMoveDelta(toHistoryCfopMetrics(cfopMovesRef.current), key)}</small>
-                      </b>
-                      {formula && (
-                        <div id={`current-${key}-formula-tooltip`} className="solve-formula-popover" role="tooltip">
-                          <strong>{t(formula.name)}</strong>
-                          <FormulaTopViewImage
-                            facelets={formula.facelets}
-                            faceColors={formulaTopViewFaceColors}
-                            arrows={formula.arrows}
-                            className="solve-formula-preview"
-                            title={t(formula.name)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>}
-            </div>
-          </div>
-          </div>
+    <PracticeScorePanel
+    isManualTimer={isManualTimer}
+    solveMs={solveMs}
+    solveMoveCount={solveMoveCount}
+    currentSolveTimeline={currentSolveTimeline}
+    phase={phase}
+    stageGuidanceVisible={stageGuidanceVisible}
+    cfopTimes={cfopTimes}
+    cfopMoves={cfopMovesRef.current}
+    f2lSubTimes={f2lSubTimes}
+    f2lSubMoves={f2lSubMoves}
+    solveFormulas={solveFormulas}
+    formulaTopViewFaceColors={formulaTopViewFaceColors}
+  />
   );
   const scramblePanel = phase === "scrambling" ? (
-<div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
-                  <div className="ui-section-head sh-head-scramble">
-                    <div className="ui-section-title-line">
-                      <div className="ui-section-title">{t("打乱公式")}</div>
-                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
-                    </div>
-                    {undoDisplay.length > 0 && (
-                      <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...undoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </div>
-                    )}
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{scrambleIndex + 1}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{scramble.length}</span>
-                      </div>
-                      <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>{t("取消")}</button>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {scramble.map((move, index) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === scrambleIndex && (scrambleWrong || undoExpected)
-                          ? "wrong"
-                          : scrambleStatus[index] === "correct"
-                            ? "correct"
-                            : scrambleStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === scrambleIndex}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
+<PracticeScramblePanel
+    mode="guided"
+    moves={scramble}
+    index={scrambleIndex}
+    statuses={scrambleStatus}
+    wrong={scrambleWrong}
+    undoDisplay={undoDisplay}
+    undoExpected={undoExpected}
+    onCancel={cancelCurrentAttempt}
+  />
   ) : null;
   return (
     <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}${dailyTest ? " daily-test-focused" : ""}`}>
@@ -3395,40 +2534,14 @@ export function CubePracticeApp() {
             {((stageGuidanceVisible && !mobileScrambleVisible) || manualScrambleVisible) && (
               <div className="stage-bottom-stack" inert={isManualTimerFocused}>
                 {manualScrambleVisible && (
-<div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
-                  <div className="ui-section-head sh-head-scramble">
-                    <div className="ui-section-title-line">
-                      <div className="ui-section-title">{t("打乱公式")}</div>
-                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
-                    </div>
-                    <div className="sh-actions">
-                      {dailyTest && (
-                        <div className="sh-counter">
-                          <span className="sh-counter-num">{dailyTestProgress + 1}</span>
-                          <span className="sh-counter-sep">/</span>
-                          <span className="sh-counter-total">{DAILY_TEST_TARGET}</span>
-                        </div>
-                      )}
-                      <button
-                        className="sh-cancel"
-                        onClick={refreshManualScramble}
-                        disabled={manualTimerArmState !== "idle"}
-                        aria-label={t("更换打乱公式")}
-                      >{t("换一条")}</button>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {scramble.map((move, index) => (
-                      <AlgorithmStepToken
-                        key={`${move}-${index}`}
-                        move={move}
-                        index={index}
-                        status="pending"
-                        active={false}
-                      />
-                    ))}
-                  </div>
-                </div>
+<PracticeScramblePanel
+    mode="manual"
+    moves={scramble}
+    dailyProgress={dailyTest ? dailyTestProgress : null}
+    dailyTarget={DAILY_TEST_TARGET}
+    changeDisabled={manualTimerArmState !== "idle"}
+    onChange={refreshManualScramble}
+  />
 
                 )}
                 {!isSmallScreen && scramblePanel}

@@ -1,21 +1,16 @@
 "use client";
-
-import { Fragment } from "react";
+import { f2lSubphaseMetricDelta,phaseMetricDelta } from "@/lib/records/phase-metrics";
 import { useLanguage } from "@/components/i18n/language-provider";
+import type { CfopPhaseMetrics,SolveHistoryEntry } from "@/lib/records/solve-history";
+import { calculatePhaseTps,calculateTps,formatTps } from "@/lib/records/tps";
 import { fmtShort } from "@/lib/utils/format";
-import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/records/tps";
-import type { CfopPhaseMetrics, HistoryMetricValue, SolveHistoryEntry } from "@/lib/records/solve-history";
+import { Fragment } from "react";
 
 export const SOLVE_RECORD_TIP_WIDTH = 286;
 export const SOLVE_RECORD_TIP_HEIGHT = 376;
 const PHASES = ["cross", "f2l", "oll", "pll"] as const;
 const PHASE_NAMES = ["Cross", "F2L", "OLL", "PLL"];
 const SUBPHASES = ["one", "two", "three", "four"] as const;
-
-function delta(current: HistoryMetricValue | undefined, previous: HistoryMetricValue | undefined) {
-  if (typeof current !== "number" || typeof previous !== "number" || !Number.isFinite(current) || !Number.isFinite(previous) || previous < 0 || current < previous) return null;
-  return current - previous;
-}
 
 function RecordRow({ label, ms, moves, className = "", phase }: {
   label: string;
@@ -54,14 +49,13 @@ export function SolveRecordDetails({ entry }: { entry: SolveHistoryEntry }) {
           <span>{t("本次仅记录总用时，没有步数和 CFOP 阶段数据。")}</span>
         </div>
       ) : PHASES.map((phase, index) => {
-        const previous = index > 0 ? PHASES[index - 1] : null;
         return (
           <Fragment key={phase}>
             <RecordRow
               label={PHASE_NAMES[index]}
               phase={phase}
-              ms={delta(entry.cfop?.[phase], previous ? entry.cfop?.[previous] : 0)}
-              moves={delta(entry.cfopMoves?.[phase], previous ? entry.cfopMoves?.[previous] : 0)}
+              ms={phaseMetricDelta(entry.cfop, phase)}
+              moves={phaseMetricDelta(entry.cfopMoves, phase)}
               className={index % 2 === 0 ? "hcf-row-alt" : ""}
             />
             {phase === "f2l" && (
@@ -70,8 +64,8 @@ export function SolveRecordDetails({ entry }: { entry: SolveHistoryEntry }) {
                   <RecordRow
                     key={subphase}
                     label={`${index + 1}/4`}
-                    ms={delta(entry.cfopF2l?.[subphase], index === 0 ? entry.cfop?.cross : entry.cfopF2l?.[SUBPHASES[index - 1]])}
-                    moves={delta(entry.cfopF2lMoves?.[subphase], index === 0 ? entry.cfopMoves?.cross : entry.cfopF2lMoves?.[SUBPHASES[index - 1]])}
+                    ms={f2lSubphaseMetricDelta(entry.cfop, entry.cfopF2l, subphase)}
+                    moves={f2lSubphaseMetricDelta(entry.cfopMoves, entry.cfopF2lMoves, subphase)}
                     className="hcf-subrow"
                   />
                 ))}

@@ -1,287 +1,41 @@
 "use client";
-
-import { PracticeMobileDialog, PracticeMobilePanels, PracticeSettingsButton } from "@/components/practice/practice-mobile-panels";
-import { SettingNumber, SettingToggle } from "@/components/ui/setting-controls";
-
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { AlgorithmStepToken, type AlgorithmStepStatus } from "@/components/ui/algorithm-step-token";
-import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
+import { useCubeConnection } from "@/components/connection/cube-connection-provider";
+import { useCubeAppearance } from "@/components/cube/cube-appearance-provider";
+import { TurnSpeed } from "@/components/cube/turn-speed";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { useGyroPowerNotice } from "@/components/notifications/gyro-power-notice";
+import { PracticeMobileDialog,PracticeMobilePanels,PracticeSettingsButton } from "@/components/practice/practice-mobile-panels";
+import { AppFooter,AppTopbar } from "@/components/shell/app-shell";
+import { FormulaLibraryDialog } from "@/components/trainer/formula-library-dialog";
+import { TrainerCatalogPanel,TrainerHintPanel,TrainerRecognitionPanel,TrainerScorePanel,TrainerSettingsPanel } from "@/components/trainer/trainer-panels";
+import { type AlgorithmStepStatus } from "@/components/ui/algorithm-step-token";
+import { useClientReady } from "@/lib/browser/client-ready";
 import { isTextEntryTarget } from "@/lib/browser/keyboard-shortcuts";
 import { useKeyboardHints } from "@/lib/browser/use-keyboard-hints";
-import { useCubeAppearance } from "@/components/cube/cube-appearance-provider";
-import { useCubeConnection } from "@/components/connection/cube-connection-provider";
+import { advanceFormulaRotationSteps,compressMoveSequence,createMoveCoordinateState,expandMoveNotation,flushFormulaMoveAnimation,groupAlgorithmMoves,hintMoveForDoubleTurnProgress,moveCanStillMatchExpected,movePartiallyMatchesExpectedDoubleTurn,movesMatchExpected,normalizeMoveCoordinate,parseAlgorithm,parseMoveNotation,planFormulaMoveAnimation,updateMoveCoordinateStateAfterMatch,updateMoveCoordinateStateAfterMove,type FormulaMoveAnimationState,type MoveCoordinateState,} from "@/lib/cube/algorithms";
+import { loadPracticeGyroDisabled,savePracticeGyroDisabled } from "@/lib/cube/cube-appearance";
+import { CUBE_CAMERA_PRESETS } from "@/lib/cube/cube-camera-presets";
 import { CubeIdleFaceletsSync } from "@/lib/cube/cube-idle-facelets-sync";
 import { getInitialCubeVisualState } from "@/lib/cube/cube-visual-state";
-import { FormulaLibraryDialog } from "@/components/trainer/formula-library-dialog";
-import { FORMULAS } from "@/lib/formulas/formulas-data";
-import { MoveToken } from "@/components/ui/move-token";
-import {
-  expandMoveNotation,
-  flushFormulaMoveAnimation,
-  compressMoveSequence,
-  advanceFormulaRotationSteps,
-  createMoveCoordinateState,
-  hintMoveForDoubleTurnProgress,
-  invertMoveNotation,
-  moveCanStillMatchExpected,
-  movePartiallyMatchesExpectedDoubleTurn,
-  movesMatchExpected,
-  normalizeMoveCoordinate,
-  groupAlgorithmMoves,
-  parseAlgorithm,
-  parseMoveNotation,
-  planFormulaMoveAnimation,
-  updateMoveCoordinateStateAfterMatch,
-  updateMoveCoordinateStateAfterMove,
-  type MoveCoordinateState,
-  type FormulaMoveAnimationState,
-} from "@/lib/cube/algorithms";
-import {
-  CFOP_TRAINER_PHASES,
-  SOLVED_FACELETS,
-  createFormulaTrainerScenario,
-  displayFaceletsToHardwareFacelets,
-  type CfopTrainerPhase,
-} from "@/lib/training/cfop-trainer";
-import { detectCfopMilestones, detectF2lTargetEdgeSolved, isSolvedFacelets, type F2lTargetSlot } from "@/lib/cube/cube-state";
-import {
-  applyMoveToFacelets,
-  applyMoveToFormulaFacelets,
-  applyMovesToFormulaFacelets,
-} from "@/lib/cube/facelets-pattern";
-import { fmtShort, fmtTime } from "@/lib/utils/format";
-import { TurnCounter, calculateTps, formatTps } from "@/lib/records/tps";
-import { TurnSpeed } from "@/components/cube/turn-speed";
+import { applyMoveToFacelets,applyMoveToFormulaFacelets,applyMovesToFormulaFacelets } from "@/lib/cube/facelets-pattern";
+import { appendUndoStackMoves,buildUndoStack,getRemainingUndoStack,normalizeMove,splitInvalidPendingMoves,} from "@/lib/cube/move-sequence";
+import { PendingMoveQueue } from "@/lib/cube/pending-move-queue";
+import { mountSmartCube,type CubeDisplayState,type CubeQuaternion,type SmartCubeApi } from "@/lib/cube/smart-cube";
 import { getArchiveScopedStorageKey } from "@/lib/records/solve-history";
-import { useClientReady } from "@/lib/browser/client-ready";
-import { CUBE_CAMERA_PRESETS } from "@/lib/cube/cube-camera-presets";
+import { TurnCounter,calculateTps,formatTps } from "@/lib/records/tps";
+import { F2L_FOCUS_SOLVED_FACELETS,SOLVED_FACELETS,canUseFocusModeForPhase,createFormulaTrainerScenario,displayFaceletsToHardwareFacelets,focusSolvedFaceletsForPhase,phaseComplete,type CfopTrainerPhase } from "@/lib/training/cfop-trainer";
+import { TRAINER_F2L_EDGE_ONLY_KEY,TRAINER_FORMULA_HINT_KEY,TRAINER_RECOGNITION_HINT_KEY,TRAINER_RECOGNITION_SLICES_KEY,TRAINER_RECOGNITION_WIDE_KEY,TRAINER_ROTATION_ARROW_KEY,TRAINER_ROTATION_VARIANTS_KEY,isFormulaTrainerPhase,normalizeTrainerSessionRounds,readF2lFocusModeEnabled,readStoredFormulaCases,readStoredTrainerBoolean,readStoredTrainerPhase,readStoredTrainerSessionRounds,saveF2lFocusModeEnabled,saveStoredTrainerBoolean,saveStoredTrainerPhase,saveStoredTrainerSessionRounds,trainerLibraryKey,} from "@/lib/training/trainer-preferences";
+import type { TrainerSpecialty } from "@/lib/training/trainer-session-model";
+import { type FormulaHintStepStatus,type TrainerRoundResult,type TrainerState } from "@/lib/training/trainer-session-model";
 import { createTurnRecognitionSequence } from "@/lib/training/turn-recognition-trainer";
-import {
-  type CubeQuaternion,
-  type CubeDisplayState,
-  type SmartCubeApi,
-  mountSmartCube,
-} from "@/lib/cube/smart-cube";
-
-type TrainerState = "idle" | "loading" | "observe" | "solving" | "cancelled" | "ended" | "done" | "error";
-type FormulaHintStepStatus = "pending" | "partial" | "correct";
-type TrainerSpecialty = CfopTrainerPhase | "turn-recognition";
-
-const TRAINER_SPECIALTIES: Array<{
-  key: TrainerSpecialty;
-  name: string;
-}> = [
-  ...CFOP_TRAINER_PHASES.map((phase) => ({
-    key: phase.key,
-    name: `${phase.label}专项`,
-  })),
-  { key: "turn-recognition", name: "转动专项" },
-];
+import { fmtShort,fmtTime } from "@/lib/utils/format";
+import { useCallback,useEffect,useEffectEvent,useMemo,useRef,useState } from "react";
 
 const TRAINER_MOVE_ANIMATION_MS = 100;
+
 const DISPLAY_STATE_EPSILON = 0.001;
-const DEFAULT_TRAINER_SESSION_ROUNDS = 20;
-const MIN_TRAINER_SESSION_ROUNDS = 1;
-const MAX_TRAINER_SESSION_ROUNDS = 100;
-const PRACTICE_GYRO_DISABLED_KEY = "cube-practice-gyro-disabled";
-const F2L_FOCUS_MODE_KEY = "cfop-trainer-f2l-focus-mode";
-const TRAINER_SELECTED_PHASE_KEY = "cfop-trainer-selected-phase";
-const TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds-v2";
-const LEGACY_TRAINER_SESSION_ROUNDS_KEY = "cfop-trainer-session-rounds";
-const TRAINER_ROTATION_VARIANTS_KEY = "cfop-trainer-rotation-variants";
-function trainerLibraryKey(phase: CfopTrainerPhase) {
-  return `cfop-trainer-${phase}-library-v1`;
-}
 
-function readStoredFormulaCases(phase: CfopTrainerPhase): string[] {
-  const allCaseIds = FORMULAS[phase].items.map((item) => item.id);
-  try {
-    const stored: unknown = JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(trainerLibraryKey(phase))) || "null");
-    if (Array.isArray(stored)) {
-      const valid = allCaseIds.filter((id) => stored.includes(id));
-      if (valid.length) return valid;
-    }
-  } catch {
-    // Use the full library when storage is unavailable or invalid.
-  }
-  return allCaseIds;
-}
-
-const TRAINER_FORMULA_HINT_KEY = "cfop-trainer-formula-hint";
-const TRAINER_ROTATION_ARROW_KEY = "cfop-trainer-rotation-arrow";
-const TRAINER_F2L_EDGE_ONLY_KEY = "cfop-trainer-f2l-edge-only";
-const TRAINER_RECOGNITION_SLICES_KEY = "cfop-trainer-recognition-slices";
-const TRAINER_RECOGNITION_WIDE_KEY = "cfop-trainer-recognition-wide";
-const TRAINER_RECOGNITION_HINT_KEY = "cfop-trainer-recognition-hint";
 const TRAINER_CUBE_CAMERA_PRESET = CUBE_CAMERA_PRESETS.trainer;
-const F2L_FOCUS_SOLVED_FACELETS = [
-  "XXXXXXXXX",
-  "XXXRRRRRR",
-  "XXXFFFFFF",
-  "DDDDDDDDD",
-  "XXXLLLLLL",
-  "XXXBBBBBB",
-].join("");
-const OLL_FOCUS_SOLVED_FACELETS = [
-  "UUUUUUUUU",
-  "XXXXXXXXX",
-  "XXXXXXXXX",
-  "XXXXXXXXX",
-  "XXXXXXXXX",
-  "XXXXXXXXX",
-].join("");
-
-type TrainerRoundResult = {
-  observeMs: number;
-  solveMs: number;
-  moves: number;
-  dnf: boolean;
-};
-
-function loadPracticeGyroDisabled() {
-  if (typeof window === "undefined") return false;
-  try {
-    return JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY)) || "false") === true;
-  } catch {
-    return false;
-  }
-}
-
-function savePracticeGyroDisabled(disabled: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(PRACTICE_GYRO_DISABLED_KEY), JSON.stringify(disabled));
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function readF2lFocusModeEnabled() {
-  if (typeof window === "undefined") return false;
-  try {
-    return JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(F2L_FOCUS_MODE_KEY)) || "false") === true;
-  } catch {
-    return false;
-  }
-}
-
-function saveF2lFocusModeEnabled(enabled: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(F2L_FOCUS_MODE_KEY), JSON.stringify(enabled));
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function readStoredTrainerPhase() {
-  if (typeof window === "undefined") return "f2l" as TrainerSpecialty;
-  try {
-    const stored = window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SELECTED_PHASE_KEY));
-    return TRAINER_SPECIALTIES.some((phase) => phase.key === stored)
-      ? stored as TrainerSpecialty
-      : "f2l";
-  } catch {
-    return "f2l";
-  }
-}
-
-function saveStoredTrainerPhase(phase: TrainerSpecialty) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(TRAINER_SELECTED_PHASE_KEY), phase);
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function isFormulaTrainerPhase(phase: TrainerSpecialty): phase is CfopTrainerPhase {
-  return phase === "f2l" || phase === "oll" || phase === "pll";
-}
-
-function readStoredTrainerBoolean(key: string) {
-  if (typeof window === "undefined") return false;
-  try {
-    return JSON.parse(window.localStorage.getItem(getArchiveScopedStorageKey(key)) || "false") === true;
-  } catch {
-    return false;
-  }
-}
-
-function saveStoredTrainerBoolean(key: string, enabled: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(getArchiveScopedStorageKey(key), JSON.stringify(enabled));
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function normalizeTrainerSessionRounds(value: number) {
-  return Math.min(MAX_TRAINER_SESSION_ROUNDS, Math.max(MIN_TRAINER_SESSION_ROUNDS, Math.round(value)));
-}
-
-function readStoredTrainerSessionRounds() {
-  if (typeof window === "undefined") return DEFAULT_TRAINER_SESSION_ROUNDS;
-  try {
-    const current = window.localStorage.getItem(getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY));
-    const stored = Number.parseInt(
-      current ?? window.localStorage.getItem(getArchiveScopedStorageKey(LEGACY_TRAINER_SESSION_ROUNDS_KEY)) ?? "",
-      10,
-    );
-    // Migrate the previous default while allowing newly saved custom values of 10.
-    if (current === null && stored === 10) return DEFAULT_TRAINER_SESSION_ROUNDS;
-    return Number.isFinite(stored) ? normalizeTrainerSessionRounds(stored) : DEFAULT_TRAINER_SESSION_ROUNDS;
-  } catch {
-    return DEFAULT_TRAINER_SESSION_ROUNDS;
-  }
-}
-
-function saveStoredTrainerSessionRounds(rounds: number) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(
-      getArchiveScopedStorageKey(TRAINER_SESSION_ROUNDS_KEY),
-      String(normalizeTrainerSessionRounds(rounds)),
-    );
-  } catch {
-    // localStorage can be unavailable in restricted browsing modes.
-  }
-}
-
-function f2lTargetSlotForRotation(rotation: number): F2lTargetSlot {
-  if (rotation === 1) return "br";
-  if (rotation === 2) return "bl";
-  if (rotation === 3) return "fl";
-  return "fr";
-}
-
-function phaseComplete(
-  phase: CfopTrainerPhase,
-  facelets: string,
-  options: { f2lEdgeOnly?: boolean; f2lRotation?: number } = {},
-) {
-  const milestones = detectCfopMilestones(facelets);
-  if (phase === "f2l") {
-    return options.f2lEdgeOnly
-      ? detectF2lTargetEdgeSolved(facelets, f2lTargetSlotForRotation(options.f2lRotation ?? 0))
-      : milestones.f2l;
-  }
-  if (phase === "oll") return milestones.oll;
-  return milestones.pll || isSolvedFacelets(facelets);
-}
-
-function canUseFocusModeForPhase(phase: CfopTrainerPhase) {
-  return phase === "f2l" || phase === "oll";
-}
-
-function focusSolvedFaceletsForPhase(phase: CfopTrainerPhase) {
-  if (phase === "f2l") return F2L_FOCUS_SOLVED_FACELETS;
-  if (phase === "oll") return OLL_FOCUS_SOLVED_FACELETS;
-  return null;
-}
 
 function isDefaultDisplayState(state: CubeDisplayState) {
   const defaultState = TRAINER_CUBE_CAMERA_PRESET.displayState;
@@ -290,71 +44,6 @@ function isDefaultDisplayState(state: CubeDisplayState) {
     Math.abs(state.cameraLatitude - defaultState.cameraLatitude) <= DISPLAY_STATE_EPSILON &&
     Math.abs(state.cameraLongitude - defaultState.cameraLongitude) <= DISPLAY_STATE_EPSILON
   );
-}
-
-function normalizeMove(move: string) {
-  return parseMoveNotation(move)?.notation ?? move;
-}
-
-function moveAmount(move: string) {
-  const parsed = parseMoveNotation(move);
-  if (!parsed) return null;
-  const amount: 1 | 2 | 3 = parsed.turns === 2 ? 2 : parsed.dir === -1 ? 3 : 1;
-  return {
-    layer: parsed.layer,
-    amount,
-  };
-}
-
-function formatUndoMove(layer: string, amount: 1 | 2 | 3) {
-  if (amount === 2) return `${layer}2`;
-  if (amount === 3) return `${layer}'`;
-  return layer;
-}
-
-function compressUndoMoveSequence(moves: string[]) {
-  return moves.reduce<string[]>((history, move) => {
-    const nextMove = moveAmount(move);
-    if (!nextMove) return history;
-    const next = [...history];
-    const lastMove = moveAmount(next[next.length - 1]);
-    if (lastMove && lastMove.layer === nextMove.layer) {
-      next.pop();
-      const combined = (lastMove.amount + nextMove.amount) % 4;
-      if (combined !== 0) next.push(formatUndoMove(nextMove.layer, combined as 1 | 2 | 3));
-      return next;
-    }
-    next.push(formatUndoMove(nextMove.layer, nextMove.amount));
-    return next;
-  }, []);
-}
-
-function buildUndoStack(moves: string[]) {
-  return compressUndoMoveSequence(moves.map(invertMoveNotation));
-}
-
-function appendUndoStackMoves(undoStack: string[], moves: string[]) {
-  return compressUndoMoveSequence([...undoStack, ...moves.map(invertMoveNotation)]);
-}
-
-function getRemainingUndoStack(undoStack: string[], pendingMoves: string[]) {
-  const expectedUndo = undoStack[undoStack.length - 1];
-  if (!expectedUndo || pendingMoves.length === 0) return undoStack;
-  const remainingTop = compressUndoMoveSequence([...pendingMoves.toReversed().map(invertMoveNotation), expectedUndo]);
-  return compressUndoMoveSequence([...undoStack.slice(0, -1), ...remainingTop]);
-}
-
-function splitInvalidPendingMoves(pendingMoves: string[], expectedMove: string) {
-  for (let split = pendingMoves.length - 1; split >= 0; split -= 1) {
-    const retainedMoves = pendingMoves.slice(0, split);
-    if (retainedMoves.length === 0 || moveCanStillMatchExpected(retainedMoves, expectedMove)) {
-      return {
-        retainedMoves,
-        wrongMoves: pendingMoves.slice(split),
-      };
-    }
-  }
-  return { retainedMoves: [], wrongMoves: pendingMoves };
 }
 
 function freshFormulaHintStatus(moves: string[]) {
@@ -404,8 +93,6 @@ function CfopTrainerClient() {
   const formulaHintAnimationRef = useRef<FormulaMoveAnimationState>({ animatedCount: 0, animatedPartialMove: null });
   const formulaHintUndoAnimationRef = useRef<FormulaMoveAnimationState>({ animatedCount: 0, animatedPartialMove: null });
   const gyroDisabledRef = useRef(loadPracticeGyroDisabled());
-  const visualPendingMoveRef = useRef<string | null>(null);
-  const visualPendingTimerRef = useRef<number | null>(null);
   const autoNextTimerRef = useRef<number | null>(null);
   const moveQueueRef = useRef(Promise.resolve());
   const mountedRef = useRef(false);
@@ -545,6 +232,18 @@ function CfopTrainerClient() {
   );
 
 
+  const animateCubeMoves = useCallback((moves: string[], durationMs = TRAINER_MOVE_ANIMATION_MS) => {
+    moves.forEach((move) => {
+      cubeApiRef.current?.applyMoves(expandMoveNotation(move), durationMs);
+    });
+  }, []);
+
+  const visualMoveQueue = useMemo(() => new PendingMoveQueue(), []);
+  const { flush: flushVisualPendingMove, discard: discardVisualPendingMoves, hasPending: hasPendingVisualMove } = visualMoveQueue;
+  const queueVisualMove = useCallback((move: string) => {
+    visualMoveQueue.push(move, (pending) => animateCubeMoves([pending]));
+  }, [animateCubeMoves, visualMoveQueue]);
+
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -574,9 +273,7 @@ function CfopTrainerClient() {
       : null;
     if (initialState) {
       idleFaceletsSyncRef.current.reset();
-      if (visualPendingTimerRef.current !== null) window.clearTimeout(visualPendingTimerRef.current);
-      visualPendingTimerRef.current = null;
-      visualPendingMoveRef.current = null;
+      discardVisualPendingMoves();
     }
     const api = mountSmartCube(mount, {
       orientation,
@@ -600,7 +297,7 @@ function CfopTrainerClient() {
       api.dispose();
       if (cubeApiRef.current === api) cubeApiRef.current = null;
     };
-  }, [backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, getLatestGyro, orientation, renderMaxFps, renderTrainerCubeFacelets]);
+  }, [discardVisualPendingMoves, backFaceProjectionDistance, backFaceProjectionEnabled, faceColors, getLatestGyro, orientation, renderMaxFps, renderTrainerCubeFacelets]);
 
   useEffect(() => {
     cubeApiRef.current?.setBackFaceProjectionDistance(backFaceProjectionDistance);
@@ -647,18 +344,6 @@ function CfopTrainerClient() {
     setRecognitionAverageResponseMs(null);
   }, []);
 
-  const animateCubeMoves = useCallback((moves: string[], durationMs = TRAINER_MOVE_ANIMATION_MS) => {
-    moves.forEach((move) => {
-      cubeApiRef.current?.applyMoves(expandMoveNotation(move), durationMs);
-    });
-  }, []);
-
-  const clearVisualPendingTimer = useCallback(() => {
-    if (visualPendingTimerRef.current === null) return;
-    window.clearTimeout(visualPendingTimerRef.current);
-    visualPendingTimerRef.current = null;
-  }, []);
-
   const clearAutoNextTimer = useCallback(() => {
     if (autoNextTimerRef.current !== null) {
       window.clearTimeout(autoNextTimerRef.current);
@@ -670,35 +355,10 @@ function CfopTrainerClient() {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      clearVisualPendingTimer();
+      discardVisualPendingMoves();
       clearAutoNextTimer();
     };
-  }, [clearAutoNextTimer, clearVisualPendingTimer]);
-
-  const flushVisualPendingMove = useCallback(() => {
-    const pending = visualPendingMoveRef.current;
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
-    if (pending) animateCubeMoves([pending]);
-  }, [animateCubeMoves, clearVisualPendingTimer]);
-
-  const queueVisualMove = useCallback(
-    (move: string) => {
-      const pending = visualPendingMoveRef.current;
-      if (!pending) {
-        visualPendingMoveRef.current = move;
-        clearVisualPendingTimer();
-        visualPendingTimerRef.current = window.setTimeout(flushVisualPendingMove, 45);
-        return;
-      }
-
-      clearVisualPendingTimer();
-      animateCubeMoves([pending]);
-      visualPendingMoveRef.current = move;
-      visualPendingTimerRef.current = window.setTimeout(flushVisualPendingMove, 45);
-    },
-    [animateCubeMoves, clearVisualPendingTimer, flushVisualPendingMove],
-  );
+  }, [clearAutoNextTimer, discardVisualPendingMoves]);
 
   useEffect(() => {
     const sync = idleFaceletsSyncRef.current;
@@ -710,7 +370,7 @@ function CfopTrainerClient() {
       if (selectedPhaseRef.current !== "turn-recognition") return;
       const cube = cubeApiRef.current;
       if (!cube) return;
-      const busy = visualPendingMoveRef.current !== null || cube.isAnimating();
+      const busy = hasPendingVisualMove() || cube.isAnimating();
       if (sync.flush(busy, (nextFacelets) => cube.setFacelets(nextFacelets))) {
         timer = setTimeout(flush, 50);
       }
@@ -725,7 +385,7 @@ function CfopTrainerClient() {
       if (timer !== null) clearTimeout(timer);
       sync.reset();
     };
-  }, [connected, isRecognitionSpecialty, subscribeFacelets]);
+  }, [connected, hasPendingVisualMove, isRecognitionSpecialty, subscribeFacelets]);
 
   const resetFormulaHint = useCallback((source = "") => {
     const rows = groupAlgorithmMoves(source);
@@ -866,8 +526,7 @@ function CfopTrainerClient() {
     idleFaceletsSyncRef.current.reset();
     clearAutoNextTimer();
     resetSessionResults();
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
+    discardVisualPendingMoves();
     scenarioRotationRef.current = 0;
     currentFaceletsRef.current = SOLVED_FACELETS;
     focusFaceletsRef.current = isFormulaTrainerPhase(selectedPhaseRef.current)
@@ -882,7 +541,7 @@ function CfopTrainerClient() {
     resetRecognitionResults();
     updateTrainerState("idle");
     renderTrainerCubeFacelets(SOLVED_FACELETS);
-  }, [clearAutoNextTimer, clearVisualPendingTimer, renderTrainerCubeFacelets, resetFormulaHint, resetRecognitionResults, resetSessionResults, updateTrainerState]);
+  }, [clearAutoNextTimer, discardVisualPendingMoves, renderTrainerCubeFacelets, resetFormulaHint, resetRecognitionResults, resetSessionResults, updateTrainerState]);
 
   const cancelRun = useCallback(() => {
     runIdRef.current += 1;
@@ -954,8 +613,7 @@ function CfopTrainerClient() {
     if (!sessionInProgress || !roundInProgress) return;
     const now = performance.now();
     runIdRef.current += 1;
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
+    discardVisualPendingMoves();
     completeRound({
       observeMs: stateRef.current === "solving"
         ? Math.max(0, solveStartRef.current - observeStartRef.current)
@@ -966,7 +624,7 @@ function CfopTrainerClient() {
       moves: stateRef.current === "solving" ? solveMoveCountRef.current : 0,
       dnf: true,
     });
-  }, [clearVisualPendingTimer, completeRound, roundInProgress, sessionInProgress]);
+  }, [discardVisualPendingMoves, completeRound, roundInProgress, sessionInProgress]);
 
   const recordSolveMove = useCallback((move: string) => {
     solveMoveCountRef.current = turnCounterRef.current.push(move);
@@ -1154,10 +812,9 @@ function CfopTrainerClient() {
   const retryTrainerRound = useCallback(() => {
     if (!sessionInProgress || !connected || stateRef.current !== "error") return;
     runIdRef.current += 1;
-    clearVisualPendingTimer();
-    visualPendingMoveRef.current = null;
+    discardVisualPendingMoves();
     void beginTrainerRound(runIdRef.current);
-  }, [beginTrainerRound, clearVisualPendingTimer, connected, sessionInProgress]);
+  }, [beginTrainerRound, discardVisualPendingMoves, connected, sessionInProgress]);
 
   const beginRecognitionTraining = useCallback(() => {
     const now = performance.now();
@@ -1339,231 +996,96 @@ function CfopTrainerClient() {
               )
   );
   const catalogPanel = (
-<div className="practice-control-panel trainer-catalog-panel ui-info-panel">
-            <div className="practice-card-head practice-control-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("专项列表")}</div>
-                <span className="practice-kicker" aria-hidden="true">LIST</span>
-              </div>
-            </div>
-            <div className="stage-tools trainer-phase-list" aria-label={t("专项阶段选择")}>
-              {TRAINER_SPECIALTIES.map((phase) => (
-                <button
-                  key={phase.key}
-                  type="button"
-                  className={`tag tag-btn${selectedPhase === phase.key ? " active" : ""}`}
-                  onClick={() => selectPhase(phase.key)}
-                  disabled={settingsLocked}
-                  aria-pressed={selectedPhase === phase.key}
-                >
-                  <span className="trainer-phase-copy">
-                    <strong>{t(phase.name)}</strong>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+<TrainerCatalogPanel selectedPhase={selectedPhase} selectPhase={selectPhase} settingsLocked={settingsLocked} />
   );
-  const settingsPanel = (
-<div className="practice-control-panel trainer-settings-panel ui-info-panel">
-              <div className="practice-card-head practice-control-head">
-                <div className="practice-title-line">
-                  <div className="practice-card-title">{t("专项设置")}</div>
-                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
-                </div>
-              </div>
-              <label className="ui-setting-row trainer-round-setting">
-                <span>
-                  <b>{t("每组测试轮数")}</b>
-                </span>
-                <SettingNumber data-testid="trainer-round-limit" min={MIN_TRAINER_SESSION_ROUNDS} max={MAX_TRAINER_SESSION_ROUNDS} value={sessionRoundLimit} disabled={settingsLocked} aria-label={t("每组测试轮数")} onCommit={(value) => updateSessionRoundLimit(String(value))} />
-              </label>
-              {isRecognitionSpecialty ? (
-                <div className="trainer-option-list">
-                  <SettingToggle label={t("加入中层转动")} checked={recognitionIncludeSlices} disabled={settingsLocked} onChange={(next) => {
-                        setRecognitionIncludeSlices(next);
-                        saveStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY, next);
-                      }} />
-                  <SettingToggle label={t("加入宽层转动")} checked={recognitionIncludeWideMoves} disabled={settingsLocked} onChange={(next) => {
-                        setRecognitionIncludeWideMoves(next);
-                        saveStoredTrainerBoolean(TRAINER_RECOGNITION_WIDE_KEY, next);
-                      }} />
-                  <SettingToggle label={t("显示旋转箭头")} checked={recognitionHintEnabled} disabled={settingsLocked} onChange={(next) => {
-                        setRecognitionHintEnabled(next);
-                        saveStoredTrainerBoolean(TRAINER_RECOGNITION_HINT_KEY, next);
-                      }} />
-                </div>
-              ) : (
-                <>
-                  <div className="trainer-option-list">
-                    {isFormulaTrainerPhase(selectedPhase) && (
-                      <button type="button" className="ui-setting-row trainer-library-button" disabled={settingsLocked} onClick={() => { setMobileSettingsOpen(false); setFormulaLibraryOpen(true); }} aria-haspopup="dialog">
-                        <span><b>{t("formulaLibrary.title")}</b><small>{t("formulaLibrary.selected").replace("{count}", String(selectedCaseIds[selectedPhase].length)).replace("{total}", String(FORMULAS[selectedPhase].items.length))}</small></span>
-                        <span aria-hidden="true">›</span>
-                      </button>
-                    )}
-                    {selectedPhase === "f2l" && (
-                      <SettingToggle label={t("仅判定目标棱")} checked={f2lEdgeOnly} disabled={settingsLocked} onChange={(next) => {
-                            f2lEdgeOnlyRef.current = next;
-                            setF2lEdgeOnly(next);
-                            saveStoredTrainerBoolean(TRAINER_F2L_EDGE_ONLY_KEY, next);
-                          }} />
-                    )}
-                    <SettingToggle label={t("公式提示")} checked={formulaHintEnabled} disabled={settingsLocked} onChange={(next) => {
-                          formulaHintEnabledRef.current = next;
-                          setFormulaHintEnabled(next);
-                          saveStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY, next);
-                        }} />
-                    <SettingToggle label={t("显示旋转箭头")} checked={formulaArrowEnabled} disabled={settingsLocked || !formulaHintEnabled} onChange={(next) => {
-                          formulaArrowEnabledRef.current = next;
-                          setFormulaArrowEnabled(next);
-                          saveStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY, next);
-                        }} />
-                  </div>
-                </>
-              )}
+  const changeRecognitionIncludeSlices = (next: boolean) => {
+    setRecognitionIncludeSlices(next);
+    saveStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY, next);
+  };
 
-              <div className="ui-setting-stack ui-setting-divider">
-                {canUseFocusMode && <SettingToggle label={t("专注模式")} checked={f2lFocusMode} onChange={toggleF2lFocusMode} disabled={settingsLocked} shortcut="H" />}
-                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
-              </div>
-              <div className="ui-setting-actions ui-setting-divider">
-                <button className="ui-setting-action trainer-reset-action" type="button" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
-              </div>
-            </div>
+  const changeRecognitionIncludeWideMoves = (next: boolean) => {
+    setRecognitionIncludeWideMoves(next);
+    saveStoredTrainerBoolean(TRAINER_RECOGNITION_WIDE_KEY, next);
+  };
+
+  const changeRecognitionHintEnabled = (next: boolean) => {
+    setRecognitionHintEnabled(next);
+    saveStoredTrainerBoolean(TRAINER_RECOGNITION_HINT_KEY, next);
+  };
+
+  const changeF2lEdgeOnly = (next: boolean) => {
+    f2lEdgeOnlyRef.current = next;
+    setF2lEdgeOnly(next);
+    saveStoredTrainerBoolean(TRAINER_F2L_EDGE_ONLY_KEY, next);
+  };
+
+  const changeFormulaHintEnabled = (next: boolean) => {
+    formulaHintEnabledRef.current = next;
+    setFormulaHintEnabled(next);
+    saveStoredTrainerBoolean(TRAINER_FORMULA_HINT_KEY, next);
+  };
+
+  const changeFormulaArrowEnabled = (next: boolean) => {
+    formulaArrowEnabledRef.current = next;
+    setFormulaArrowEnabled(next);
+    saveStoredTrainerBoolean(TRAINER_ROTATION_ARROW_KEY, next);
+  };
+
+  const settingsPanel = (
+<TrainerSettingsPanel
+    sessionRoundLimit={sessionRoundLimit}
+    settingsLocked={settingsLocked}
+    updateSessionRoundLimit={updateSessionRoundLimit}
+    isRecognitionSpecialty={isRecognitionSpecialty}
+    recognitionIncludeSlices={recognitionIncludeSlices}
+    changeRecognitionIncludeSlices={changeRecognitionIncludeSlices}
+    recognitionIncludeWideMoves={recognitionIncludeWideMoves}
+    changeRecognitionIncludeWideMoves={changeRecognitionIncludeWideMoves}
+    recognitionHintEnabled={recognitionHintEnabled}
+    changeRecognitionHintEnabled={changeRecognitionHintEnabled}
+    selectedPhase={selectedPhase}
+    onOpenFormulaLibrary={() => { setMobileSettingsOpen(false); setFormulaLibraryOpen(true); }}
+    selectedCaseIds={selectedCaseIds}
+    f2lEdgeOnly={f2lEdgeOnly}
+    changeF2lEdgeOnly={changeF2lEdgeOnly}
+    formulaHintEnabled={formulaHintEnabled}
+    changeFormulaHintEnabled={changeFormulaHintEnabled}
+    formulaArrowEnabled={formulaArrowEnabled}
+    changeFormulaArrowEnabled={changeFormulaArrowEnabled}
+    canUseFocusMode={canUseFocusMode}
+    f2lFocusMode={f2lFocusMode}
+    toggleF2lFocusMode={toggleF2lFocusMode}
+    gyroDisabled={gyroDisabled}
+    toggleGyroDisabled={toggleGyroDisabled}
+    resetDisplayOrientation={resetDisplayOrientation}
+    canResetDisplayOrientation={canResetDisplayOrientation}
+  />
   );
   const scorePanel = (
-<div className="stats trainer-results-panel ui-info-panel" aria-live="polite">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("当前成绩")}</div>
-                <span className="practice-kicker" aria-hidden="true">SCORE</span>
-              </div>
-            </div>
-              {isRecognitionSpecialty ? (
-                <div className="stat-grid">
-                  <div className="st st-primary">
-                    <div className="st-l">{t("正确")}</div>
-                    <div className="st-v">{recognitionCorrect}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("错误")}</div>
-                    <div className="st-v">{recognitionWrong}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("正确率")}</div>
-                    <div className="st-v">{recognitionAccuracy}%</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("平均反应")}</div>
-                    <div className="st-v">{fmtShort(recognitionAverageResponseMs)}</div>
-                  </div>
-                </div>
-              ) : (
-                <div className="stat-grid">
-                  <div className="st st-primary">
-                    <div className="st-l">{t("平均观察")}</div>
-                    <div className="st-v">{fmtShort(sessionAverageObserveMs)}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("平均复原")}</div>
-                    <div className="st-v">{fmtShort(sessionAverageSolveMs)}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("平均 TPS")}</div>
-                    <div className="st-v">{formatTps(sessionTps)}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("复原成功率")}</div>
-                    <div className="st-v">{sessionSuccessRate === null ? "—" : `${sessionSuccessRate}%`}</div>
-                  </div>
-                  <div className="st">
-                    <div className="st-l">{t("本组进度")}{sessionDnfCount > 0 ? ` · DNF ${sessionDnfCount}` : ""}</div>
-                    <div className="st-v">{sessionRoundCount}/{sessionRoundLimit}</div>
-                  </div>
-                </div>
-              )}
-              {!isSmallScreen && historyList}
-          </div>
+<TrainerScorePanel
+    summary={isRecognitionSpecialty
+      ? { kind: "recognition", recognitionCorrect, recognitionWrong, recognitionAccuracy, recognitionAverageResponseMs }
+      : { kind: "cfop", sessionAverageObserveMs, sessionAverageSolveMs, sessionTps, sessionSuccessRate, sessionDnfCount, sessionRoundCount, sessionRoundLimit }}
+    isSmallScreen={isSmallScreen}
+    historyList={historyList}
+  />
   );
   const hintPanel = (
 formulaHintVisible && (
-            <div className="trainer-formula-panel ui-info-panel" role="status" aria-label={t("公式提示")}>
-              <div className="ui-section-head">
-                <div className="ui-section-title-line"><div className="ui-section-title">{t("公式提示")}</div><span className="ui-section-kicker" aria-hidden="true">HINT</span></div>
-                <div className="sh-actions">
-                  <div className="sh-counter">
-                    <span className="sh-counter-num">{formulaHintCounter}</span>
-                    <span className="sh-counter-sep">/</span>
-                    <span className="sh-counter-total">{formulaHintMoves.length}</span>
-                  </div>
-                </div>
-              </div>
-              {formulaHintUndoDisplay.length > 0 && (
-                <div className="sh-notice error">
-                  <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                  <span className="sh-undo-list">
-                    {[...formulaHintUndoDisplay].reverse().map((move, index) => (
-                      <MoveToken key={`${move}-${index}`} move={move} />
-                    ))}
-                  </span>
-                </div>
-              )}
-              <div className="algo-display">
-                {formulaHintRows.map((row, rowIndex) => (
-                  <div className="algo-row" key={rowIndex}>
-                    {row.moves.map(({ move, index }) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === formulaHintIndex && (formulaHintWrong || formulaHintUndoDisplay.length > 0)
-                          ? "wrong"
-                          : formulaHintStatus[index] === "correct"
-                            ? "correct"
-                            : formulaHintStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === formulaHintIndex && formulaHintIndex < formulaHintMoves.length}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TrainerHintPanel
+    formulaHintCounter={formulaHintCounter}
+    formulaHintMoves={formulaHintMoves}
+    formulaHintUndoDisplay={formulaHintUndoDisplay}
+    formulaHintRows={formulaHintRows}
+    formulaHintIndex={formulaHintIndex}
+    formulaHintWrong={formulaHintWrong}
+    formulaHintStatus={formulaHintStatus}
+  />
           )
   );
   const recognitionPanel = (
 recognitionSequenceVisible ? (
-                <div className="stage-hint trainer-recognition-sequence ui-info-panel" role="status" aria-live="polite" aria-label={t("转动序列")}>
-                  <div className="ui-section-head">
-                    <div className="ui-section-title-line">
-                      <div className="ui-section-title">{t("转动序列")}</div>
-                      <span className="ui-section-kicker" aria-hidden="true">SEQUENCE</span>
-                    </div>
-                  </div>
-                  <div className="sh-grid trainer-recognition-viewport">
-                    <div
-                      className="trainer-recognition-track"
-                      style={{ transform: `translateX(calc(var(--recognition-token-size) / -2 - ${recognitionIndex} * (var(--recognition-token-size) + var(--recognition-token-gap))))` }}
-                    >
-                      {recognitionMoves.map((move, index) => (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={recognitionStatuses[index] ?? "pending"}
-                          active={index === recognitionIndex}
-                          showIndex={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <TrainerRecognitionPanel recognitionIndex={recognitionIndex} recognitionMoves={recognitionMoves} recognitionStatuses={recognitionStatuses} />
               ) : null
   );
   const historyPanel = historyList ? (
@@ -1661,7 +1183,7 @@ recognitionSequenceVisible ? (
           onSave={(ids, rotations) => {
             setSelectedCaseIds((current) => ({ ...current, [selectedPhase]: ids }));
             setFormulaRotationVariants(rotations);
-            saveStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY, rotations);
+    saveStoredTrainerBoolean(TRAINER_ROTATION_VARIANTS_KEY, rotations);
             try {
               window.localStorage.setItem(getArchiveScopedStorageKey(trainerLibraryKey(selectedPhase)), JSON.stringify(ids));
             } catch {

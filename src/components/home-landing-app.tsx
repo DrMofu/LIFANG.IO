@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import banner from "../../public/banner.png";
@@ -52,6 +52,8 @@ export function HomeLandingApp() {
     if (expandedMoves.length > 0) api.applyMoves(expandedMoves, 0);
   }, []);
 
+  const getInitialProjectionDistance = useEffectEvent(() => backFaceProjectionDistance);
+
   useEffect(() => {
     if (!cubeMountRef.current) return;
     const api = mountSmartCube(cubeMountRef.current, {
@@ -59,7 +61,7 @@ export function HomeLandingApp() {
       orientation,
       maxFps: renderMaxFps,
       showBackFaceProjection: backFaceProjectionEnabled,
-      backFaceProjectionDistance,
+      backFaceProjectionDistance: getInitialProjectionDistance(),
       initialDisplayState: {
         cameraDistance: 9,
         cameraLatitude: 23,

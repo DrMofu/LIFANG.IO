@@ -1,32 +1,31 @@
 "use client";
-
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { createPortal } from "react-dom";
-import Link from "next/link";
-import { AppFooter, AppTopbar } from "@/components/shell/app-shell";
-import { SolveRecordDetails, SOLVE_RECORD_TIP_WIDTH as TREND_TIP_WIDTH, SOLVE_RECORD_TIP_HEIGHT as TREND_TIP_HEIGHT } from "@/components/records/solve-record-details";
+import { phaseMetricDelta } from "@/lib/records/phase-metrics";
 import { useLanguage } from "@/components/i18n/language-provider";
-import {
-  DEFAULT_AVERAGE_TIME_SETTINGS,
-  loadAverageTimeSettings,
-  type AverageTimeSettings,
-} from "@/lib/records/average-time";
-import { fmtShort } from "@/lib/utils/format";
-import { calculatePhaseTps, calculateTps, formatTps } from "@/lib/records/tps";
+import { SolveRecordDetails,SOLVE_RECORD_TIP_HEIGHT as TREND_TIP_HEIGHT,SOLVE_RECORD_TIP_WIDTH as TREND_TIP_WIDTH } from "@/components/records/solve-record-details";
+import { AppFooter,AppTopbar } from "@/components/shell/app-shell";
 import { useClientReady } from "@/lib/browser/client-ready";
 import {
-  getDailyTestDateKey,
-  getDailyLevelExcludedSolveIndexes,
-  loadDailyPracticeSecondsWithPendingSession,
-  loadDailyLevels,
-  loadSolveHistory,
-  MISSING_HISTORY_VALUE,
-  subscribeStatisticsArchiveChange,
-  type CfopPhaseMetrics,
-  type DailyLevelEntry,
-  type DailyPracticeEntry,
-  type SolveHistoryEntry,
+DEFAULT_AVERAGE_TIME_SETTINGS,
+loadAverageTimeSettings,
+type AverageTimeSettings,
+} from "@/lib/records/average-time";
+import {
+getDailyLevelExcludedSolveIndexes,
+getDailyTestDateKey,
+loadDailyLevels,
+loadDailyPracticeSecondsWithPendingSession,
+loadSolveHistory,
+MISSING_HISTORY_VALUE,
+subscribeStatisticsArchiveChange,
+type DailyLevelEntry,
+type DailyPracticeEntry,
+type SolveHistoryEntry
 } from "@/lib/records/solve-history";
+import { calculatePhaseTps,calculateTps,formatTps } from "@/lib/records/tps";
+import { fmtShort } from "@/lib/utils/format";
+import Link from "next/link";
+import { useEffect,useMemo,useRef,useState,type CSSProperties,type PointerEvent as ReactPointerEvent } from "react";
+import { createPortal } from "react-dom";
 
 type CfopPhaseKey = "cross" | "f2l" | "oll" | "pll";
 type CfopAverageSize = 5 | 20 | 100;
@@ -373,17 +372,6 @@ function createSegmentedMonotoneCubicPath(
   });
   if (segment.length > 0) paths.push(createMonotoneCubicPath(segment));
   return paths.join(" ");
-}
-
-function phaseMetricDelta(metrics: CfopPhaseMetrics | undefined, key: CfopPhaseKey) {
-  if (!metrics) return null;
-  const current = metrics[key];
-  if (typeof current !== "number" || !Number.isFinite(current)) return null;
-  if (key === "cross") return current >= 0 ? current : null;
-  const previousKey = key === "f2l" ? "cross" : key === "oll" ? "f2l" : "oll";
-  const previous = metrics[previousKey];
-  if (typeof previous !== "number" || !Number.isFinite(previous) || current < previous) return null;
-  return current - previous;
 }
 
 function phaseDuration(entry: SolveHistoryEntry, key: CfopPhaseKey) {

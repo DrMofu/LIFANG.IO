@@ -1,15 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import type { SolveTimelineRecord } from "@/lib/training/practice-model";
 import { fmtShort } from "@/lib/utils/format";
-
-// Kept in practice component memory only; never part of a solve history entry.
-export type SolveTimelineRecord = {
-  durationMs: number;
-  moves: Array<{ notation: string; elapsedMs: number }>;
-  cfop: Record<"cross" | "f2l" | "oll" | "pll", number | null>;
-  cfopMoves: Record<"cross" | "f2l" | "oll" | "pll", number | null>;
-  moveCount: number;
-  f2l: Record<"one" | "two" | "three" | "four", number | null>;
-};
+import { useEffect,useId,useRef,useState } from "react";
 
 const PHASE_COLORS = ["#F2C744", "#1F6B3A", "#1F6B3A", "#1F6B3A", "#1F6B3A", "#1F4FB6", "#C9352A"];
 const PHASE_NAMES = ["Cross", "F2L 1", "F2L 2", "F2L 3", "F2L 4", "OLL", "PLL"];
