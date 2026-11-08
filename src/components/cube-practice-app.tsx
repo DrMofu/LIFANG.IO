@@ -2805,7 +2805,7 @@ export function CubePracticeApp() {
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
   return (
-    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}`}>
+    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}${dailyTest ? " daily-test-focused" : ""}`}>
       <AppTopbar />
 
       <main className="practice-layout">
@@ -2866,7 +2866,7 @@ export function CubePracticeApp() {
             </div>
           </div>
 
-          <div className="practice-control-panel practice-settings-panel ui-info-panel">
+          <div className="practice-control-panel practice-settings-panel ui-info-panel" inert={!!dailyTest}>
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("练习设置")}</div>
@@ -2918,7 +2918,7 @@ export function CubePracticeApp() {
           </div>
 
           {!isManualTimer && formulaRecognitionEnabled && (
-            <div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite">
+            <div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite" inert={!!dailyTest}>
               <div className="practice-card-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("公式识别")}</div>
@@ -2974,7 +2974,7 @@ export function CubePracticeApp() {
             </div>
           )}
 
-          {!isManualTimer && <div className="practice-card legend ui-info-panel">
+          {!isManualTimer && <div className="practice-card legend ui-info-panel" inert={!!dailyTest}>
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("色彩对照")}</div>
@@ -2987,7 +2987,7 @@ export function CubePracticeApp() {
         </section>
 
         <section className="practice-right">
-          <div className="stats ui-info-panel">
+          <div className="stats ui-info-panel" inert={!!dailyTest}>
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("数据统计")}</div>
@@ -3263,13 +3263,7 @@ export function CubePracticeApp() {
                   {isConnected && practiceMode === "scramble" && (phase === "idle" || phase === "done") && (
                     <button className="practice-btn practice-btn-primary" onClick={beginScramble} disabled={smartSolveBusy}>
                       <span>
-                        {smartSolveBusy
-                          ? t("智能求解中")
-                          : dailyTest
-                          ? t(`继续测试 ${dailyTestProgress + 1}/${DAILY_TEST_TARGET} · 开始打乱`)
-                          : phase === "done"
-                            ? t("下一次 · 开始打乱")
-                            : t(showKeyboardHints ? "开始打乱 · 按 SPACE" : "开始打乱")}
+                        {t(showKeyboardHints ? "开始打乱 · 按 SPACE" : "开始打乱")}
                       </span>
                     </button>
                   )}

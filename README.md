@@ -38,20 +38,14 @@
 
 ## 功能
 
-- 通过 Web Bluetooth 连接 GAN 智能魔方
-- 三维魔方同步、计时练习与专项训练
-- CFOP 公式浏览、筛选与练习
-- 记录首次 OLL、PLL 情景，支持情景名称与示意图悬浮预览
-- 专项练习默认 20 轮，支持轮数设置、自动结束与复原成功率统计
-- 成绩趋势、阶段用时与练习热力图
-- 中英文界面与本地数据存档
+- 连接智能魔方，实时显示魔方状态
+- 魔方复原计时与各阶段数据统计
+- CFOP 公式浏览与练习
+- CFOP 专项阶段练习
+- 电脑、平板、手机 多端访问
 
 > [!NOTE]
-> 当前仅支持 GAN 智能魔方。电脑和安卓设备建议使用支持 Web Bluetooth 的 Chromium 浏览器；iPhone、iPad 需使用 Bluefy 浏览器。
-
-## 技术栈
-
-Next.js · React · TypeScript · Three.js · GAN Web Bluetooth
+> 当前仅支持 GAN 智能魔方。电脑和安卓设备建议使用 Chrome 浏览器；iPhone、iPad 需使用 Bluefy 浏览器。
 
 ## 致谢
 

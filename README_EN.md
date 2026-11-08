@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="public/banner.png" alt="Cube" width="520" />
+  <img src="public/banner.png" alt="LIFANG.IO" width="520" />
 </p>
 
 <p align="center">
@@ -38,20 +38,14 @@
 
 ## Features
 
-- Connect to GAN smart cubes via Web Bluetooth
-- Real-time 3D cube synchronization, timed practice, and targeted drills
-- Browse, filter, and practice CFOP algorithms
-- Save the first OLL and PLL cases, with case names and diagrams available on hover
-- Training defaults to 20 rounds, with configurable round limits, automatic completion, and solve success rates
-- Performance trends, solve-stage timing, and practice heatmaps
-- Chinese and English interfaces with local data storage
+- Connect to smart cubes and view their state in real time
+- Time your solves and track statistics for each solving stage
+- Browse and practice CFOP algorithms
+- Practice individual CFOP stages
+- Access from desktop computers, tablets, and phones
 
 > [!NOTE]
-> Currently, only GAN smart cubes are supported. We recommend a Chromium-based browser with Web Bluetooth support on desktop and Android devices. iPhone and iPad require the Bluefy browser.
-
-## Tech stack
-
-Next.js · React · TypeScript · Three.js · GAN Web Bluetooth
+> Currently, only GAN smart cubes are supported. Chrome is recommended on desktop and Android devices. iPhone and iPad require the Bluefy browser.
 
 ## Acknowledgements
 

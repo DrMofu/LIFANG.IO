@@ -786,17 +786,18 @@
   display: contents;
 }
 
-.practice-focus-app.manual-timer-mode :is(.practice-info > section > *, .stage-bottom-stack) {
+.practice-focus-app :is(.practice-info > section > *, .stage-bottom-stack) {
   transition: opacity 240ms ease;
 }
 
-.practice-focus-app.manual-timer-focused :is(.practice-info > section > *, .stage-bottom-stack) {
+.practice-focus-app.manual-timer-focused :is(.practice-info > section > *, .stage-bottom-stack),
+.practice-focus-app.daily-test-focused :is(.practice-settings-panel, .formula-recognition-panel, .legend, .stats) {
   opacity: 0;
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .practice-focus-app.manual-timer-mode :is(.practice-info > section > *, .stage-bottom-stack),
+  .practice-focus-app :is(.practice-info > section > *, .stage-bottom-stack),
   .practice-focus-app .manual-timer-surface .manual-timer-value {
     transition: none;
   }
@@ -1721,6 +1722,22 @@
 }
 
 @media (width <= 1240px) {
+  .practice-focus-app .practice-info :is(.practice-settings-panel, .formula-recognition-panel, .legend, .stats) {
+    interpolate-size: allow-keywords;
+    height: auto;
+    min-height: 0;
+    transition: opacity 240ms ease, height 240ms ease, padding-block 240ms ease,
+      margin-bottom 240ms ease, border-block-width 240ms ease;
+  }
+
+  .practice-focus-app.daily-test-focused :is(.practice-settings-panel, .formula-recognition-panel, .legend, .stats) {
+    height: 0;
+    padding-block: 0;
+    border-block-width: 0;
+    margin-bottom: -14px;
+    overflow: clip;
+  }
+
   .practice-focus-app .daily-test-card {
     border-radius: 22px;
     background: #f8fbff;
@@ -1730,6 +1747,12 @@
 
   .practice-focus-app .daily-test-card .practice-card-head {
     padding: 0;
+  }
+}
+
+@media (width <= 1240px) and (prefers-reduced-motion: reduce) {
+  .practice-focus-app .practice-info :is(.practice-settings-panel, .formula-recognition-panel, .legend, .stats) {
+    transition: none;
   }
 }
 
