@@ -1231,15 +1231,9 @@
     white-space: nowrap;
   }
 
-  .topbar .brand-domain {
-    position: absolute;
-    visibility: hidden;
-    white-space: nowrap;
-  }
-
-  .topbar .brand-name[data-mobile-domain="true"] .brand-domain {
-    position: static;
-    visibility: visible;
+  .topbar .brand-domain,
+  .mobile-nav-brand-name .brand-domain {
+    display: none;
   }
 
   .topright {

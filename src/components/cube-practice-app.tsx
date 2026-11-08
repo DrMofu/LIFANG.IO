@@ -1,5 +1,6 @@
 "use client";
 
+import { PracticeMobileDialog, PracticeMobilePanels, PracticeSettingsButton } from "@/components/practice-mobile-panels";
 import { SettingChoice, SettingToggle } from "@/components/setting-controls";
 
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -299,7 +300,8 @@ type HistoryCfopTip = {
   left: number;
   top: number;
   arrowLeft: number;
-  placement: "above" | "below";
+  arrowTop?: number;
+  placement: "above" | "below" | "right";
 };
 type FormulaRecognitionModule = typeof import("@/lib/formula-recognition");
 
@@ -551,7 +553,20 @@ function freshSmartSolveStatus(length: number) {
 
 export function CubePracticeApp() {
   const { t } = useLanguage();
-  const showKeyboardHints = useKeyboardHints();
+  const keyboardHints = useKeyboardHints();
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [mobileDialog, setMobileDialog] = useState<"settings" | null>(null);
+  const showKeyboardHints = keyboardHints && !isSmallScreen;
+  useEffect(() => {
+    const query = window.matchMedia("(width <= 700px)");
+    const update = () => {
+      setIsSmallScreen(query.matches);
+      if (!query.matches) setMobileDialog(null);
+    };
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const historyListRef = useRef<HTMLDivElement | null>(null);
@@ -803,7 +818,7 @@ export function CubePracticeApp() {
     const summary = list?.closest<HTMLElement>(".stats");
     const sidebar = summary?.closest<HTMLElement>(".practice-right");
     const more = summary?.querySelector<HTMLElement>(".hist-more-btn");
-    if (!list || !summary || !sidebar || !more) return;
+    if (!list || !summary || !more) return;
     const desktop = window.matchMedia("(width > 1240px)");
 
     const updateRows = () => {
@@ -812,6 +827,7 @@ export function CubePracticeApp() {
         setHistoryRowSize(HISTORY_ROW_SIZE);
         return;
       }
+      if (!sidebar) return;
       const sidebarStyle = window.getComputedStyle(sidebar);
       const summaryStyle = window.getComputedStyle(summary);
       const moreStyle = window.getComputedStyle(more);
@@ -829,6 +845,7 @@ export function CubePracticeApp() {
     };
 
     updateRows();
+    if (!sidebar) return;
     const observer = new ResizeObserver(updateRows);
     observer.observe(sidebar);
     observer.observe(summary);
@@ -839,7 +856,7 @@ export function CubePracticeApp() {
       observer.disconnect();
       desktop.removeEventListener("change", updateRows);
     };
-  }, [history.length]);
+  }, [history.length, isSmallScreen]);
 
   const clearSolveTick = useCallback(() => {
     if (tickRef.current) {
@@ -2356,7 +2373,7 @@ export function CubePracticeApp() {
       const key = event.key.toLowerCase();
       if (key !== " " && key !== "f" && key !== "q" && key !== "r" && key !== "l") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (dailyTestResult || historyDialogOpen || isTextEntryTarget(event.target)) return;
+      if (document.querySelector("dialog[open]") || dailyTestResult || historyDialogOpen || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
       if (event.repeat) return;
@@ -2396,7 +2413,7 @@ export function CubePracticeApp() {
       }
     };
     const onKeyUp = (event: KeyboardEvent) => {
-      if (dailyTestResult || historyDialogOpen || event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
+      if (document.querySelector("dialog[open]") || dailyTestResult || historyDialogOpen || event.key !== " " || timingModeRef.current !== "timer" || isTextEntryTarget(event.target)) return;
       event.preventDefault();
       releaseManualTimerHold();
     };
@@ -2697,6 +2714,20 @@ export function CubePracticeApp() {
     const anchorY = pointer?.y ?? rect.top + rect.height / 2;
     const fixedRightLeft = Math.max(HISTORY_CFOP_TIP_MARGIN, window.innerWidth - HISTORY_CFOP_TIP_WIDTH - HISTORY_CFOP_TIP_MARGIN);
     const maxTop = Math.max(HISTORY_CFOP_TIP_MARGIN, window.innerHeight - HISTORY_CFOP_TIP_HEIGHT - HISTORY_CFOP_TIP_MARGIN);
+    if (window.matchMedia("(width > 700px) and (width <= 1240px)").matches) {
+      const panel = target.closest(".stats")?.getBoundingClientRect() ?? rect;
+      const top = Math.min(maxTop, Math.max(HISTORY_CFOP_TIP_MARGIN, anchorY - HISTORY_CFOP_TIP_HEIGHT / 2));
+      setHistoryCfopTip({
+        entry,
+        historyNumber,
+        left: Math.min(fixedRightLeft, panel.right + HISTORY_CFOP_TIP_GAP),
+        top,
+        arrowLeft: 0,
+        arrowTop: Math.min(HISTORY_CFOP_TIP_HEIGHT - 22, Math.max(22, anchorY - top)),
+        placement: "right",
+      });
+      return;
+    }
     const placement =
       anchorY > HISTORY_CFOP_TIP_HEIGHT + HISTORY_CFOP_TIP_GAP + HISTORY_CFOP_TIP_MARGIN ? "above" : "below";
     const left = fixedRightLeft;
@@ -2765,6 +2796,7 @@ export function CubePracticeApp() {
   const canSwitchMode = !dailyTest && !smartSolveBusy && phase !== "solving";
   const canSwitchTimingMode = !dailyTest && !smartSolveBusy && phase !== "solving" && manualTimerArmState === "idle";
   const manualScrambleVisible = isManualTimer && practiceMode === "scramble";
+  const mobileScrambleVisible = isSmallScreen && !isManualTimer && phase === "scrambling";
   const canStartDailyTestSession = (isManualTimer || isConnected) && !dailyTest && !smartSolveBusy && (canStartDailyTestFromScramble || canStartDailyTestFromFree);
   const canStartTodayDailyTest = !todayDailyLevel && canStartDailyTestSession;
   const showYesterdayMakeupTest = !todayDailyLevel && !yesterdayDailyLevel;
@@ -2804,121 +2836,8 @@ export function CubePracticeApp() {
   const stableScoreDescription = t(describeAverageTimeSettings(averageSettings));
 
   const dailyTestAverageLabel = todayDailyLevel ? fmtShort(todayDailyLevel.averageMs) : null;
-  return (
-    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}${dailyTest ? " daily-test-focused" : ""}`}>
-      <AppTopbar />
-
-      <main className="practice-layout">
-        <div className="practice-info" inert={isManualTimerFocused}>
-        <section className="practice-left">
-          <div className="practice-card daily-test-card">
-            <div className="practice-card-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("每日测试")}</div>
-                <span className="practice-kicker" aria-hidden="true">DAILY TEST</span>
-              </div>
-              <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
-                {dailyTestDisplayDate}
-              </div>
-            </div>
-            <div className="dt-progress-copy">
-              <strong>{dailyTestDisplaySolves.length}</strong>
-              <span>/ {DAILY_TEST_TARGET}</span>
-            </div>
-            <div className="dt-progress" aria-label={t("每日五次测试进度")}>
-              {Array.from({ length: DAILY_TEST_TARGET }, (_, index) => {
-                const solve = dailyTestDisplaySolves[index];
-                return (
-                  <span key={index} className={`dt-step${solve ? " done" : ""}`}>
-                    <span className="dt-step-time">{solve ? fmtShort(solve.ms) : t("待测")}</span>
-                  </span>
-                );
-              })}
-            </div>
-            <div className={`dt-actions${!dailyTest && showYesterdayMakeupTest ? " dt-actions-split" : ""}`}>
-              {!dailyTest && (
-                showYesterdayMakeupTest ? (
-                  <>
-                    <button
-                      className="practice-btn practice-btn-ghost"
-                      onClick={() => startDailyLevelTest(yesterdayLocalDate)}
-                      disabled={!canStartYesterdayMakeupTest}
-                    >{t("补测昨日成绩")}</button>
-                    <button
-                      className="practice-btn practice-btn-primary"
-                      onClick={() => startDailyLevelTest(todayLocalDate)}
-                      disabled={!canStartTodayDailyTest}
-                    >{t("开始今日测试")}</button>
-                  </>
-                ) : (
-                  <button
-                    className="practice-btn practice-btn-primary"
-                    onClick={() => todayDailyLevel ? setDailyTestResult(todayDailyLevel) : startDailyLevelTest(todayLocalDate)}
-                    disabled={!todayDailyLevel && !canStartTodayDailyTest}
-                  >
-                    {todayDailyLevel && dailyTestAverageLabel ? t(`今日平均用时 ${dailyTestAverageLabel}`) : t("开始今日测试")}
-                  </button>
-                )
-              )}
-              {dailyTest && (
-                <button className="practice-btn practice-btn-ghost" onClick={cancelCurrentAttempt}>{t("取消测试")}</button>
-              )}
-            </div>
-          </div>
-
-          <div className="practice-control-panel practice-settings-panel ui-info-panel" inert={!!dailyTest}>
-            <div className="practice-card-head practice-control-head">
-              <div className="practice-title-line">
-                <div className="practice-card-title">{t("练习设置")}</div>
-                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
-              </div>
-            </div>
-            <SettingChoice label={t("练习模式")}><div className="ui-setting-segments" role="group" aria-label={t("练习模式")}>
-              <button
-                type="button"
-                aria-pressed={practiceMode === "scramble"} className={practiceMode === "scramble" ? "active" : ""}
-                onClick={() => changePracticeMode("scramble")}
-                disabled={!canSwitchMode}
-              >{t("打乱练习")}</button>
-              <button
-                type="button"
-                aria-pressed={practiceMode === "free"} className={practiceMode === "free" ? "active" : ""}
-                onClick={() => changePracticeMode("free")}
-                disabled={!canSwitchMode}
-              >{t("自由练习")}</button>
-            </div></SettingChoice>
-
-            <SettingChoice label={t("计时方式")}><div className="ui-setting-segments" role="group" aria-label={t("计时方式")}>
-              <button
-                type="button"
-                aria-pressed={!isManualTimer} className={!isManualTimer ? "active" : ""}
-                onClick={() => changeTimingMode("smart-cube")}
-                disabled={!!dailyTest}
-                aria-disabled={!canSwitchTimingMode}
-              >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
-              <button
-                type="button"
-                aria-pressed={isManualTimer} className={isManualTimer ? "active" : ""}
-                onClick={() => changeTimingMode("timer")}
-                disabled={!!dailyTest}
-                aria-disabled={!canSwitchTimingMode}
-              >{t("纯计时器")}</button>
-            </div></SettingChoice>
-
-            {!isManualTimer && <>
-              <div className="ui-setting-stack ui-setting-divider">
-                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
-                <SettingToggle label={t("公式识别")} checked={formulaRecognitionEnabled} onChange={toggleFormulaRecognition} shortcut="F" />
-              </div>
-              <div className="ui-setting-actions practice-settings-actions ui-setting-divider">
-                <button type="button" className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
-                <button type="button" className="ui-setting-action" onClick={() => void beginSmartSolve()} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</button>
-              </div>
-            </>}
-          </div>
-
-          {!isManualTimer && formulaRecognitionEnabled && (
-            <div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite" inert={!!dailyTest}>
+  const recognitionPanel = !isManualTimer && formulaRecognitionEnabled ? (
+<div className="practice-card formula-recognition-panel ui-info-panel" aria-live="polite" inert={!!dailyTest}>
               <div className="practice-card-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("公式识别")}</div>
@@ -2972,22 +2891,117 @@ export function CubePracticeApp() {
                 </div>
               )}
             </div>
-          )}
-
-          {!isManualTimer && <div className="practice-card legend ui-info-panel" inert={!!dailyTest}>
-            <div className="practice-card-head">
+  ) : null;
+  const settingsPanel = (
+    <div className="practice-control-panel practice-settings-panel ui-info-panel" inert={!!dailyTest}>
+            <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
-                <div className="practice-card-title">{t("色彩对照")}</div>
-                <span className="practice-kicker" aria-hidden="true">COLORS</span>
+                <div className="practice-card-title">{t("练习设置")}</div>
+                <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
               </div>
             </div>
-            <CubeColorLegend faceColors={faceColors} />
-          </div>}
+            <SettingChoice label={t("练习模式")}><div className="ui-setting-segments" role="group" aria-label={t("练习模式")}>
+              <button
+                type="button"
+                aria-pressed={practiceMode === "scramble"} className={practiceMode === "scramble" ? "active" : ""}
+                onClick={() => changePracticeMode("scramble")}
+                disabled={!canSwitchMode}
+              >{t("打乱练习")}</button>
+              <button
+                type="button"
+                aria-pressed={practiceMode === "free"} className={practiceMode === "free" ? "active" : ""}
+                onClick={() => changePracticeMode("free")}
+                disabled={!canSwitchMode}
+              >{t("自由练习")}</button>
+            </div></SettingChoice>
 
-        </section>
+            <SettingChoice label={t("计时方式")}><div className="ui-setting-segments" role="group" aria-label={t("计时方式")}>
+              <button
+                type="button"
+                aria-pressed={!isManualTimer} className={!isManualTimer ? "active" : ""}
+                onClick={() => changeTimingMode("smart-cube")}
+                disabled={!!dailyTest}
+                aria-disabled={!canSwitchTimingMode}
+              >{connectionState === "connecting" ? t("连接中") : t("智能魔方")}</button>
+              <button
+                type="button"
+                aria-pressed={isManualTimer} className={isManualTimer ? "active" : ""}
+                onClick={() => changeTimingMode("timer")}
+                disabled={!!dailyTest}
+                aria-disabled={!canSwitchTimingMode}
+              >{t("纯计时器")}</button>
+            </div></SettingChoice>
 
-        <section className="practice-right">
-          <div className="stats ui-info-panel" inert={!!dailyTest}>
+            {!isManualTimer && <>
+              <div className="ui-setting-stack ui-setting-divider">
+                <SettingToggle label={t("connection.field.gyro")} checked={!gyroDisabled} onChange={toggleGyroDisabled} shortcut="L" />
+                <SettingToggle label={t("公式识别")} checked={formulaRecognitionEnabled} onChange={toggleFormulaRecognition} shortcut="F" />
+              </div>
+              <div className="ui-setting-actions practice-settings-actions ui-setting-divider">
+                <button type="button" className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
+                <button type="button" className="ui-setting-action" onClick={() => { setMobileDialog(null); void beginSmartSolve(); }} disabled={smartSolveStatus === "loading"} aria-keyshortcuts="Q">{smartSolveStatus === "loading" ? t("求解中") : t("智能求解")}</button>
+              </div>
+            </>}
+          </div>
+  );
+  const dailyPanel = (
+    <div className={`practice-card daily-test-card${isSmallScreen ? " ui-info-panel" : ""}`}>
+            <div className="practice-card-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("每日测试")}</div>
+                <span className="practice-kicker" aria-hidden="true">DAILY TEST</span>
+              </div>
+              <div className="dt-date" tabIndex={0} aria-label={t(`${dailyTestDisplayDate}，每日 00:00 更新`)}>
+                {dailyTestDisplayDate}
+              </div>
+            </div>
+            <div className="dt-progress-copy">
+              <strong>{dailyTestDisplaySolves.length}</strong>
+              <span>/ {DAILY_TEST_TARGET}</span>
+            </div>
+            <div className="dt-progress" aria-label={t("每日五次测试进度")}>
+              {Array.from({ length: DAILY_TEST_TARGET }, (_, index) => {
+                const solve = dailyTestDisplaySolves[index];
+                return (
+                  <span key={index} className={`dt-step${solve ? " done" : ""}`}>
+                    <span className="dt-step-time">{solve ? fmtShort(solve.ms) : t("待测")}</span>
+                  </span>
+                );
+              })}
+            </div>
+            <div className={`dt-actions${!dailyTest && showYesterdayMakeupTest ? " dt-actions-split" : ""}`}>
+              {!dailyTest && (
+                showYesterdayMakeupTest ? (
+                  <>
+                    <button
+                      className="practice-btn practice-btn-ghost"
+                      onClick={() => startDailyLevelTest(yesterdayLocalDate)}
+                      disabled={!canStartYesterdayMakeupTest}
+                    >{t("补测昨日成绩")}</button>
+                    <button
+                      className="practice-btn practice-btn-primary"
+                      onClick={() => startDailyLevelTest(todayLocalDate)}
+                      disabled={!canStartTodayDailyTest}
+                    >{t("开始今日测试")}</button>
+                  </>
+                ) : (
+                  <button
+                    className="practice-btn practice-btn-primary"
+                    onClick={() => todayDailyLevel ? setDailyTestResult(todayDailyLevel) : startDailyLevelTest(todayLocalDate)}
+                    disabled={!todayDailyLevel && !canStartTodayDailyTest}
+                  >
+                    {todayDailyLevel && dailyTestAverageLabel ? t(`今日平均用时 ${dailyTestAverageLabel}`) : t("开始今日测试")}
+                  </button>
+                )
+              )}
+              {dailyTest && (
+                <button className="practice-btn practice-btn-ghost" onClick={cancelCurrentAttempt}>{t("取消测试")}</button>
+              )}
+            </div>
+          </div>
+  );
+  const statsPanel = (
+    <div className="stats ui-info-panel" inert={!!dailyTest}>
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("数据统计")}</div>
@@ -3071,6 +3085,7 @@ export function CubePracticeApp() {
                     left: historyCfopTip.left,
                     top: historyCfopTip.top,
                     "--tip-arrow-left": `${historyCfopTip.arrowLeft}px`,
+                    "--tip-arrow-top": `${historyCfopTip.arrowTop ?? 22}px`,
                   } as CSSProperties}
                 >
                   <div className="hcf-head">
@@ -3080,17 +3095,12 @@ export function CubePracticeApp() {
                   <SolveRecordDetails entry={historyCfopTip.entry} />
                 </div>
               ), document.body)}
-              {historyDialogOpen && (
-                <SolveHistoryDialog
-                  history={history}
-                  onClose={() => setHistoryDialogOpen(false)}
-                  onDelete={deleteHistoryEntry}
-                />
-              )}
+
             </div>
           </div>
-
-          <div className="practice-live-panel practice-score-panel ui-info-panel">
+  );
+  const scorePanel = (
+    <div className="practice-live-panel practice-score-panel ui-info-panel">
             <div className="solve-metrics">
             <div className="practice-card-head">
               <div className="practice-title-line">
@@ -3189,9 +3199,92 @@ export function CubePracticeApp() {
             </div>
           </div>
           </div>
+  );
+  const scramblePanel = phase === "scrambling" ? (
+<div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
+                  <div className="ui-section-head sh-head-scramble">
+                    <div className="ui-section-title-line">
+                      <div className="ui-section-title">{t("打乱公式")}</div>
+                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
+                    </div>
+                    {undoDisplay.length > 0 && (
+                      <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
+                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
+                        <span className="sh-undo-list">
+                          {[...undoDisplay].reverse().map((move, index) => (
+                            <MoveToken key={`${move}-${index}`} move={move} />
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                    <div className="sh-actions">
+                      <div className="sh-counter">
+                        <span className="sh-counter-num">{scrambleIndex + 1}</span>
+                        <span className="sh-counter-sep">/</span>
+                        <span className="sh-counter-total">{scramble.length}</span>
+                      </div>
+                      <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>{t("取消")}</button>
+                    </div>
+                  </div>
+                  <div className="sh-grid">
+                    {scramble.map((move, index) => {
+                      const stepStatus: AlgorithmStepStatus =
+                        index === scrambleIndex && (scrambleWrong || undoExpected)
+                          ? "wrong"
+                          : scrambleStatus[index] === "correct"
+                            ? "correct"
+                            : scrambleStatus[index] === "partial"
+                              ? "partial"
+                              : "pending";
+                      return (
+                        <AlgorithmStepToken
+                          key={`${move}-${index}`}
+                          move={move}
+                          index={index}
+                          status={stepStatus}
+                          active={index === scrambleIndex}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+  ) : null;
+  return (
+    <div className={`app lf-practice-app practice-focus-app${isManualTimer ? " manual-timer-mode" : ""}${isManualTimerFocused ? " manual-timer-focused" : ""}${dailyTest ? " daily-test-focused" : ""}`}>
+      <AppTopbar />
+
+      <main className="practice-layout">
+        <div className="practice-info" inert={isManualTimerFocused}>
+        <section className="practice-left">
+          {!isSmallScreen && dailyPanel}
+
+          {!isSmallScreen && settingsPanel}
+
+          {!isSmallScreen && recognitionPanel}
+
+          {!isManualTimer && <div className="practice-card legend ui-info-panel" inert={!!dailyTest}>
+            <div className="practice-card-head">
+              <div className="practice-title-line">
+                <div className="practice-card-title">{t("色彩对照")}</div>
+                <span className="practice-kicker" aria-hidden="true">COLORS</span>
+              </div>
+            </div>
+            <CubeColorLegend faceColors={faceColors} />
+          </div>}
+
+        </section>
+
+        <section className="practice-right">
+          {!isSmallScreen && statsPanel}
+
+          {!isSmallScreen && scorePanel}
 
         </section>
         </div>
+
+        {isSmallScreen && <PracticeMobilePanels panels={[scorePanel, dailyPanel, statsPanel]}
+          overlay={mobileScrambleVisible ? scramblePanel : undefined} disabled={isManualTimerFocused}
+          onChange={() => setHistoryCfopTip(null)} />}
 
         <section className="practice-center">
           <div className="practice-stage">
@@ -3230,10 +3323,10 @@ export function CubePracticeApp() {
               </div>
             )}
 
-            {!isManualTimer && !stageGuidanceVisible && (
+            {!isManualTimer && (!stageGuidanceVisible || (isSmallScreen && phase === "scrambling")) && (
               <div className="stage-timer-stack">
                 <div className={`timer timer-${phase}${practiceMode === "free" ? ` timer-free timer-free-${freeState}` : ""}`}>
-                  {phase === "idle" && <div className="t-display">{fmtTime(0)}</div>}
+                  {(phase === "idle" || phase === "scrambling") && <div className="t-display">{fmtTime(0)}</div>}
                   {phase === "inspect" && (
                     <div className="t-display t-warn">
                       {inspectionDurationMs === null ? (
@@ -3253,7 +3346,7 @@ export function CubePracticeApp() {
                 </div>
 
                 <div className="timer-controls">
-                  {!isConnected && phase !== "solving" && (
+                  {!isConnected && phase !== "solving" && phase !== "scrambling" && (
                     <button className="practice-btn practice-btn-primary" onClick={startConnection} disabled={connectionState === "connecting" || smartSolveBusy}>
                       <span>
                         {connectionState === "connecting" ? t("等待浏览器选择器") : t("连接智能魔方")}
@@ -3265,6 +3358,11 @@ export function CubePracticeApp() {
                       <span>
                         {t(showKeyboardHints ? "开始打乱 · 按 SPACE" : "开始打乱")}
                       </span>
+                    </button>
+                  )}
+                  {isSmallScreen && phase === "scrambling" && (
+                    <button className="practice-btn practice-btn-primary" onClick={cancelCurrentAttempt}>
+                      <span>{t("取消")}</span>
                     </button>
                   )}
                   {practiceMode === "scramble" && phase === "inspect" && (
@@ -3281,10 +3379,23 @@ export function CubePracticeApp() {
               </div>
             )}
 
-            {(stageGuidanceVisible || manualScrambleVisible) && (
+            <div className="practice-mobile-actions">
+              {((stageGuidanceVisible && !(isSmallScreen && phase === "scrambling")) || isManualTimer) && (
+                <div className="timer-controls">
+                <button type="button" className="practice-btn practice-btn-primary" disabled={isManualTimerFocused}
+                  onClick={() => isManualTimer ? resetAttempt() : cancelCurrentAttempt()}>
+                  {t(isManualTimer ? "重置" : "取消")}
+                </button>
+                </div>
+              )}
+              <PracticeSettingsButton onClick={() => setMobileDialog("settings")} expanded={mobileDialog === "settings"}
+                disabled={!!dailyTest || isManualTimerFocused || phase === "solving"} />
+            </div>
+
+            {((stageGuidanceVisible && !mobileScrambleVisible) || manualScrambleVisible) && (
               <div className="stage-bottom-stack" inert={isManualTimerFocused}>
                 {manualScrambleVisible && (
-                <div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
+<div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
                   <div className="ui-section-head sh-head-scramble">
                     <div className="ui-section-title-line">
                       <div className="ui-section-title">{t("打乱公式")}</div>
@@ -3318,7 +3429,9 @@ export function CubePracticeApp() {
                     ))}
                   </div>
                 </div>
+
                 )}
+                {!isSmallScreen && scramblePanel}
                 {smartSolveVisible && (
                 <div className="stage-hint solve-stage-hint" role="status" aria-label={t("智能求解")}>
                   <div className="sh-head">
@@ -3375,55 +3488,7 @@ export function CubePracticeApp() {
                   )}
                 </div>
                 )}
-                {phase === "scrambling" && (
-                <div className="stage-hint scramble-stage-hint ui-info-panel" role="status" aria-label={t("打乱公式")}>
-                  <div className="ui-section-head sh-head-scramble">
-                    <div className="ui-section-title-line">
-                      <div className="ui-section-title">{t("打乱公式")}</div>
-                      <span className="ui-section-kicker" aria-hidden="true">SCRAMBLE</span>
-                    </div>
-                    {undoDisplay.length > 0 && (
-                      <div className={`sh-notice sh-notice-inline${undoExpected ? " error" : ""}`}>
-                        <span className="sh-notice-label">{t("撤销提示：请依次转")}</span>
-                        <span className="sh-undo-list">
-                          {[...undoDisplay].reverse().map((move, index) => (
-                            <MoveToken key={`${move}-${index}`} move={move} />
-                          ))}
-                        </span>
-                      </div>
-                    )}
-                    <div className="sh-actions">
-                      <div className="sh-counter">
-                        <span className="sh-counter-num">{scrambleIndex + 1}</span>
-                        <span className="sh-counter-sep">/</span>
-                        <span className="sh-counter-total">{scramble.length}</span>
-                      </div>
-                      <button className="sh-cancel" onClick={cancelCurrentAttempt} aria-label={t("取消打乱")}>{t("取消")}</button>
-                    </div>
-                  </div>
-                  <div className="sh-grid">
-                    {scramble.map((move, index) => {
-                      const stepStatus: AlgorithmStepStatus =
-                        index === scrambleIndex && (scrambleWrong || undoExpected)
-                          ? "wrong"
-                          : scrambleStatus[index] === "correct"
-                            ? "correct"
-                            : scrambleStatus[index] === "partial"
-                              ? "partial"
-                              : "pending";
-                      return (
-                        <AlgorithmStepToken
-                          key={`${move}-${index}`}
-                          move={move}
-                          index={index}
-                          status={stepStatus}
-                          active={index === scrambleIndex}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-                )}
+
                 {freePracticeVisible && (
                 <div className="stage-hint free-stage-hint" role="status" aria-label={t("自由练习状态")}>
                   <div className="sh-head">
@@ -3463,6 +3528,18 @@ export function CubePracticeApp() {
         </section>
       </main>
 
+              {historyDialogOpen && (
+                <SolveHistoryDialog
+                  history={history}
+                  onClose={() => setHistoryDialogOpen(false)}
+                  onDelete={deleteHistoryEntry}
+                />
+              )}
+      {isSmallScreen && mobileDialog && (
+        <PracticeMobileDialog title={t("练习设置")} onClose={() => setMobileDialog(null)}>
+          {settingsPanel}{recognitionPanel}
+        </PracticeMobileDialog>
+      )}
       {dailyTestResult && <DailyTestResultDialog entry={dailyTestResult} onClose={() => setDailyTestResult(null)} />}
       <AppFooter />
     </div>

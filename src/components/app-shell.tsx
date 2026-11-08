@@ -64,12 +64,10 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
   const practiceGroupRef = useRef<HTMLDivElement | null>(null);
   const mobilePracticeGroupRef = useRef<HTMLDivElement | null>(null);
   const brandTitleRef = useRef<HTMLSpanElement | null>(null);
-  const brandDomainRef = useRef<HTMLSpanElement | null>(null);
   const topRightRef = useRef<HTMLDivElement | null>(null);
   const topbarRef = useRef<HTMLElement | null>(null);
   const inlineNavRef = useRef<HTMLElement | null>(null);
   const [navigationCollapsed, setNavigationCollapsed] = useState(false);
-  const [mobileDomainVisible, setMobileDomainVisible] = useState(false);
   const routePracticeItem = PRACTICE_NAV.find((item) => navItemActive(pathname, item.href)) ?? null;
   const activePracticeItem = routePracticeItem ?? PRACTICE_NAV.find((item) => item.href === rememberedPracticeHref) ?? PRACTICE_NAV[0];
   const practiceGroupActive = Boolean(routePracticeItem);
@@ -102,26 +100,6 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
       window.removeEventListener("resize", measure);
     };
   }, [showCompactConnection]);
-
-  useLayoutEffect(() => {
-    const title = brandTitleRef.current;
-    const domain = brandDomainRef.current;
-    const controls = topRightRef.current;
-    if (!title || !domain || !controls) return;
-    const measure = () => {
-      const gap = parseFloat(getComputedStyle(title.parentElement!).columnGap) || 0;
-      const domainRight = title.getBoundingClientRect().right + gap + domain.getBoundingClientRect().width;
-      setMobileDomainVisible(domainRight <= Math.min(window.innerWidth / 2, controls.getBoundingClientRect().left - 8));
-    };
-    const observer = new ResizeObserver(measure);
-    [title, domain, controls].forEach((element) => observer.observe(element));
-    window.addEventListener("resize", measure);
-    measure();
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, [locale]);
 
   useEffect(() => {
     if (!routePracticeItem) return;
@@ -171,9 +149,9 @@ export function AppTopbar({ showCompactConnection = true }: { showCompactConnect
         <Link href="/" className="brand-link" aria-label={t("nav.home")}>
           <BrandMark />
           <div className="brand-text">
-            <div className="brand-name" data-mobile-domain={mobileDomainVisible}>
+            <div className="brand-name">
               <span ref={brandTitleRef}>{t("brand.name")}</span>
-              {locale === "zh" && <span ref={brandDomainRef} className="brand-domain">LIFANG.IO</span>}
+              {locale === "zh" && <span className="brand-domain">LIFANG.IO</span>}
             </div>
             <div className="brand-sub">{t("brand.subtitle")} · {settings.version}</div>
           </div>
@@ -447,7 +425,7 @@ function MobileNavigation({ compactNavigation = false }: { compactNavigation?: b
                     close();
                   }}
                 >
-                  <span>{item.href === "/practice" ? t("自由练习") : t("专项练习")}</span><NavIcon name="chevron" />
+                  <span>{t(item.href === "/practice" ? "nav.solvePractice" : "nav.targetedTraining")}</span><NavIcon name="chevron" />
                 </Link>
               ))}
             </div>

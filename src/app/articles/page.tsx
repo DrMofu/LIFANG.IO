@@ -20,18 +20,14 @@ export default async function ArticlesPage() {
   const locale = await getRequestLocale();
   const tutorials = await getTutorials(locale);
   const copy = locale === "en"
-    ? { title: "Tutorials", sectionLabel: "Tutorial articles", read: "Read tutorial" }
-    : { title: "教程", sectionLabel: "教程文章", read: "阅读教程" };
+    ? { sectionLabel: "Tutorial articles", read: "Read tutorial" }
+    : { sectionLabel: "教程文章", read: "阅读教程" };
 
   return (
     <div className="app tutorial-app">
       <AppTopbar />
       <main className="tutorial-scroll">
         <div className="tutorial-list-shell">
-          <header className="tutorial-page-header">
-            <h1>{copy.title}</h1>
-          </header>
-
           <section className="tutorial-grid" aria-label={copy.sectionLabel}>
             {tutorials.map((tutorial) => (
               <Link key={tutorial.id} href={tutorial.href} className="tutorial-card-link">

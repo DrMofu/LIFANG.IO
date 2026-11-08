@@ -147,21 +147,6 @@
   margin: 0 auto;
 }
 
-.tutorial-page-header {
-  max-width: 720px;
-  margin-bottom: 34px;
-}
-
-.tutorial-page-header h1 {
-  margin: 0;
-  color: var(--tech-ink);
-  font-family: var(--sans);
-  font-size: clamp(38px, 4vw, 56px);
-  font-weight: 850;
-  letter-spacing: -0.045em;
-  line-height: 1.05;
-}
-
 .tutorial-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1384,14 +1369,6 @@
 @media (width <= 700px) {
   .tutorial-scroll {
     padding: 34px 14px 64px;
-  }
-
-  .tutorial-page-header {
-    margin-bottom: 24px;
-  }
-
-  .tutorial-page-header h1 {
-    font-size: 36px;
   }
 
   .tutorial-article-header p,

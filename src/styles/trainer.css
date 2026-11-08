@@ -58,30 +58,19 @@
   }
 
 .trainer-focus-app .trainer-timer-controls {
-  position: relative;
-  width: 100%;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.trainer-focus-app .trainer-timer-controls .practice-btn {
-  min-width: 0;
-  height: 44px;
-  min-height: 44px;
-  padding: 4px 6px;
-  grid-row: 1;
-}
-
-.trainer-focus-app .trainer-start-btn {
-  grid-column: 2;
+.trainer-focus-app .trainer-timer-controls > .practice-btn-primary {
+  grid-column: 1 / -1;
 }
 
 .trainer-focus-app .trainer-retry-btn {
   grid-column: 1;
 }
 
-.trainer-focus-app .trainer-abandon-btn {
-  grid-column: 3;
+.trainer-focus-app .trainer-timer-controls > .trainer-abandon-btn {
+  grid-column: 2;
 }
 
 .trainer-focus-app .trainer-abandon-btn {
@@ -129,7 +118,6 @@
   --recognition-token-size: 72px;
   --recognition-token-gap: 12px;
   width: 100%;
-  padding: 16px;
 }
 
 .trainer-focus-app .trainer-recognition-viewport {
@@ -225,5 +213,77 @@
 .formula-library-dialog input { accent-color: #3979de; }
 
 @media (width <= 700px) {
+  .trainer-timer-row {
+    display: grid;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .trainer-timer-row > .timer {
+    grid-column: 2;
+  }
+
+  .trainer-focus-app .trainer-round-actions {
+    grid-column: 3;
+    width: calc(100% - 8px);
+    min-width: 0;
+    justify-self: end;
+  }
+
   .formula-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+  .trainer-focus-app .practice-mobile-panels {
+    height: 200px;
+  }
+
+  .trainer-focus-app .practice-mobile-slide,
+  .trainer-focus-app .practice-mobile-slide > .ui-info-panel {
+    height: 100%;
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-results-panel,
+  .trainer-focus-app .practice-mobile-panels .trainer-catalog-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-results-panel .practice-card-head {
+    padding-right: 0;
+    margin-bottom: 12px;
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-results-panel .stat-grid {
+    flex: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-results-panel .st:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-phase-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .trainer-focus-app .practice-mobile-panels .trainer-phase-list .tag-btn {
+    min-height: 44px;
+    padding: 8px;
+  }
+
+  .trainer-focus-app .practice-mobile-scramble > .trainer-formula-panel {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .trainer-focus-app .trainer-history-panel .trainer-tps-history {
+    margin: 0;
+    max-height: 120px;
+    overflow-y: auto;
+    touch-action: pan-y;
+  }
+
 }

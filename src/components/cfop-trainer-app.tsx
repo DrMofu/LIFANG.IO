@@ -1,5 +1,6 @@
 "use client";
 
+import { PracticeMobileDialog, PracticeMobilePanels, PracticeSettingsButton } from "@/components/practice-mobile-panels";
 import { SettingNumber, SettingToggle } from "@/components/setting-controls";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
@@ -368,7 +369,20 @@ function averageTime(values: number[]) {
 
 function CfopTrainerClient() {
   const { t } = useLanguage();
-  const showKeyboardHints = useKeyboardHints();
+  const keyboardHints = useKeyboardHints();
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
+  const showKeyboardHints = keyboardHints && !isSmallScreen;
+  useEffect(() => {
+    const query = window.matchMedia("(width <= 700px)");
+    const update = () => {
+      setIsSmallScreen(query.matches);
+      if (!query.matches) setMobileSettingsOpen(false);
+    };
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const stateRef = useRef<TrainerState>("idle");
@@ -1213,7 +1227,7 @@ function CfopTrainerClient() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== " ") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (formulaLibraryOpen || isTextEntryTarget(event.target)) return;
+      if (document.querySelector("dialog[open]") || formulaLibraryOpen || isTextEntryTarget(event.target)) return;
 
       event.preventDefault();
       if (event.repeat || connecting) return;
@@ -1272,7 +1286,7 @@ function CfopTrainerClient() {
       const key = event.key.toLowerCase();
       if (key !== "r" && key !== "l" && key !== "h") return;
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (formulaLibraryOpen || isTextEntryTarget(event.target)) return;
+      if (document.querySelector("dialog[open]") || formulaLibraryOpen || isTextEntryTarget(event.target)) return;
       if (
         key === "h" &&
         (!isFormulaTrainerPhase(selectedPhaseRef.current) || !canUseFocusModeForPhase(selectedPhaseRef.current))
@@ -1311,13 +1325,21 @@ function CfopTrainerClient() {
     resetRun();
   };
 
-  return (
-    <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
-      <AppTopbar />
-      <main className="practice-layout trainer-layout">
-        <div className="practice-info">
-        <section className="practice-left trainer-left">
-          <div className="practice-control-panel trainer-catalog-panel ui-info-panel">
+  const historyList = (
+!isRecognitionSpecialty && sessionResults.length > 0 && (
+                <ol className="trainer-tps-history" aria-label={t("最近记录")}>
+                  {sessionResults.slice(-5).toReversed().map((entry, index) => (
+                    <li key={sessionResults.length - index}>
+                      <span>#{sessionResults.length - index}</span>
+                      <b>{entry.dnf ? "DNF" : fmtShort(entry.solveMs)}</b>
+                      <span className="hr-tps">{formatTps(entry.dnf ? null : calculateTps(entry.moves, entry.solveMs))} <small>TPS</small></span>
+                    </li>
+                  ))}
+                </ol>
+              )
+  );
+  const catalogPanel = (
+<div className="practice-control-panel trainer-catalog-panel ui-info-panel">
             <div className="practice-card-head practice-control-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("专项列表")}</div>
@@ -1341,7 +1363,9 @@ function CfopTrainerClient() {
               ))}
             </div>
           </div>
-          <div className="practice-control-panel trainer-settings-panel ui-info-panel">
+  );
+  const settingsPanel = (
+<div className="practice-control-panel trainer-settings-panel ui-info-panel">
               <div className="practice-card-head practice-control-head">
                 <div className="practice-title-line">
                   <div className="practice-card-title">{t("专项设置")}</div>
@@ -1373,7 +1397,7 @@ function CfopTrainerClient() {
                 <>
                   <div className="trainer-option-list">
                     {isFormulaTrainerPhase(selectedPhase) && (
-                      <button type="button" className="ui-setting-row trainer-library-button" disabled={settingsLocked} onClick={() => setFormulaLibraryOpen(true)} aria-haspopup="dialog">
+                      <button type="button" className="ui-setting-row trainer-library-button" disabled={settingsLocked} onClick={() => { setMobileSettingsOpen(false); setFormulaLibraryOpen(true); }} aria-haspopup="dialog">
                         <span><b>{t("formulaLibrary.title")}</b><small>{t("formulaLibrary.selected").replace("{count}", String(selectedCaseIds[selectedPhase].length)).replace("{total}", String(FORMULAS[selectedPhase].items.length))}</small></span>
                         <span aria-hidden="true">›</span>
                       </button>
@@ -1407,11 +1431,9 @@ function CfopTrainerClient() {
                 <button className="ui-setting-action trainer-reset-action" type="button" onClick={resetDisplayOrientation} disabled={!canResetDisplayOrientation} aria-keyshortcuts="R">{t("视角归位")}</button>
               </div>
             </div>
-
-        </section>
-
-        <section className="practice-right trainer-right">
-          <div className="stats trainer-results-panel ui-info-panel" aria-live="polite">
+  );
+  const scorePanel = (
+<div className="stats trainer-results-panel ui-info-panel" aria-live="polite">
             <div className="practice-card-head">
               <div className="practice-title-line">
                 <div className="practice-card-title">{t("当前成绩")}</div>
@@ -1461,19 +1483,11 @@ function CfopTrainerClient() {
                   </div>
                 </div>
               )}
-              {!isRecognitionSpecialty && sessionResults.length > 0 && (
-                <ol className="trainer-tps-history" aria-label={t("最近记录")}>
-                  {sessionResults.slice(-5).toReversed().map((entry, index) => (
-                    <li key={sessionResults.length - index}>
-                      <span>#{sessionResults.length - index}</span>
-                      <b>{entry.dnf ? "DNF" : fmtShort(entry.solveMs)}</b>
-                      <span className="hr-tps">{formatTps(entry.dnf ? null : calculateTps(entry.moves, entry.solveMs))} <small>TPS</small></span>
-                    </li>
-                  ))}
-                </ol>
-              )}
+              {!isSmallScreen && historyList}
           </div>
-          {formulaHintVisible && (
+  );
+  const hintPanel = (
+formulaHintVisible && (
             <div className="trainer-formula-panel ui-info-panel" role="status" aria-label={t("公式提示")}>
               <div className="ui-section-head">
                 <div className="ui-section-title-line"><div className="ui-section-title">{t("公式提示")}</div><span className="ui-section-kicker" aria-hidden="true">HINT</span></div>
@@ -1521,20 +1535,16 @@ function CfopTrainerClient() {
                 ))}
               </div>
             </div>
-          )}
-        </section>
-        </div>
-
-        <section className="practice-center">
-          <div className="practice-stage trainer-stage">
-            <div ref={cubeMountRef} className="cube-mount" />
-            <TurnSpeed />
-
-            <div className={`stage-timer-stack${recognitionSequenceVisible ? " trainer-recognition-timer-stack" : ""}`}>
-              {recognitionSequenceVisible ? (
-                <div className="stage-hint trainer-recognition-sequence" role="status" aria-live="polite" aria-label={t("转动序列")}>
-                  <div className="sh-head">
-                    <div className="sh-kicker">{t("转动序列")}</div>
+          )
+  );
+  const recognitionPanel = (
+recognitionSequenceVisible ? (
+                <div className="stage-hint trainer-recognition-sequence ui-info-panel" role="status" aria-live="polite" aria-label={t("转动序列")}>
+                  <div className="ui-section-head">
+                    <div className="ui-section-title-line">
+                      <div className="ui-section-title">{t("转动序列")}</div>
+                      <span className="ui-section-kicker" aria-hidden="true">SEQUENCE</span>
+                    </div>
                   </div>
                   <div className="sh-grid trainer-recognition-viewport">
                     <div
@@ -1554,14 +1564,63 @@ function CfopTrainerClient() {
                     </div>
                   </div>
                 </div>
-              ) : null}
-              <div className={`timer timer-${state}`}>
-                <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
-              </div>
+              ) : null
+  );
+  const historyPanel = historyList ? (
+    <div className="trainer-history-panel ui-info-panel">
+      <div className="practice-card-head"><div className="practice-title-line">
+        <div className="practice-card-title">{t("最近记录")}</div><span className="practice-kicker" aria-hidden="true">RECENT</span>
+      </div></div>
+      {historyList}
+    </div>
+  ) : null;
+  const timerPanel = (
+    <div className={`timer timer-${state}`}>
+      <div className="t-display t-active">{fmtTime(timerDisplayMs)}</div>
+    </div>
+  );
+  const abandonButton = !isRecognitionSpecialty && roundInProgress ? (
+    <button className="practice-btn practice-btn-ghost trainer-abandon-btn" type="button" onClick={abandonRound}>
+      <span>{t("放弃本局")}</span>
+    </button>
+  ) : null;
+  return (
+    <div className="app lf-practice-app lf-trainer-app practice-focus-app trainer-focus-app">
+      <AppTopbar />
+      <main className="practice-layout trainer-layout">
+        <div className="practice-info">
+        <section className="practice-left trainer-left">
+          {!isSmallScreen && catalogPanel}
+          {!isSmallScreen && settingsPanel}
+
+        </section>
+
+        <section className="practice-right trainer-right">
+          {!isSmallScreen && scorePanel}
+          {!isSmallScreen && hintPanel}
+        </section>
+        </div>
+
+        {isSmallScreen && <PracticeMobilePanels panels={[scorePanel, catalogPanel, ...(historyPanel ? [historyPanel] : [])]}
+          overlay={recognitionPanel || hintPanel} />}
+
+        <section className="practice-center">
+          <div className="practice-stage trainer-stage">
+            <div ref={cubeMountRef} className="cube-mount" />
+            <TurnSpeed />
+
+            <div className={`stage-timer-stack${recognitionSequenceVisible && !isSmallScreen ? " trainer-recognition-timer-stack" : ""}`}>
+              {!isSmallScreen && recognitionPanel}
+              {isSmallScreen ? (
+                <div className="trainer-timer-row">
+                  {timerPanel}
+                  {abandonButton && <div className="timer-controls trainer-round-actions">{abandonButton}</div>}
+                </div>
+              ) : timerPanel}
 
               <div className="timer-controls trainer-timer-controls">
                 <button
-                  className="practice-btn practice-btn-primary trainer-start-btn"
+                  className="practice-btn practice-btn-primary"
                   type="button"
                   onClick={startTraining}
                   disabled={connecting}
@@ -1584,20 +1643,18 @@ function CfopTrainerClient() {
                     <span>{t("重试本局")}</span>
                   </button>
                 )}
-                {!isRecognitionSpecialty && roundInProgress && (
-                  <button
-                    className="practice-btn practice-btn-ghost trainer-abandon-btn"
-                    type="button"
-                    onClick={abandonRound}
-                  >
-                    <span>{t("放弃本局")}</span>
-                  </button>
-                )}
+                {!isSmallScreen && abandonButton}
               </div>
+            </div>
+            <div className="practice-mobile-actions">
+              <PracticeSettingsButton label="专项设置" expanded={mobileSettingsOpen} onClick={() => setMobileSettingsOpen(true)} disabled={settingsLocked} />
             </div>
           </div>
         </section>
       </main>
+      {isSmallScreen && mobileSettingsOpen && <PracticeMobileDialog title={t("专项设置")} onClose={() => setMobileSettingsOpen(false)}>
+        {settingsPanel}
+      </PracticeMobileDialog>}
       {formulaLibraryOpen && isFormulaTrainerPhase(selectedPhase) && (
         <FormulaLibraryDialog phase={selectedPhase} selectedIds={selectedCaseIds[selectedPhase]} includeRotations={formulaRotationVariants}
           onClose={() => setFormulaLibraryOpen(false)}

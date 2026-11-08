@@ -1760,7 +1760,7 @@
   .practice-focus-app {
     height: 100dvh;
     min-height: 0;
-    overflow: hidden;
+    overflow: clip;
   }
 
   .practice-focus-app .practice-layout {
@@ -1824,7 +1824,9 @@
     margin-top: 3px;
     line-height: 1.15;
   }
+}
 
+@media (width <= 1240px) {
   .practice-focus-app .solve-metric-main {
     min-height: 36px;
     padding: 0;
@@ -1858,42 +1860,92 @@
   }
 }
 
+.practice-mobile-actions {
+  display: none;
+}
+
+.practice-cfop-floating-tip.tip-right::after {
+  top: var(--tip-arrow-top);
+  left: -7px;
+  border-right: 0;
+  border-top: 0;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.app .practice-mobile-dialog {
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+.practice-mobile-dialog .practice-dialog-close {
+  width: 44px;
+  min-height: 44px;
+  font-size: 24px;
+}
+
+.app.practice-focus-app .practice-mobile-dialog :is(.practice-settings-panel, .trainer-settings-panel, .practice-score-panel) {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.practice-mobile-dialog :is(.practice-settings-panel, .trainer-settings-panel, .practice-score-panel) .practice-card-head {
+  display: none;
+}
+
 @media (width <= 700px) {
-  .practice-focus-app .practice-left,
-  .practice-focus-app .practice-right {
-    display: flex;
-    margin: 0;
-    padding: 0;
-    overflow: visible;
+  body:has(.practice-focus-app) {
+    overflow: hidden;
+    overscroll-behavior-y: none;
   }
 
-  .practice-focus-app .practice-center { order: 1; }
-  .practice-focus-app .practice-left { order: 2; }
-  .practice-focus-app .practice-right { order: 3; }
-  .practice-focus-app .practice-left > * { order: 0; }
+  .app.practice-focus-app {
+    height: 100dvh;
+    min-height: 0;
+    overflow: clip;
+  }
 
-  .practice-focus-app .footbar {
+  .practice-focus-app .footbar,
+  .practice-focus-app .practice-left {
     display: none;
   }
 
   .practice-focus-app .practice-layout {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 14px 12px 54px;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+    padding: 8px 12px max(12px, env(safe-area-inset-bottom));
   }
 
-  .practice-focus-app .practice-center,
-  .practice-focus-app .practice-left,
-  .practice-focus-app .practice-right {
-    grid-column: 1;
+  .practice-focus-app .practice-center {
+    order: 0;
+    flex: 1;
+    min-height: 0;
+    container-type: size;
   }
 
   .practice-focus-app .practice-stage {
-    min-height: 570px;
+    display: grid;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 12px 8px;
   }
 
   .practice-focus-app .practice-stage .cube-mount {
-    inset: 18px 0 150px;
+    position: relative;
+    inset: auto;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
   }
 
   .practice-focus-app .practice-stage .cube-mount::before,
@@ -1901,50 +1953,224 @@
     display: none;
   }
 
+  .practice-focus-app .practice-mobile-actions {
+    display: contents;
+  }
+
   .practice-focus-app .stage-timer-stack {
-    bottom: 18px;
-    width: 94%;
+    position: static;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+    transform: none;
   }
 
-  :is(.practice-focus-app, .lf-tech-app) .t-display {
-    font-size: clamp(50px, 18vw, 76px);
+  .practice-focus-app .t-display {
+    font-size: clamp(48px, 16vw, 80px);
   }
 
-  .practice-focus-app .stage-tools {
-    right: auto;
-    left: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .practice-focus-app .t-unit { display: none; }
+
+  .practice-focus-app .practice-mobile-actions > .timer-controls {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: center;
+    justify-self: center;
   }
 
-  .practice-focus-app .tag {
-    min-height: 46px;
+  .practice-focus-app .practice-mobile-gear {
+    position: absolute;
+    right: 0;
+    bottom: -4px;
+    width: 44px;
+    min-height: 44px;
   }
 
   .practice-focus-app .stage-bottom-stack {
-    right: 0;
-    bottom: 18px;
+    position: relative;
+    inset: auto;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-height: min(30dvh, 40cqh);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .practice-focus-app .practice-right {
+    display: none;
+  }
+
+  .practice-focus-app .practice-mobile-panels {
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
+    flex: 0 0 auto;
+    order: 1;
+    touch-action: pan-y;
+  }
+
+  .practice-mobile-panels .practice-mobile-slide[inert] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .practice-mobile-panels[data-direction="left"] { --panel-enter-x: calc(100% + 12px); }
+  .practice-mobile-panels[data-direction="right"] { --panel-enter-x: calc(-100% - 12px); }
+
+  .practice-mobile-panels[data-direction] .practice-mobile-slide:not([inert]) {
+    animation: practice-panel-enter 240ms ease-out both;
+  }
+
+  .practice-mobile-panels[data-direction] .practice-mobile-slide[inert][data-exiting] {
+    animation: practice-panel-exit 240ms ease-out both;
+  }
+
+  .practice-mobile-panels .practice-mobile-slide:not(:first-child) {
+    position: absolute;
+    inset: 0;
+  }
+
+  .practice-mobile-panels .practice-mobile-scramble {
+    position: absolute;
+    inset: 0;
+  }
+
+  .practice-mobile-scramble .stage-hint {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  .practice-mobile-scramble .scramble-stage-hint .ui-section-head {
+    margin-bottom: 8px;
+  }
+
+  .practice-focus-app .practice-mobile-panels .daily-test-card {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .practice-focus-app .practice-mobile-panels .stats:not(.trainer-results-panel) {
+    display: grid;
+    height: 100%;
+    grid-template-columns: minmax(112px, 0.8fr) minmax(0, 1.2fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 4px 12px;
+    opacity: 1;
+  }
+
+  .practice-mobile-panels .stats .practice-card-head {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding-right: 44px;
+  }
+
+  .practice-focus-app .practice-mobile-panels .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .practice-focus-app .practice-mobile-panels .st {
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    border-radius: 10px;
+    padding: 4px 6px;
+  }
+
+  .practice-focus-app .practice-mobile-panels .st-v {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.15;
+  }
+
+  .practice-mobile-panels .practice-summary-history {
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    padding: 0;
+  }
+
+  .practice-focus-app .practice-mobile-panels .hist-list {
+    grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    height: 100%;
+    column-gap: 3px;
+    row-gap: 4px;
+  }
+
+  .practice-mobile-panels .hist-row {
+    min-height: 0;
+    column-gap: 3px;
+    padding-block: 4px;
+  }
+
+  .practice-mobile-panels .hist-row:nth-child(n + 5),
+  .practice-mobile-panels .hist-row .hr-tps {
+    display: none;
+  }
+
+  .practice-focus-app .practice-mobile-panels .hist-row .hr-t {
+    padding-left: 0;
+  }
+
+  .practice-focus-app .practice-mobile-panels .hr-m.source-timer {
+    grid-column: auto;
+  }
+
+  .practice-mobile-panels .hist-more-btn {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    min-width: 44px;
+    padding-inline: 8px;
+  }
+
+  .practice-mobile-panels .stable-score-popover {
+    top: auto;
+    bottom: calc(100% + 8px);
+    right: auto;
     left: 0;
   }
 
+  .practice-focus-app .practice-mobile-panels :is(.f2l-subphase-popover, .solve-formula-popover) {
+    top: auto;
+    bottom: calc(100% + 8px);
+  }
+
   .practice-focus-app .manual-timer-stage {
-    inset: 8px 0 12px;
+    position: relative;
+    inset: auto;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 0;
+    container-type: size;
   }
 
-  .practice-focus-app .manual-timer-surface {
-    padding: 24px 12px;
-  }
+  .practice-focus-app .manual-timer-surface { padding: 12px; }
+  .practice-focus-app .manual-timer-content { transform: none; }
+  .practice-focus-app .manual-timer-value { font-size: min(20vw, 50cqh, 100px); }
+  .practice-focus-app .manual-timer-status { margin-top: 16px; font-size: 12px; }
+  .practice-focus-app .manual-timer-surface.phase-done .manual-timer-status { visibility: hidden; }
+}
 
-  .practice-focus-app .manual-timer-content {
-    transform: translateY(-26px);
-  }
+@keyframes practice-panel-enter {
+  from { transform: translateX(var(--panel-enter-x)); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 
-  .practice-focus-app .manual-timer-value {
-    --manual-timer-font-size: clamp(68px, 21vw, 100px);
-  }
+@keyframes practice-panel-exit {
+  from { transform: translateX(0); opacity: 1; visibility: visible; }
+  to { transform: translateX(calc(-1 * var(--panel-enter-x))); opacity: 0; visibility: hidden; }
+}
 
-  .practice-focus-app .manual-timer-status {
-    margin-top: 18px;
-    font-size: 12px;
+@media (prefers-reduced-motion: reduce) {
+  .practice-focus-app .practice-mobile-panels[data-direction] .practice-mobile-slide:is([inert], :not([inert])) {
+    animation: none;
   }
 }
 
