@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
+import { BluefyNoticeDescription } from "@/components/bluefy-notice-dialog";
 import { detectClientEnvironment, type ClientEnvironment } from "@/lib/client-environment";
 
 export function ConnectionEnvironment() {
@@ -39,7 +40,7 @@ export function ConnectionEnvironment() {
             </svg>
           )}
         </span>
-        <span>{t(needsBluefy ? "connection.environment.bluefyRequired" : `connection.environment.${status}`)}</span>
+        <span>{needsBluefy ? <BluefyNoticeDescription /> : t(`connection.environment.${status}`)}</span>
       </p>
       {environment && (
         <details key={status} open={needsAttention}>

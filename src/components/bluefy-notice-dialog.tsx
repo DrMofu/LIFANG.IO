@@ -4,6 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/components/language-provider";
 import { claimBluefyNotice } from "@/lib/bluefy-notice";
 
+export function BluefyNoticeDescription() {
+  const { t } = useLanguage();
+  const parts = t("connection.environment.bluefyRequired").split(/(Bluefy\s*浏览器|Bluefy browser)/g);
+
+  return (
+    <>
+      {parts.map((part, index) => index === parts.length - 2 ? (
+        <a
+          key={index}
+          className="bluefy-app-store-link"
+          href="https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {part}
+        </a>
+      ) : part)}
+    </>
+  );
+}
+
 export function useBluefyNotice() {
   const [open, setOpen] = useState(false);
 
@@ -50,7 +71,7 @@ export function BluefyNoticeDialog({ open, onClose }: { open: boolean; onClose()
         <h2 id="bluefy-notice-title" className="ui-section-title">{t("connection.bluefyNoticeTitle")}</h2>
         <button type="button" className="system-notice-close" aria-label={t("connection.bluefyNoticeClose")} onClick={onClose}>×</button>
       </header>
-      <p id="bluefy-notice-description" className="bluefy-notice-description">{t("connection.environment.bluefyRequired")}</p>
+      <p id="bluefy-notice-description" className="bluefy-notice-description"><BluefyNoticeDescription /></p>
     </dialog>
   );
 }

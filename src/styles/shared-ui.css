@@ -466,6 +466,17 @@ html[lang="en"] .ui-section-kicker {
   line-height: 1.7;
 }
 
+.bluefy-app-store-link {
+  color: var(--tech-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bluefy-app-store-link:focus-visible {
+  outline: 2px solid var(--tech-blue);
+  outline-offset: 3px;
+}
+
 .system-notice-head {
   display: flex;
   flex: none;
