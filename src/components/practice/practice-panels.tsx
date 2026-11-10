@@ -8,6 +8,7 @@ import { FORMULA_LEARNING_STATUSES,getFormulaLearningStatus,type FormulaLearning
 import type { FormulaRecognitionResult } from "@/lib/formulas/formula-recognition";
 import type { DailyLevelSolve } from "@/lib/records/solve-history";
 import { type DailyLevelEntry } from "@/lib/records/solve-history";
+import { calculateTps,formatTps } from "@/lib/records/tps";
 import { DAILY_TEST_TARGET,type DailyTestRun,type SmartSolveStatus } from "@/lib/training/practice-model";
 import { type PracticeMode,type TimingMode } from "@/lib/training/practice-preferences";
 import { fmtShort } from "@/lib/utils/format";
@@ -116,6 +117,7 @@ type PracticeDailyTestPanelProps = {
   canStartTodayDailyTest: boolean;
   todayDailyLevel: DailyLevelEntry | null;
   onShowDailyResult(entry: DailyLevelEntry): void;
+  onShowSolve(solve: DailyLevelSolve, index: number): void;
   dailyTestAverageLabel: string | null;
   cancelCurrentAttempt: () => void;
 };
@@ -133,9 +135,11 @@ export function PracticeDailyTestPanel({
   canStartTodayDailyTest,
   todayDailyLevel,
   onShowDailyResult,
+  onShowSolve,
   dailyTestAverageLabel,
   cancelCurrentAttempt, }: PracticeDailyTestPanelProps) {
   const { t } = useLanguage();
+  const slowestSolve = Math.max(0, ...dailyTestDisplaySolves.map((solve) => solve.ms));
   return (
     <div className={`practice-card daily-test-card${isSmallScreen ? " ui-info-panel" : ""}`}>
       <div className="practice-card-head">
@@ -154,6 +158,12 @@ export function PracticeDailyTestPanel({
       <div className="dt-progress" aria-label={t("每日五次测试进度")}>
         {Array.from({ length: DAILY_TEST_TARGET }, (_, index) => {
           const solve = dailyTestDisplaySolves[index];
+          if (isSmallScreen && solve) return (
+            <button key={index} type="button" className="dt-step done" aria-label={`${t("单次成绩")} #${index + 1}，${fmtShort(solve.ms)}`}
+              aria-haspopup="dialog" onClick={() => onShowSolve(solve, index)}>
+              <span className="dt-step-time">{fmtShort(solve.ms)}</span>
+            </button>
+          );
           return (
             <span key={index} className={`dt-step${solve ? " done" : ""}`}>
               <span className="dt-step-time">{solve ? fmtShort(solve.ms) : t("待测")}</span>
@@ -190,6 +200,23 @@ export function PracticeDailyTestPanel({
           <button className="practice-btn practice-btn-ghost" onClick={cancelCurrentAttempt}>{t("取消测试")}</button>
         )}
       </div>
+      {!isSmallScreen && dailyTestDisplaySolves.length > 0 && (
+        <ol className="hist-list dt-records" aria-label={t("每日测试")} aria-live="polite">
+          {dailyTestDisplaySolves.toReversed().map((solve, index) => (
+            <li key={`${solve.ts}-${dailyTestDisplaySolves.length - index}`} className="hist-row">
+              <span className="hr-i">#{String(dailyTestDisplaySolves.length - index).padStart(3, "0")}</span>
+              <span className="hr-track" aria-hidden="true">
+                <span className="hr-bar" style={{ width: `${slowestSolve > 0 ? Math.max(12, solve.ms / slowestSolve * 100) : 0}%` }} />
+              </span>
+              <span className={`hr-m${solve.source === "timer" ? " source-timer" : ""}`}>
+                {solve.source === "timer" ? t("计时") : solve.moves == null ? "—" : t(`${solve.moves}步`)}
+              </span>
+              {solve.source !== "timer" && <span className="hr-tps">{formatTps(calculateTps(solve.moves, solve.ms))} <small>TPS</small></span>}
+              <span className="hr-t">{fmtShort(solve.ms)}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }

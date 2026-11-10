@@ -588,27 +588,9 @@
   height: 6px;
 }
 
-.top-connect-environment details {
-  margin: 6px 0 -6px 32px;
-}
-
-.top-connect-environment summary {
-  display: flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: var(--tech-muted);
-  list-style: none;
-  cursor: pointer;
-}
-
-.top-connect-environment summary::-webkit-details-marker {
-  display: none;
-}
-
 .top-connect-environment-device {
   display: flex;
+  margin: 8px 0 0 32px;
   min-width: 0;
   flex-wrap: wrap;
   align-items: center;
@@ -619,29 +601,6 @@
   width: 1px;
   height: 12px;
   background: var(--tech-line);
-}
-
-.top-connect-environment-chevron {
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-}
-
-.top-connect-environment details[open] .top-connect-environment-chevron {
-  transform: rotate(180deg);
-}
-
-.top-connect-environment summary:focus-visible {
-  outline: 2px solid var(--tech-blue);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.top-connect-platform-note {
-  margin: 4px 0 8px;
-  border-top: 1px solid var(--tech-line);
-  padding-top: 10px;
-  white-space: pre-line;
 }
 
 .top-connect-prompt-note {

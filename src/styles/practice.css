@@ -835,6 +835,12 @@
   padding: 4px 6px 14px;
 }
 
+.practice-focus-app .dt-records {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
 .practice-focus-app .daily-test-card .practice-card-head {
   align-items: baseline;
   margin-bottom: 5px;
@@ -1806,6 +1812,11 @@
   .practice-focus-app .practice-info .daily-test-card { order: 50; }
   .practice-focus-app .practice-info .legend { order: 60; }
 
+  .practice-focus-app .daily-test-card {
+    background: transparent;
+    box-shadow: none;
+  }
+
   .practice-focus-app .stats .practice-card-head {
     margin-bottom: 8px;
   }
@@ -2000,14 +2011,37 @@
     display: none;
   }
 
-  .practice-focus-app .practice-mobile-panels {
+  :is(.practice-focus-app, .lf-tech-app) .practice-mobile-panels {
     position: relative;
     z-index: 2;
     isolation: isolate;
     flex: 0 0 auto;
     order: 1;
     touch-action: pan-y;
+    padding-inline: 12px;
   }
+
+  .practice-mobile-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--tech-blue);
+    cursor: pointer;
+    transform: translateY(-50%);
+  }
+
+  .practice-mobile-arrow-prev { left: -12px; }
+  .practice-mobile-arrow-next { right: -12px; }
+  .practice-mobile-arrow:focus-visible { outline: 2px solid var(--tech-blue); outline-offset: -2px; }
+  .practice-mobile-arrow:disabled { color: var(--tech-muted); opacity: .4; cursor: default; }
 
   .practice-mobile-panels .practice-mobile-slide[inert] {
     visibility: hidden;
@@ -2027,7 +2061,7 @@
 
   .practice-mobile-panels .practice-mobile-slide:not(:first-child) {
     position: absolute;
-    inset: 0;
+    inset: 0 12px;
   }
 
   .practice-mobile-panels .practice-mobile-scramble {
@@ -2062,6 +2096,53 @@
     flex-direction: column;
     justify-content: space-between;
   }
+
+  .practice-focus-app .practice-mobile-panels:has(.daily-test-card) { height: 204px; }
+  .practice-mobile-panels:has(.daily-test-card) .practice-mobile-slide,
+  .practice-mobile-panels:has(.daily-test-card) .practice-mobile-slide > .ui-info-panel { height: 100%; }
+
+  .practice-focus-app .practice-mobile-panels .dt-progress { margin: 0 4px 4px; }
+  .practice-focus-app .practice-mobile-panels .dt-step {
+    min-height: 44px;
+    border: 0;
+    border-radius: 0;
+    padding: 0 0 9px;
+    overflow: visible;
+    align-items: end;
+    background: transparent;
+  }
+  .practice-mobile-panels .dt-step::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    border-radius: 999px;
+    background: rgba(89, 122, 176, 0.18);
+  }
+  .practice-mobile-panels .dt-step.done::after { background: var(--tech-blue); }
+  .practice-mobile-panels button.dt-step { cursor: pointer; }
+  .practice-mobile-panels button.dt-step:focus-visible { outline: 2px solid var(--tech-blue); outline-offset: 2px; border-radius: 6px; }
+  .practice-mobile-panels .dt-step.done .dt-step-time {
+    position: static;
+    width: auto;
+    height: auto;
+    clip-path: none;
+    font: 800 10px var(--mono);
+    white-space: nowrap;
+  }
+
+  .stats-cfop-floating-tip.daily-solve-details {
+    position: static;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: auto;
+    animation: none;
+  }
+  .daily-solve-details::after { display: none; }
 
   .practice-focus-app .practice-mobile-panels .stats:not(.trainer-results-panel) {
     display: grid;

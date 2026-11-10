@@ -1683,4 +1683,69 @@
     margin-left: 9px;
   }
 
+  body:has(.lf-tech-app .practice-mobile-panels) {
+    overflow: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  .app.lf-tech-app:has(.practice-mobile-panels) {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .lf-tech-app:has(.practice-mobile-panels) .footbar { display: none; }
+
+  .lf-tech-app:has(.practice-mobile-panels) .fm-grid {
+    width: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr) clamp(280px, 38dvh, 320px);
+    gap: 8px;
+    margin: 0;
+    padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+
+  .lf-tech-app:has(.practice-mobile-panels) .fm-stage {
+    min-height: 0;
+    container-type: size;
+  }
+
+  .lf-tech-app:has(.practice-mobile-panels) .fm-stage .cube-mount { inset: 44px 0 126px; }
+  .lf-tech-app:has(.practice-mobile-panels) .fm-stage > .fm-mobile-choose { top: 0; min-height: 44px; }
+  .lf-tech-app:has(.practice-mobile-panels) .formula-stage-timer-stack { bottom: 50px; width: 100%; padding: 0; }
+  .lf-tech-app:has(.practice-mobile-panels) .t-display { font-size: clamp(40px, 12cqh, 64px); }
+  .lf-tech-app:has(.practice-mobile-panels) .stage-controls { bottom: 0; width: 100%; gap: 6px; }
+  .lf-tech-app:has(.practice-mobile-panels) .stage-controls .ui-setting-action { min-height: 44px; padding-inline: 6px; }
+
+  .lf-tech-app .fm-side:has(.practice-mobile-panels) {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .lf-tech-app .practice-mobile-panels,
+  .lf-tech-app .practice-mobile-slide,
+  .lf-tech-app .practice-mobile-slide > .ui-info-panel { height: 100%; min-height: 0; }
+
+  .lf-tech-app .practice-mobile-slide .formula-main-section { height: 100%; margin: 0; gap: 8px; }
+  .lf-tech-app .practice-mobile-slide .formula-hero { grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
+  .lf-tech-app .practice-mobile-slide .formula-hero-image { width: 44px; height: 44px; border-radius: 10px; }
+  .lf-tech-app .practice-mobile-slide .formula-hero-tags { flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .lf-tech-app .practice-mobile-slide .algo-display {
+    flex: 1 1 0;
+    min-height: 0;
+    padding: 4px;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scroll-padding-block: 8px;
+  }
+  .lf-tech-app .practice-mobile-slide .algo-row { flex-shrink: 0; }
+  .lf-tech-app .practice-mobile-slide .formula-practice-actions { margin-top: auto; }
+  .lf-tech-app .practice-mobile-slide .formula-practice-actions .practice-btn { min-height: 44px; }
+  .lf-tech-app .practice-mobile-slide .fm-stats-dashboard { gap: 8px; }
+  .lf-tech-app .practice-mobile-slide .fm-distribution { display: grid; gap: 2px; }
+  .lf-tech-app .practice-mobile-slide .fm-chart-caption { font-size: 10px; line-height: 14px; }
+  .lf-tech-app .practice-mobile-slide .fm-stats-recent { padding-top: 8px; }
 }

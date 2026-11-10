@@ -20,6 +20,7 @@ type TrainerSettingsPanelProps = {
   recognitionHintEnabled: boolean;
   changeRecognitionHintEnabled: (next: boolean) => void;
   selectedPhase: TrainerSpecialty;
+  onSelectPhase?: (phase: TrainerSpecialty) => void;
   onOpenFormulaLibrary(): void;
   selectedCaseIds: { f2l: string[]; oll: string[]; pll: string[]; };
   f2lEdgeOnly: boolean;
@@ -37,7 +38,7 @@ type TrainerSettingsPanelProps = {
   canResetDisplayOrientation: boolean;
 };
 
-export function TrainerSettingsPanel({ sessionRoundLimit, settingsLocked, updateSessionRoundLimit, isRecognitionSpecialty, recognitionIncludeSlices, changeRecognitionIncludeSlices, recognitionIncludeWideMoves, changeRecognitionIncludeWideMoves, recognitionHintEnabled, changeRecognitionHintEnabled, selectedPhase, onOpenFormulaLibrary, selectedCaseIds, f2lEdgeOnly, changeF2lEdgeOnly, formulaHintEnabled, changeFormulaHintEnabled, formulaArrowEnabled, changeFormulaArrowEnabled, canUseFocusMode, f2lFocusMode, toggleF2lFocusMode, gyroDisabled, toggleGyroDisabled, resetDisplayOrientation, canResetDisplayOrientation }: TrainerSettingsPanelProps) {
+export function TrainerSettingsPanel({ sessionRoundLimit, settingsLocked, updateSessionRoundLimit, isRecognitionSpecialty, recognitionIncludeSlices, changeRecognitionIncludeSlices, recognitionIncludeWideMoves, changeRecognitionIncludeWideMoves, recognitionHintEnabled, changeRecognitionHintEnabled, selectedPhase, onSelectPhase, onOpenFormulaLibrary, selectedCaseIds, f2lEdgeOnly, changeF2lEdgeOnly, formulaHintEnabled, changeFormulaHintEnabled, formulaArrowEnabled, changeFormulaArrowEnabled, canUseFocusMode, f2lFocusMode, toggleF2lFocusMode, gyroDisabled, toggleGyroDisabled, resetDisplayOrientation, canResetDisplayOrientation }: TrainerSettingsPanelProps) {
   const { t } = useLanguage();
   return (
 <div className="practice-control-panel trainer-settings-panel ui-info-panel">
@@ -47,6 +48,18 @@ export function TrainerSettingsPanel({ sessionRoundLimit, settingsLocked, update
                 <span className="practice-kicker" aria-hidden="true">SETTINGS</span>
                 </div>
               </div>
+              {onSelectPhase && (
+                <label className="ui-setting-row">
+                  <span>{t("练习内容")}</span>
+                  <select className="ui-setting-action" value={selectedPhase} disabled={settingsLocked}
+                    onChange={(event) => {
+                      const phase = TRAINER_SPECIALTIES.find((item) => item.key === event.target.value);
+                      if (phase && phase.key !== selectedPhase) onSelectPhase(phase.key);
+                    }}>
+                    {TRAINER_SPECIALTIES.map((phase) => <option key={phase.key} value={phase.key}>{t(phase.name)}</option>)}
+                  </select>
+                </label>
+              )}
               <label className="ui-setting-row trainer-round-setting">
                 <span>
                   <b>{t("每组测试轮数")}</b>

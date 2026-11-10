@@ -242,8 +242,7 @@
     height: 100%;
   }
 
-  .trainer-focus-app .practice-mobile-panels .trainer-results-panel,
-  .trainer-focus-app .practice-mobile-panels .trainer-catalog-panel {
+  .trainer-focus-app .practice-mobile-panels .trainer-results-panel {
     display: flex;
     flex-direction: column;
   }
@@ -262,16 +261,6 @@
 
   .trainer-focus-app .practice-mobile-panels .trainer-results-panel .st:last-child:nth-child(odd) {
     grid-column: 1 / -1;
-  }
-
-  .trainer-focus-app .practice-mobile-panels .trainer-phase-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .trainer-focus-app .practice-mobile-panels .trainer-phase-list .tag-btn {
-    min-height: 44px;
-    padding: 8px;
   }
 
   .trainer-focus-app .practice-mobile-scramble > .trainer-formula-panel {

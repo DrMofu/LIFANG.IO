@@ -13,7 +13,7 @@ import { HISTORY_PREVIEW_LIMIT,HISTORY_ROW_SIZE,PracticeHistoryPanel,PracticeSco
 import { PracticeScramblePanel } from "@/components/practice/practice-scramble-panel";
 import { useInspectionAudio } from "@/components/practice/use-inspection-audio";
 import { SolveHistoryDialog } from "@/components/records/solve-history-dialog";
-import { SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT,SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH,} from "@/components/records/solve-record-details";
+import { SolveRecordDetails,SOLVE_RECORD_TIP_HEIGHT as HISTORY_CFOP_TIP_HEIGHT,SOLVE_RECORD_TIP_WIDTH as HISTORY_CFOP_TIP_WIDTH,} from "@/components/records/solve-record-details";
 import { AppFooter,AppTopbar } from "@/components/shell/app-shell";
 import { AlgorithmStepToken,type AlgorithmStepStatus } from "@/components/ui/algorithm-step-token";
 import { MoveToken } from "@/components/ui/move-token";
@@ -305,6 +305,7 @@ export function CubePracticeApp() {
   const [historyRows, setHistoryRows] = useState(HISTORY_PREVIEW_LIMIT);
   const [historyRowSize, setHistoryRowSize] = useState(HISTORY_ROW_SIZE);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [dailySolveDetails, setDailySolveDetails] = useState<{ entry: SolveHistoryEntry; index: number } | null>(null);
 
   const {
     connectionState,
@@ -2338,6 +2339,10 @@ export function CubePracticeApp() {
     canStartTodayDailyTest={canStartTodayDailyTest}
     todayDailyLevel={todayDailyLevel}
     onShowDailyResult={(entry) => setDailyTestResult(entry)}
+    onShowSolve={(solve, index) => setDailySolveDetails({
+      entry: history.find((entry) => entry.ts === solve.ts && entry.dailyTest?.id === (dailyTest?.id ?? todayDailyLevel?.id)) ?? solve,
+      index,
+    })}
     dailyTestAverageLabel={dailyTestAverageLabel}
     cancelCurrentAttempt={cancelCurrentAttempt}
   />
@@ -2654,6 +2659,13 @@ export function CubePracticeApp() {
         </PracticeMobileDialog>
       )}
       {dailyTestResult && <DailyTestResultDialog entry={dailyTestResult} onClose={() => setDailyTestResult(null)} />}
+      {isSmallScreen && dailySolveDetails && (
+        <PracticeMobileDialog title={`${t("单次成绩")} #${dailySolveDetails.index + 1}`} onClose={() => setDailySolveDetails(null)}>
+          <div className="stats-cfop-floating-tip daily-solve-details">
+            <SolveRecordDetails entry={dailySolveDetails.entry} />
+          </div>
+        </PracticeMobileDialog>
+      )}
       <AppFooter />
     </div>
   );

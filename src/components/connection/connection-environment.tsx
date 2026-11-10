@@ -28,7 +28,6 @@ export function ConnectionEnvironment() {
     && (environment.os === "iOS" || environment.os === "iPadOS")
     && !/^Bluefy\b/i.test(environment.browser);
   const status = needsBluefy ? "unsupported" : environment?.status ?? "checking";
-  const needsAttention = environment !== null && status !== "supported";
 
   return (
     <div className="top-connect-environment" data-status={status}>
@@ -43,19 +42,11 @@ export function ConnectionEnvironment() {
         <span>{needsBluefy ? <BluefyNoticeDescription /> : t(`connection.environment.${status}`)}</span>
       </p>
       {environment && (
-        <details key={status} open={needsAttention}>
-          <summary>
-            <span className="top-connect-environment-device">
-              <span aria-label={t("connection.environment.os")}>{environment.os || t("connection.environment.unidentified")}</span>
-              <span className="top-connect-environment-divider" aria-hidden="true" />
-              <span aria-label={t("connection.environment.browser")}>{environment.browser || t("connection.environment.unidentified")}</span>
-            </span>
-            <svg className="top-connect-environment-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m5 6 3 3 3-3" />
-            </svg>
-          </summary>
-          <p className="top-connect-platform-note">{t("connection.platformSupport")}</p>
-        </details>
+        <div className="top-connect-environment-device">
+          <span aria-label={t("connection.environment.os")}>{environment.os || t("connection.environment.unidentified")}</span>
+          <span className="top-connect-environment-divider" aria-hidden="true" />
+          <span aria-label={t("connection.environment.browser")}>{environment.browser || t("connection.environment.unidentified")}</span>
+        </div>
       )}
     </div>
   );

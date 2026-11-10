@@ -28,6 +28,16 @@ const SystemNotificationContext = createContext<SystemNotificationContextValue |
 
 const CHANGELOG_ENTRIES = [
   {
+    version: "v0.2.0",
+    changes: [
+      "支持 iPhone、iPad",
+      "调整移动端界面",
+      "大幅优化手机端、移动端体验",
+      "添加 TPS 统计",
+      "修复专项练习时突然中断的问题",
+    ],
+  },
+  {
     version: "v0.1.8",
     changes: [
       "优化每日练习成绩界面",

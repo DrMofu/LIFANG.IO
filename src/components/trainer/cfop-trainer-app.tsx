@@ -1044,6 +1044,7 @@ function CfopTrainerClient() {
     recognitionHintEnabled={recognitionHintEnabled}
     changeRecognitionHintEnabled={changeRecognitionHintEnabled}
     selectedPhase={selectedPhase}
+    onSelectPhase={isSmallScreen ? selectPhase : undefined}
     onOpenFormulaLibrary={() => { setMobileSettingsOpen(false); setFormulaLibraryOpen(true); }}
     selectedCaseIds={selectedCaseIds}
     f2lEdgeOnly={f2lEdgeOnly}
@@ -1123,7 +1124,7 @@ recognitionSequenceVisible ? (
         </section>
         </div>
 
-        {isSmallScreen && <PracticeMobilePanels panels={[scorePanel, catalogPanel, ...(historyPanel ? [historyPanel] : [])]}
+        {isSmallScreen && <PracticeMobilePanels panels={[scorePanel, ...(historyPanel ? [historyPanel] : [])]}
           overlay={recognitionPanel || hintPanel} />}
 
         <section className="practice-center">

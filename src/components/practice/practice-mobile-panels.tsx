@@ -58,8 +58,9 @@ export function PracticeMobilePanels({ panels, overlay, disabled, onChange }: {
   }
   const index = Math.min(page.index, panels.length - 1);
   const changePage = (direction: "left" | "right") => {
+    if (panels.length < 2 || overlay || disabled) return;
     onChange?.();
-    setPage({ ...page, index: (index + (direction === "right" ? 1 : panels.length - 1)) % panels.length, previous: index, direction });
+    setPage({ ...page, index: (index + (direction === "left" ? 1 : panels.length - 1)) % panels.length, previous: index, direction });
   };
   return (
     <section className="practice-mobile-panels" aria-label={t("练习信息")} aria-roledescription="carousel"
@@ -103,6 +104,16 @@ export function PracticeMobilePanels({ panels, overlay, disabled, onChange }: {
           {panel}
         </div>
       ))}
+      {!overlay && <>
+        <button type="button" className="practice-mobile-arrow practice-mobile-arrow-prev"
+          aria-label={t("上一信息面板")} disabled={panels.length < 2 || disabled} onClick={() => changePage("right")}>
+          <svg width="12" height="28" viewBox="0 0 12 28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 3-6 11 6 11" /></svg>
+        </button>
+        <button type="button" className="practice-mobile-arrow practice-mobile-arrow-next"
+          aria-label={t("下一信息面板")} disabled={panels.length < 2 || disabled} onClick={() => changePage("left")}>
+          <svg width="12" height="28" viewBox="0 0 12 28" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m3 3 6 11-6 11" /></svg>
+        </button>
+      </>}
       {overlay && <div className="practice-mobile-scramble">{overlay}</div>}
     </section>
   );

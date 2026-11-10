@@ -5,6 +5,7 @@ import { FormulaCubeImage,FormulaTopViewImage } from "@/components/cube/formula-
 import { TurnSpeed } from "@/components/cube/turn-speed";
 import { groupAlgorithmRows } from "@/components/formulas/formula-algorithm-display";
 import { FormulaPracticeStats } from "@/components/formulas/formula-practice-stats";
+import { PracticeMobilePanels } from "@/components/practice/practice-mobile-panels";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { useNotification } from "@/components/notifications/notification-provider";
 import { AlgorithmStepToken } from "@/components/ui/algorithm-step-token";
@@ -84,6 +85,7 @@ export function FormulaStage({
   const { notify, dismiss } = useNotification();
   const smallScreen = useSyncExternalStore(subscribeSmallFormulaLayout, isSmallFormulaLayout, serverSmallFormulaLayout);
   const cubeMountRef = useRef<HTMLDivElement | null>(null);
+  const algorithmScrollRef = useRef<HTMLDivElement | null>(null);
   const cubeApiRef = useRef<SmartCubeApi | null>(null);
   const playingRef = useRef(false);
   const playRunRef = useRef(0);
@@ -140,6 +142,24 @@ export function FormulaStage({
   const [methodMenuOpen, setMethodMenuOpen] = useState(false);
   const methodMenuRef = useRef<HTMLDivElement | null>(null);
   const [viewResetEnabled, setViewResetEnabled] = useState(false);
+
+  useEffect(() => {
+    if (!smallScreen || researchMode) return;
+    const index = playbackActive
+      ? playbackStatus.findIndex((status) => status !== "correct")
+      : practiceActive ? practiceIndex : -1;
+    if (index < 0) return;
+    const container = algorithmScrollRef.current;
+    const token = container?.querySelectorAll<HTMLElement>(".algo-tok").item(index);
+    if (!container || !token) return;
+    const bounds = container.getBoundingClientRect();
+    const target = token.getBoundingClientRect();
+    if (target.top >= bounds.top + 8 && target.bottom <= bounds.bottom - 8) return;
+    container.scrollTo({
+      top: container.scrollTop + target.top - bounds.top - (container.clientHeight - target.height) / 2,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
+    });
+  }, [smallScreen, researchMode, practiceActive, practiceIndex, playbackActive, playbackStatus]);
 
   useEffect(() => {
     if (!methodMenuOpen) return;
@@ -722,82 +742,7 @@ export function FormulaStage({
     });
   }
 
-  return (
-    <>
-      <div className="fm-stage">
-        <button
-          type="button"
-          className="ghost-link fm-mobile-choose"
-          aria-haspopup="dialog"
-          aria-controls="fm-mobile-library"
-          aria-expanded={formulaPickerOpen}
-          onClick={onChooseFormula}
-        >{t("切换公式")}</button>
-        <div className="formula-mode-switch" role="group" aria-label={t("公式模式")}>
-          <button
-            type="button"
-            className={!researchMode ? "active" : ""}
-            aria-pressed={!researchMode}
-            onClick={() => {
-              if (researchMode) exitResearchMode();
-            }}
-          >
-            {t("练习")}
-          </button>
-          <button
-            type="button"
-            className={researchMode ? "active" : ""}
-            aria-pressed={researchMode}
-            onClick={() => {
-              if (!researchMode) enterResearchMode();
-            }}
-          >
-            {t("研究")}
-          </button>
-        </div>
-        <div className="crosshair ch-tl"></div>
-        <div className="crosshair ch-tr"></div>
-        <div className="crosshair ch-bl"></div>
-        <div className="crosshair ch-br"></div>
-        <div className="cube-mount" ref={cubeMountRef}></div>
-        <TurnSpeed />
-        {!researchMode && (
-          <div className="stage-timer-stack formula-stage-timer-stack">
-            <div className={`timer formula-practice-timer${practiceTiming ? " timer-solving" : ""}`} aria-label={t("实时计时")}>
-              <div className={`t-display${practiceTiming ? " t-active" : ""}`}>
-                {fmtLiveSeconds(practiceMs)}
-                <span className="t-unit">s</span>
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="stage-controls" aria-label={t("公式显示控制")}>
-          <button className={`ui-setting-action${playbackActive ? " active" : ""}`} onClick={play} type="button">
-            {t("播放公式")}</button>
-          <button className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
-            {t("视角归位")}</button>
-          {canUseTransparentDisplay ? (
-            <button
-              className={`ui-setting-action${transparentDisplay ? " active" : ""}`}
-              onClick={toggleTransparentDisplay}
-              aria-pressed={transparentDisplay}
-              type="button"
-            >
-              {t("透明显示")}</button>
-          ) : null}
-          {canUseFocusMode ? (
-            <button
-              className={`ui-setting-action${lowerLayerHidden ? " active" : ""}`}
-              onClick={toggleLowerLayerHidden}
-              aria-pressed={lowerLayerHidden}
-              type="button"
-            >
-              {t("专注模式")}</button>
-          ) : null}
-        </div>
-      </div>
-      <div className={`fm-side${researchMode ? " is-research" : " is-practice"}`}>
-        <div className="formula-info-stack">
+  const formulaPanel = (
           <div className="formula-primary-panel practice-card ui-info-panel">
             <div className="tr-section formula-main-section">
               <div className="formula-hero">
@@ -968,7 +913,7 @@ export function FormulaStage({
                   )}
                 </div>
               ) : (
-                <div className="algo-display">
+                <div ref={algorithmScrollRef} className="algo-display">
                   {algoRows.map((row, rowIndex) => (
                     <div key={`row-${rowIndex}`} className="algo-row">
                       {row.moves.map(({ move, index }) => (
@@ -1008,8 +953,8 @@ export function FormulaStage({
               </div>}
             </div>
           </div>
-        </div>
-
+  );
+  const secondaryPanel = (
         <div className={`fm-side-bottom practice-card ui-info-panel${researchMode ? "" : " fm-side-bottom-stats"}`}>
           {researchMode ? (
             <div className="tr-section formula-keypad-section">
@@ -1038,12 +983,98 @@ export function FormulaStage({
                 bestMs={practiceStats.bestMs}
                 todayPracticeCount={todayPracticeCount}
                 todayPracticeTone={todayPracticeTone}
+                compact={smallScreen}
                 t={t}
               />
             </div>
           )}
 
         </div>
+  );
+
+  return (
+    <>
+      <div className="fm-stage">
+        <button
+          type="button"
+          className="ghost-link fm-mobile-choose"
+          aria-haspopup="dialog"
+          aria-controls="fm-mobile-library"
+          aria-expanded={formulaPickerOpen}
+          onClick={onChooseFormula}
+        >{t("切换公式")}</button>
+        <div className="formula-mode-switch" role="group" aria-label={t("公式模式")}>
+          <button
+            type="button"
+            className={!researchMode ? "active" : ""}
+            aria-pressed={!researchMode}
+            onClick={() => {
+              if (researchMode) exitResearchMode();
+            }}
+          >
+            {t("练习")}
+          </button>
+          <button
+            type="button"
+            className={researchMode ? "active" : ""}
+            aria-pressed={researchMode}
+            onClick={() => {
+              if (!researchMode) enterResearchMode();
+            }}
+          >
+            {t("研究")}
+          </button>
+        </div>
+        <div className="crosshair ch-tl"></div>
+        <div className="crosshair ch-tr"></div>
+        <div className="crosshair ch-bl"></div>
+        <div className="crosshair ch-br"></div>
+        <div className="cube-mount" ref={cubeMountRef}></div>
+        <TurnSpeed />
+        {!researchMode && (
+          <div className="stage-timer-stack formula-stage-timer-stack">
+            <div className={`timer formula-practice-timer${practiceTiming ? " timer-solving" : ""}`} aria-label={t("实时计时")}>
+              <div className={`t-display${practiceTiming ? " t-active" : ""}`}>
+                {fmtLiveSeconds(practiceMs)}
+                <span className="t-unit">s</span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="stage-controls" aria-label={t("公式显示控制")}>
+          <button className={`ui-setting-action${playbackActive ? " active" : ""}`} onClick={play} type="button">
+            {t("播放公式")}</button>
+          <button className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
+            {t("视角归位")}</button>
+          {canUseTransparentDisplay ? (
+            <button
+              className={`ui-setting-action${transparentDisplay ? " active" : ""}`}
+              onClick={toggleTransparentDisplay}
+              aria-pressed={transparentDisplay}
+              type="button"
+            >
+              {t("透明显示")}</button>
+          ) : null}
+          {canUseFocusMode ? (
+            <button
+              className={`ui-setting-action${lowerLayerHidden ? " active" : ""}`}
+              onClick={toggleLowerLayerHidden}
+              aria-pressed={lowerLayerHidden}
+              type="button"
+            >
+              {t("专注模式")}</button>
+          ) : null}
+        </div>
+      </div>
+      <div className={`fm-side${researchMode ? " is-research" : " is-practice"}`}>
+        {smallScreen && !researchMode ? (
+          <PracticeMobilePanels panels={[formulaPanel, secondaryPanel]} />
+        ) : (
+          <>
+            <div className="formula-info-stack">{formulaPanel}</div>
+            {secondaryPanel}
+          </>
+        )}
       </div>
     </>
   );
