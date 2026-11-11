@@ -978,10 +978,6 @@ export function SettingsApp() {
               <div className="ui-section-title">{t("存档管理")}</div>
               <div className="ui-section-kicker">ARCHIVE</div>
             </div>
-            <div className="settings-archive-metrics" aria-label={t("当前存档统计")}>
-              <span>{history.length}{" "}{t("条复原")}</span>
-              <span>{dailyLevels.length}{" "}{t("天测试")}</span>
-            </div>
           </div>
           <div className="settings-card-body settings-card-body-data">
             <div className="settings-archive-controls">
@@ -991,6 +987,7 @@ export function SettingsApp() {
                   id="settings-statistics-archive"
                   archives={statisticsArchives}
                   selected={activeArchiveId}
+                  summary={`${history.length} ${t("次复原")}，${dailyLevels.length} ${t("天测试")}`}
                   onSelect={handleArchiveChange}
                 />
               </div>
@@ -1121,15 +1118,18 @@ function ArchiveSelectField({
   id,
   archives,
   selected,
+  summary,
   onSelect,
 }: {
   id: string;
   archives: StatisticsArchive[];
   selected: string;
+  summary: string;
   onSelect(archiveId: string): void;
 }) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const [archiveCounts, setArchiveCounts] = useState<Record<string, { solves: number; testDays: number }>>({});
   const selectedArchive = archives.find((archive) => archive.id === selected);
 
   function handleSelect(archiveId: string) {
@@ -1152,17 +1152,27 @@ function ArchiveSelectField({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={isOpen ? `${id}-menu` : undefined}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (!isOpen) {
+            setArchiveCounts(Object.fromEntries(archives.map((archive) => [archive.id, {
+              solves: loadSolveHistory(archive.id).length,
+              testDays: loadDailyLevels(archive.id).length,
+            }])));
+          }
+          setIsOpen((current) => !current);
+        }}
         onKeyDown={(event) => {
           if (event.key === "Escape") setIsOpen(false);
         }}
       >
-        <span className="settings-color-select-label">{t(selectedArchive?.name ?? "默认存档")}</span>
+        <span className="settings-color-select-label">{t(selectedArchive?.name ?? "默认存档")}（{summary}）</span>
       </button>
       {isOpen && (
         <div id={`${id}-menu`} className="settings-color-menu settings-palette-menu" role="listbox" aria-labelledby={id}>
           {archives.map((archive) => {
             const isSelected = selected === archive.id;
+            const counts = archiveCounts[archive.id];
+            const archiveSummary = isSelected ? summary : `${counts?.solves ?? 0} ${t("次复原")}，${counts?.testDays ?? 0} ${t("天测试")}`;
             return (
               <button
                 key={archive.id}
@@ -1172,7 +1182,7 @@ function ArchiveSelectField({
                 aria-selected={isSelected}
                 onClick={() => handleSelect(archive.id)}
               >
-                <span>{t(archive.name)}</span>
+                <span>{t(archive.name)}（{archiveSummary}）</span>
               </button>
             );
           })}

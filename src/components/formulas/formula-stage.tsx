@@ -1036,7 +1036,6 @@ export function FormulaStage({
             <div className={`timer formula-practice-timer${practiceTiming ? " timer-solving" : ""}`} aria-label={t("实时计时")}>
               <div className={`t-display${practiceTiming ? " t-active" : ""}`}>
                 {fmtLiveSeconds(practiceMs)}
-                <span className="t-unit">s</span>
               </div>
             </div>
           </div>

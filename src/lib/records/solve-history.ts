@@ -352,9 +352,9 @@ export function subscribeStatisticsArchiveChange(handler: () => void) {
   };
 }
 
-export function loadSolveHistory(): SolveHistoryEntry[] {
+export function loadSolveHistory(archiveId?: string): SolveHistoryEntry[] {
   if (typeof window === "undefined") return [];
-  const storageKey = getArchiveScopedStorageKey(CUBE_HISTORY_KEY);
+  const storageKey = getArchiveScopedStorageKey(CUBE_HISTORY_KEY, archiveId);
   try {
     const result = readCachedArray(storageKey, solveHistoryCache, (entry) => {
       if (!entry || typeof entry !== "object") return null;
@@ -435,9 +435,9 @@ export function saveSolveHistory(history: SolveHistoryEntry[]) {
   }
 }
 
-export function loadDailyLevels(): DailyLevelEntry[] {
+export function loadDailyLevels(archiveId?: string): DailyLevelEntry[] {
   if (typeof window === "undefined") return [];
-  const storageKey = getArchiveScopedStorageKey(DAILY_LEVELS_KEY);
+  const storageKey = getArchiveScopedStorageKey(DAILY_LEVELS_KEY, archiveId);
   try {
     const result = readCachedArray(storageKey, dailyLevelsCache, normalizeDailyLevelEntry);
     dailyLevelsCache = result.cache;

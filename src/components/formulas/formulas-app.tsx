@@ -9,7 +9,7 @@ import { useLanguage } from "@/components/i18n/language-provider";
 import { AppFooter,AppTopbar } from "@/components/shell/app-shell";
 import { isFormulaTextEntryTarget } from "@/lib/browser/keyboard-shortcuts";
 import { getFaceHexColors } from "@/lib/cube/cube-appearance";
-import { caseHasVariantKey,caseUsesVariantList,findVariantByKey,getCaseLearningCounts,getCaseStats,getFormulaCasePreviewFacelets,getTotalVariantCount,normalizeFormulaCase,preferredCaseVariant,usesTopViewFormulaImage,type FormulaCaseItem,type FormulaKey,type FormulaStats,type FormulaVariantItem,type FormulaViewKey,type LearningStatusFilter,type OllShapeFilter,} from "@/lib/formulas/formula-case-model";
+import { caseHasVariantKey,caseUsesVariantList,findVariantByKey,getCaseLearningCounts,getCaseStats,getFormulaCasePreviewFacelets,normalizeFormulaCase,preferredCaseVariant,usesTopViewFormulaImage,type FormulaCaseItem,type FormulaKey,type FormulaStats,type FormulaVariantItem,type FormulaViewKey,type LearningStatusFilter,type OllShapeFilter,} from "@/lib/formulas/formula-case-model";
 import { FORMULA_LEARNING_STATUSES as LEARNING_STATUSES,getFormulaLearningStatus as getLearningStatus,readFormulaLearningStatuses as readLearningStatuses,saveFormulaLearningStatuses as saveLearningStatuses,type FormulaLearningStatus as LearningStatus,} from "@/lib/formulas/formula-learning-status";
 import { METHOD_PREFERENCES_KEY,getDefaultFormulaState,readAllFormulaStats,readFavs,readFormulaState,readMethodPreferences,saveFavs,saveFormulaState,} from "@/lib/formulas/formula-preferences";
 import { FORMULAS } from "@/lib/formulas/formulas-data";
@@ -410,7 +410,6 @@ export function FormulasApp() {
               ) : (
                 items.map((item) => {
                 const caseActive = item.variants.some((variant) => variant.key === resolvedActiveKey);
-                const totalVariantCount = getTotalVariantCount(item);
                 const usesVariantList = !isMobile && caseUsesVariantList(item);
                 const caseExpanded = usesVariantList && expandedCaseIds.has(item.id);
                 const summary = isMobile || usesVariantList ? null : formatListStats(getCaseStats(item, formulaStats), averageSettings);
@@ -468,6 +467,9 @@ export function FormulasApp() {
                         <div className="fmr-meta">
                           {usesVariantList ? (
                             <>
+                              {learningCounts.mastered === 0 && learningCounts.learning === 0 && (
+                                <span className="formula-status-badge status-unpracticed">{t("未掌握")}</span>
+                              )}
                               {learningCounts.mastered > 0 && (
                                 <span className="formula-status-badge status-mastered">{t("formulaCatalog.masteredCount").replace("{count}", String(learningCounts.mastered))}</span>
                               )}
@@ -476,9 +478,8 @@ export function FormulasApp() {
                               )}
                             </>
                           ) : (
-                            <span className={`formula-status-badge status-${itemLearningStatus}`}>{statusLabel}</span>
+                            <span className={`formula-status-badge status-${itemLearningStatus}`}>{!isMobile && itemLearningStatus === "unpracticed" ? t("未掌握") : statusLabel}</span>
                           )}
-                          {usesVariantList && <span className="formula-variant-count">{t("formulaCatalog.count").replace("{count}", String(totalVariantCount))}</span>}
                           {summary && (
                             <>
                               <span className="formula-stat-text">{t("最佳")}{" "}{summary.best}</span>

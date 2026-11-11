@@ -215,7 +215,6 @@ export function SystemNotificationDialog({ open, onClose }: SystemNotificationDi
       >
         <header className="system-notice-head">
           <div>
-            <div className="st-ch-kicker">— SYSTEM NOTICE</div>
             <h2 id="system-notice-title">{t("系统通知")}</h2>
             <div
               className="ui-setting-segments system-notice-language"

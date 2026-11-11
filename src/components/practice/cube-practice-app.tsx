@@ -2426,7 +2426,7 @@ export function CubePracticeApp() {
         </section>
         </div>
 
-        {isSmallScreen && <PracticeMobilePanels panels={[scorePanel, dailyPanel, statsPanel]}
+        {isSmallScreen && <PracticeMobilePanels key={`${timingMode}-${formulaRecognitionEnabled}`} panels={isManualTimer ? [statsPanel, dailyPanel] : [...(recognitionPanel ? [recognitionPanel] : []), scorePanel, dailyPanel, statsPanel]}
           overlay={mobileScrambleVisible ? scramblePanel : undefined} disabled={isManualTimerFocused}
           onChange={() => setHistoryCfopTip(null)} />}
 
@@ -2524,7 +2524,7 @@ export function CubePracticeApp() {
             )}
 
             <div className="practice-mobile-actions">
-              {((stageGuidanceVisible && !(isSmallScreen && phase === "scrambling")) || isManualTimer) && (
+              {((stageGuidanceVisible && !(isSmallScreen && phase === "scrambling")) || (isManualTimer && !isSmallScreen)) && (
                 <div className="timer-controls">
                 <button type="button" className="practice-btn practice-btn-primary" disabled={isManualTimerFocused}
                   onClick={() => isManualTimer ? resetAttempt() : cancelCurrentAttempt()}>
@@ -2655,7 +2655,7 @@ export function CubePracticeApp() {
               )}
       {isSmallScreen && mobileDialog && (
         <PracticeMobileDialog title={t("练习设置")} onClose={() => setMobileDialog(null)}>
-          {settingsPanel}{recognitionPanel}
+          {settingsPanel}
         </PracticeMobileDialog>
       )}
       {dailyTestResult && <DailyTestResultDialog entry={dailyTestResult} onClose={() => setDailyTestResult(null)} />}

@@ -14,6 +14,7 @@ type TutorialStaticCubeProps = {
   transparentFormulaFacelets?: boolean;
   cameraDistance?: number;
   cameraLatitude?: number;
+  cameraLongitude?: number;
   className?: string;
   sizes?: string;
 };
@@ -45,6 +46,7 @@ function snapshotKey({
   transparentFormulaFacelets,
   cameraDistance,
   cameraLatitude,
+  cameraLongitude,
 }: TutorialStaticCubeProps) {
   const colors = FACE_ORDER.map((face) => faceColors[face]).join("|");
   return [
@@ -53,6 +55,7 @@ function snapshotKey({
     transparentFormulaFacelets ? "transparent" : "solid",
     String(cameraDistance ?? CUBE_CAMERA_PRESETS.formulas.displayState.cameraDistance),
     String(cameraLatitude ?? CUBE_CAMERA_PRESETS.formulas.displayState.cameraLatitude),
+    String(cameraLongitude ?? CUBE_CAMERA_PRESETS.formulas.displayState.cameraLongitude),
     orientation.top,
     orientation.front,
     colors,
@@ -68,6 +71,7 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
     transparentFormulaFacelets = false,
     cameraDistance = CUBE_CAMERA_PRESETS.formulas.displayState.cameraDistance,
     cameraLatitude = CUBE_CAMERA_PRESETS.formulas.displayState.cameraLatitude,
+    cameraLongitude = CUBE_CAMERA_PRESETS.formulas.displayState.cameraLongitude,
     className,
     sizes = "240px",
   } = props;
@@ -124,6 +128,7 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
                 ...CUBE_CAMERA_PRESETS.formulas.displayState,
                 cameraDistance,
                 cameraLatitude,
+                cameraLongitude,
               },
               onFirstRender(canvas) {
                 const dataUrl = canvas.toDataURL("image/png");
@@ -160,6 +165,7 @@ export function TutorialStaticCube(props: TutorialStaticCubeProps) {
     faceColors,
     cameraDistance,
     cameraLatitude,
+    cameraLongitude,
     formulaFacelets,
     hintMove,
     key,

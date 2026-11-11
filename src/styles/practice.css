@@ -796,6 +796,17 @@
   pointer-events: none;
 }
 
+@media (width > 700px) {
+  .practice-focus-app.daily-test-focused :is(.practice-settings-panel, .formula-recognition-panel, .legend, .stats),
+  .practice-focus-app.manual-timer-focused .practice-info {
+    display: none;
+  }
+
+  .practice-focus-app:is(.daily-test-focused, .manual-timer-focused) :is(.practice-info, .practice-left, .practice-right) {
+    overflow: clip;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .practice-focus-app :is(.practice-info > section > *, .stage-bottom-stack),
   .practice-focus-app .manual-timer-surface .manual-timer-value {
@@ -2064,6 +2075,12 @@
     inset: 0 12px;
   }
 
+  .practice-focus-app .practice-mobile-panels .formula-recognition-panel {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .practice-mobile-panels .practice-mobile-scramble {
     position: absolute;
     inset: 0;
@@ -2249,6 +2266,19 @@
   .practice-focus-app .manual-timer-value { font-size: min(20vw, 50cqh, 100px); }
   .practice-focus-app .manual-timer-status { margin-top: 16px; font-size: 12px; }
   .practice-focus-app .manual-timer-surface.phase-done .manual-timer-status { visibility: hidden; }
+
+  .practice-focus-app.manual-timer-mode .practice-mobile-gear {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+    margin-right: 12px;
+  }
+
+  .practice-focus-app.manual-timer-mode .stage-bottom-stack {
+    grid-row: 3;
+    margin-inline: 12px;
+  }
 }
 
 @keyframes practice-panel-enter {

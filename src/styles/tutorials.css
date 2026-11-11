@@ -988,6 +988,71 @@
   line-height: 1.35;
 }
 
+.tutorial-cube-sequence {
+  margin: 24px 0;
+  padding: clamp(12px, 2vw, 24px);
+  border: 1px solid rgba(199, 214, 237, 0.94);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(238, 246, 255, 0.96), rgba(248, 251, 255, 0.9));
+}
+
+.tutorial-cube-sequence-scroll {
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+.tutorial-cube-sequence-scroll:focus-visible {
+  outline: 2px solid var(--tech-accent, #2f6ff2);
+  outline-offset: 3px;
+}
+
+.tutorial-cube-sequence-track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  min-width: 100%;
+}
+
+.tutorial-cube-sequence-cube {
+  flex: 0 0 clamp(72px, 20vw, 160px);
+  width: clamp(72px, 20vw, 160px);
+  aspect-ratio: 1;
+}
+
+.tutorial-cube-sequence-transition {
+  display: grid;
+  flex: 0 0 clamp(32px, 7vw, 64px);
+  width: clamp(32px, 7vw, 64px);
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+}
+
+.tutorial-cube-sequence-transition > .move-token {
+  color: var(--tech-blue);
+  font-family: var(--mono);
+  font-size: clamp(16px, 3vw, 24px);
+  font-weight: 750;
+}
+
+.tutorial-cube-sequence-transition svg {
+  width: 78%;
+  fill: none;
+  stroke: var(--tech-accent, #2f6ff2);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tutorial-cube-sequence figcaption {
+  margin-top: 12px;
+  color: var(--tech-ink);
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: center;
+}
+
 .tutorial-stage-figure {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
