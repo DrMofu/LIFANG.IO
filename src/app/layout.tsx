@@ -17,7 +17,10 @@ import "./globals.css";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getRequestLocale();
   return {
-    title: getSiteTitle(locale),
+    title: {
+      default: getSiteTitle(locale),
+      template: `${locale === "zh" ? "立方" : "LIFANG.IO"} | %s`,
+    },
     description: locale === "zh" ? "魔方练习小站" : "Smart cube practice",
     icons: {
       icon: "/li-fang-logo.png",

@@ -1,11 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   LANGUAGE_COOKIE_KEY,
   LANGUAGE_STORAGE_KEY,
-  getSiteTitle,
   isLocale,
   type Locale,
 } from "@/lib/i18n/i18n";
@@ -32,7 +31,6 @@ function readStoredLocale(fallback: Locale) {
 }
 
 export function LanguageProvider({ children, initialLocale }: { children: ReactNode; initialLocale: Locale }) {
-  const pathname = usePathname();
   const router = useRouter();
   const subscribeLocale = useCallback((onStoreChange: () => void) => {
     const handleStorage = (event: StorageEvent) => {
@@ -51,9 +49,7 @@ export function LanguageProvider({ children, initialLocale }: { children: ReactN
 
   useEffect(() => {
     document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
-    const isArticle = pathname.startsWith("/articles/");
-    if (!isArticle) document.title = getSiteTitle(locale);
-  }, [locale, pathname]);
+  }, [locale]);
 
   const value = useMemo<LanguageContextValue>(() => ({
     locale,

@@ -112,7 +112,7 @@ export const messages = {
     "connection.failure.insecure": "当前网页不满足蓝牙连接要求",
     "connection.failure.insecureHelp": "请通过 HTTPS 或 localhost 打开本站，再重新配对。",
     "connection.failure.selection": "未完成设备选择",
-    "connection.failure.selectionHelp": "可能取消了选择或没有选中设备。请转动魔方唤醒蓝牙，重新配对并在浏览器窗口中选择魔方。",
+    "connection.failure.selectionHelp": "请转动魔方唤醒蓝牙，重新配对并在浏览器窗口中选择魔方。",
     "connection.failure.permission": "蓝牙访问被拒绝",
     "connection.failure.permissionHelp": "请检查浏览器和系统的蓝牙权限，允许本站访问魔方后重试。",
     "connection.failure.device": "未找到支持的魔方蓝牙服务",

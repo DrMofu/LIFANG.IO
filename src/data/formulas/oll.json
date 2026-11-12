@@ -140,7 +140,7 @@
         {
           "id": "oll-11-1",
           "name": "公式一",
-          "algo": "F' (L' U' L U) F y F (R U R' U') F' y'",
+          "algo": "(F' L' U' L U F) U (F R U R' U' F')",
           "facelets": "UXXUUXXUXXUURRRRRRXXUFFFFFFDDDDDDDDDXXULLLLLLXUXBBBBBB"
         },
         {
@@ -159,7 +159,7 @@
         {
           "id": "oll-12-1",
           "name": "公式一",
-          "algo": "F (R U R' U') F' U F (R U R' U') F'",
+          "algo": "(F R U R' U' F') U (F R U R' U' F')",
           "facelets": "XXUXUUXUXUXXRRRRRRUXXFFFFFFDDDDDDDDDUUXLLLLLLXUXBBBBBB"
         },
         {

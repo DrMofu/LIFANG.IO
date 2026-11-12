@@ -884,10 +884,10 @@ export function FormulaStage({
                     </div>
                     <div className="formula-performance-tags">
                       <span className="formula-stat-text formula-detail-stat">
-                        <span>{t("最佳")}</span>{" "}{bestPracticeValue}
+                        <span>{t("最佳")}</span>{"\u00a0"}{bestPracticeValue}
                       </span>
                       <span className="formula-stat-text formula-detail-stat formula-average-tag" tabIndex={0}>
-                        <span>{t("稳定")}</span>{" "}{formulaAverageLabel}
+                        <span>{t("稳定")}</span>{"\u00a0"}{formulaAverageLabel}
                         <span className="formula-average-popover" role="tooltip">
                           {formulaAverageDescription}
                         </span>

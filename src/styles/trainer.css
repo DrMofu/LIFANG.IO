@@ -58,6 +58,7 @@
   }
 
 .trainer-focus-app .trainer-timer-controls {
+  position: relative;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -70,13 +71,59 @@
 }
 
 .trainer-focus-app .trainer-timer-controls > .trainer-abandon-btn {
-  grid-column: 2;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 8px);
+  width: calc((100% - 8px) / 2);
 }
 
-.trainer-focus-app .trainer-abandon-btn {
+.trainer-focus-app .timer-controls .trainer-abandon-btn {
   border-color: rgba(229, 88, 88, 0.28);
   box-shadow: none;
   color: #c74343;
+}
+
+.trainer-timer-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.trainer-timer-row > .timer {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.trainer-timer-side {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.trainer-session-progress {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.trainer-session-progress-label {
+  color: var(--tech-muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.trainer-session-progress-value {
+  color: var(--tech-blue);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
 }
 
 .trainer-focus-app .trainer-formula-panel {
@@ -90,6 +137,16 @@
 
 .trainer-focus-app .trainer-formula-panel .ui-section-head {
   margin-bottom: 0;
+}
+
+.trainer-focus-app .trainer-formula-panel .algo-row {
+  max-width: calc(6 * 48px + 5 * 3px);
+}
+
+@media (width > 700px) {
+  .trainer-focus-app .trainer-formula-panel .algo-row > .algo-tok {
+    width: calc((100% - 5 * 3px) / 6);
+  }
 }
 
 .trainer-focus-app .trainer-formula-panel .sh-notice {
@@ -213,22 +270,13 @@
 .formula-library-dialog input { accent-color: #3979de; }
 
 @media (width <= 700px) {
-  .trainer-timer-row {
-    display: grid;
-    width: 100%;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    align-items: center;
-  }
-
-  .trainer-timer-row > .timer {
-    grid-column: 2;
-  }
-
   .trainer-focus-app .trainer-round-actions {
-    grid-column: 3;
+    grid-column: 1;
+    grid-row: 1;
     width: calc(100% - 8px);
     min-width: 0;
-    justify-self: end;
+    justify-self: start;
+    transform: translateY(4px);
   }
 
   .formula-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }

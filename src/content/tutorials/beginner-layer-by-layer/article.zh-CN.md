@@ -20,19 +20,19 @@
 
 <!-- tutorial-widget:cube-stage {"title":"底层小花","items":[{"title":"本阶段目标","content":"四张底面贴纸朝上","facelets":"XDXDUDXDXXXXXXXXXXXXXXXXXXXXXXXDXXXXXXXXLXXXXXXXXBXXXX"}]} -->
 
-找到一颗带底面`face:D`的棱块，旋转魔方，将其放到我们右手侧，然后按它所在的位置处理，最终使得`face:D`面冲上：
+找到一个带底面`face:D`的棱块，旋转魔方，将其放到我们右手侧，然后按它所在的位置处理，最终使得`face:D`面冲上：
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R'","F'"],"content":"情况一：顶层棱块，底面贴纸朝右：先转 R' 移入中间层，再转 F'，将底面贴纸送上顶面。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R'","F'"],"content":"情况一：顶层棱块，底面贴纸朝右"} -->
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["F'"],"content":"情况二：中层棱块，底面贴纸朝右：转 F'，将底面贴纸送上顶面。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["F'"],"content":"情况二：中层棱块，底面贴纸朝右"} -->
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R"],"content":"情况三：中层棱块，底面贴纸朝前：转 R，将底面贴纸送上顶面。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R"],"content":"情况三：中层棱块，底面贴纸朝前"} -->
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R","F'"],"content":"情况四：底层棱块，底面贴纸朝右：先转 R 移入中间层，再转 F'，将底面贴纸送上顶面。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R","F'"],"content":"情况四：底层棱块，底面贴纸朝右"} -->
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":-28,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R","R"],"content":"情况五：底层棱块，底面贴纸朝下：连续转两次 R（即 R2），将底面贴纸送上顶面。首图从底部观察。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":-28,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["R","R"],"content":"情况五：底层棱块，底面贴纸朝下"} -->
 
-上述五种情况不需要死记硬背，理解后可以自由灵活运用。
+上述五种情况无需死记硬背，理解后可以自由灵活运用。
 
 如果准备转入的顶层位置已经有底色`face:D`贴纸朝上，先转动顶层 `U`，把这片花瓣移开，让目标位置空出来，再把当前的底色块转上去，避免破坏已经拼好的花瓣。
 
@@ -40,17 +40,18 @@
 
 ## 第二步：底层十字
 
-把小花的四颗棱块逐一送回底层，同时对齐各自的侧面。
+<!-- tutorial-widget:cube-stage {"title":"底层十字","items":[{"title":"本阶段目标","content":"底面组成十字，四颗底棱的侧面贴纸与各自中心同色。","facelets":"XXXXUXXXXXXXXRXXRXXXXXFXXFXXDXDDDXDXXXXXLXXLXXXXXBXXBX","cameraLatitude":-28}]} -->
+
+把小花的四颗棱块逐一转动到底层，同时确定对齐各自的侧面。
+
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUDXXXXFXXXXXXXXXXXFXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXDXXXXXXXXXXXFXXFXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXXXXXXXXXXXFXXFXXDXXDXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":-28,"cameraLongitude":35}],"transitions":["U","F2"]} -->
+
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXDXXXXXRXXXXXRXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUDXXXXRXXRXXXXXXXXXXXXXXXXXDXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXXUXXXXXXXXRXXRXXXXXXXXXXXXXXDDXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":-28,"cameraLongitude":35}],"transitions":["U'","R2"]} -->
 
 1. 转动 `U`，让一片花瓣的侧面贴纸与下面的中心块同色。
-2. 将这个侧面转 `180°`。对齐的是前面，就转 `F2`。
-3. 对剩余花瓣重复这两步。
+2. 将这个侧面转 `180°`。将`face:D`贴纸移动到底部。
+3. 对剩余花瓣重复此步骤。
 
-完成后看底面：四颗棱块应与底面中心组成十字；再看四个侧面，每颗底棱的侧面贴纸都应与中心同色。下图从底部看这条十字。
-
-<!-- tutorial-widget:cube-stage {"title":"底层十字的侧面对齐","items":[{"title":"侧面对齐","content":"底面成十字，每颗底棱的侧面贴纸与中心同色。","facelets":"XXXXUXXXXXXXXRXXRXXXXXFXXFXXDXDDDXDXXXXXLXXLXXXXXBXXBX","cameraLatitude":-28},{"title":"侧面未对齐","content":"前、右底棱放错了位置，需要回到顶层重新对齐。","facelets":"XXXXUXXXXXXXXRXXFXXXXXFXXRXXDXDDDXDXXXXXLXXLXXXXXBXXBX","cameraLatitude":-28}]} -->
-
-如果底面十字已经拼成、侧面却不匹配，把放错的底棱用对应侧面的 `180°` 转回顶层，重新对齐再放下去。
 
 ## 第三步：复原底层
 

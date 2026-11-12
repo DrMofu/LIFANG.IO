@@ -1066,7 +1066,7 @@ function CfopTrainerClient() {
 <TrainerScorePanel
     summary={isRecognitionSpecialty
       ? { kind: "recognition", recognitionCorrect, recognitionWrong, recognitionAccuracy, recognitionAverageResponseMs }
-      : { kind: "cfop", sessionAverageObserveMs, sessionAverageSolveMs, sessionTps, sessionSuccessRate, sessionDnfCount, sessionRoundCount, sessionRoundLimit }}
+      : { kind: "cfop", sessionAverageObserveMs, sessionAverageSolveMs, sessionTps, sessionSuccessRate }}
     isSmallScreen={isSmallScreen}
     historyList={historyList}
   />
@@ -1134,12 +1134,17 @@ recognitionSequenceVisible ? (
 
             <div className={`stage-timer-stack${recognitionSequenceVisible && !isSmallScreen ? " trainer-recognition-timer-stack" : ""}`}>
               {!isSmallScreen && recognitionPanel}
-              {isSmallScreen ? (
-                <div className="trainer-timer-row">
-                  {timerPanel}
-                  {abandonButton && <div className="timer-controls trainer-round-actions">{abandonButton}</div>}
+              <div className="trainer-timer-row">
+                {isSmallScreen && abandonButton && <div className="timer-controls trainer-round-actions">{abandonButton}</div>}
+                {timerPanel}
+                <div className="trainer-timer-side">
+                  <div className="trainer-session-progress" aria-live="polite">
+                    <span className="trainer-session-progress-label">{t("本组进度")}</span>
+                    <span className="trainer-session-progress-value">{isRecognitionSpecialty ? recognitionAttemptCount : sessionRoundCount}/{sessionRoundLimit}</span>
+                    {!isRecognitionSpecialty && sessionDnfCount > 0 && <span className="trainer-session-progress-label">DNF {sessionDnfCount}</span>}
+                  </div>
                 </div>
-              ) : timerPanel}
+              </div>
 
               <div className="timer-controls trainer-timer-controls">
                 <button

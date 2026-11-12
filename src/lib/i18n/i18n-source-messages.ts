@@ -82,6 +82,7 @@ export const englishSourceMessages: Record<string, string> = {
   "活跃天数": "Active days",
   "练习次数": "Solve count",
   "训练总时长": "Total practice time",
+  "今日练习时长": "Today's practice time",
   "今日": "Today",
   "热力图颜色图例": "Heatmap color scale",
   "少": "Less",

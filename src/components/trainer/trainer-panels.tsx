@@ -255,9 +255,6 @@ export type TrainerScoreSummary = {
   sessionAverageSolveMs: number | null;
   sessionTps: number | null;
   sessionSuccessRate: number | null;
-  sessionDnfCount: number;
-  sessionRoundCount: number;
-  sessionRoundLimit: number;
 };
 
 type TrainerScorePanelProps = {
@@ -312,10 +309,6 @@ export function TrainerScorePanel({ summary, isSmallScreen, historyList }: Train
           <div className="st">
             <div className="st-l">{t("复原成功率")}</div>
             <div className="st-v">{summary.sessionSuccessRate === null ? "—" : `${summary.sessionSuccessRate}%`}</div>
-          </div>
-          <div className="st">
-            <div className="st-l">{t("本组进度")}{summary.sessionDnfCount > 0 ? ` · DNF ${summary.sessionDnfCount}` : ""}</div>
-            <div className="st-v">{summary.sessionRoundCount}/{summary.sessionRoundLimit}</div>
           </div>
         </div>
       )}

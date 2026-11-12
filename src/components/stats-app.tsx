@@ -1624,7 +1624,11 @@ export function StatsApp() {
                 <div className="hm-focus">
                   <span className="hm-focus-k">{t("今日")}</span>
                   <span className="hm-focus-v">
-                    {heatmap.today.getMonth() + 1}/{heatmap.today.getDate()} · {t(fmtPracticeMinutesCompact(heatmap.todayPracticeSeconds))}
+                    {heatmap.today.getMonth() + 1}/{heatmap.today.getDate()}
+                  </span>
+                  <span className="hm-focus-k">{t("今日练习时长")}</span>
+                  <span className="hm-focus-v">
+                    {t(fmtPracticeMinutesCompact(heatmap.todayPracticeSeconds))}
                   </span>
                 </div>
                 <div className="st-legend hm-legend" aria-label={t("热力图颜色图例")}>
