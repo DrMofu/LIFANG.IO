@@ -1709,6 +1709,12 @@
   .lf-tech-app:has(.practice-mobile-panels) .stage-controls { bottom: 0; width: 100%; gap: 6px; }
   .lf-tech-app:has(.practice-mobile-panels) .stage-controls .ui-setting-action { min-height: 44px; padding-inline: 6px; }
 
+  .lf-tech-app .formula-play-button[aria-pressed="false"]:hover:not(:disabled) {
+    border-color: var(--tech-line);
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--tech-ink-2);
+  }
+
   .lf-tech-app .fm-side:has(.practice-mobile-panels) {
     height: 100%;
     margin: 0;

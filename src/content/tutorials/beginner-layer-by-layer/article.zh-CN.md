@@ -36,7 +36,7 @@
 
 如果准备转入的顶层位置已经有底色`face:D`贴纸朝上，先转动顶层 `U`，把这片花瓣移开，让目标位置空出来，再把当前的底色块转上去，避免破坏已经拼好的花瓣。
 
-<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XXXXUXXDXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXDUXXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XXXDUXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["U","F'"],"content":"先转 U，把已有花瓣移开；再转 F'，将新的底色贴纸送上顶面。"} -->
+<!-- tutorial-widget:cube-sequence {"cubes":[{"facelets":"XDXDUXXDXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XDXDUDXXXXXXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35},{"facelets":"XDXDUDXDXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX","cameraLatitude":25,"cameraLongitude":35}],"transitions":["U","F'"],"content":"先转 U，把已有花瓣移开；再转 F'，将新的底色贴纸送上顶面。"} -->
 
 ## 第二步：底层十字
 
@@ -55,6 +55,8 @@
 
 ## 第三步：复原底层
 
+<!-- tutorial-widget:cube-stage {"title":"底层","items":[{"title":"本阶段目标","content":"底面完整，四个侧面的最下排与各自中心同色。","facelets":"XXXXUXXXXXXXXRXRRRXXXXFXFFFDDDDDDDDDXXXXLXLLLXXXXBXBBB","cameraLatitude":-28}]} -->
+
 底面继续朝下。这一步补齐四个底角。
 
 1. 在顶层找一颗带底面贴纸的角块，读出它另外两张贴纸。
@@ -72,9 +74,9 @@
 
 四个底角全部归位后，底面完整，四个侧面的最下排也分别与中心同色。
 
-<!-- tutorial-widget:cube-stage {"title":"底层","items":[{"title":"底层完成","content":"底面完整，四个侧面的最下排与各自中心同色。","facelets":"XXXXUXXXXXXXXRXRRRXXXXFXFFFDDDDDDDDDXXXXLXLLLXXXXBXBBB","cameraLatitude":-28}]} -->
-
 ## 第四步：复原中间层
+
+<!-- tutorial-widget:cube-stage {"title":"前两层","items":[{"title":"本阶段目标","content":"底层保留完整，四个侧面的下两排已复原。","facelets":"XXXXUXXXXXXXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"}]} -->
 
 在顶层找一颗**不含顶面贴纸**的棱块。转动 `U`，让它朝向自己的贴纸与前面中心同色，再看朝上的那张贴纸属于哪一面。
 
@@ -92,9 +94,9 @@
 
 完成后，底面完整，四个侧面的下两排都与各自中心同色。
 
-<!-- tutorial-widget:cube-stage {"title":"前两层","items":[{"title":"前两层完成","content":"底层保留完整，四个侧面的下两排已复原。","facelets":"XXXXUXXXXXXXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"}]} -->
-
 ## 第五步：顶层十字
+
+<!-- tutorial-widget:cube-stage {"title":"顶层十字","items":[{"title":"本阶段目标","content":"四张顶面贴纸朝上，棱块的侧面贴纸可以暂时不对齐。","facelets":"XUXUUUXUXXXXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"}]} -->
 
 只看四颗顶棱的顶面贴纸，不看角块。已经是十字就跳到第六步；否则按下图摆好顶层。
 
@@ -108,9 +110,9 @@
 
 四张顶面贴纸全部朝上，十字就完成了。这一步不要求棱块的侧面贴纸对齐中心。
 
-<!-- tutorial-widget:cube-stage {"title":"顶层十字","items":[{"title":"顶层十字完成","content":"四张顶面贴纸朝上，棱块的侧面贴纸可以暂时不对齐。","facelets":"XUXUUUXUXXXXRRRRRRXXXFFFFFFDDDDDDDDDXXXLLLLLLXXXBBBBBB"}]} -->
-
 ## 第六步：顶层棱块归位
+
+<!-- tutorial-widget:cube-stage {"title":"顶层棱块归位","items":[{"title":"本阶段目标","content":"顶层保留十字，四颗顶棱的侧面贴纸与中心同色。","facelets":"XUXUUUXUXXRXRRRRRRXFXFFFFFFDDDDDDDDDXLXLLLLLLXBXBBBBBB"}]} -->
 
 转动 `U`，找出最多能同时对齐中心的顶棱。四颗都对齐就跳到第七步；未完成时，总能找到两颗对齐。
 
@@ -123,9 +125,9 @@
 
 每做完一次，先试 `U`、`U'` 或 `U2` 对齐，再判断是否需要重做。顶角的变化留到下一步处理。
 
-<!-- tutorial-widget:cube-stage {"title":"顶层棱块归位","items":[{"title":"四颗顶棱归位","content":"顶层保留十字，四颗顶棱的侧面贴纸与中心同色。","facelets":"XUXUUUXUXXRXRRRRRRXFXFFFFFFDDDDDDDDDXLXLLLLLLXBXBBBBBB"}]} -->
-
 ## 第七步：顶层角块归位
+
+<!-- tutorial-widget:cube-stage {"title":"顶层角块归位","items":[{"title":"本阶段目标","content":"每颗角都属于所在的角槽，顶面贴纸还可能朝向侧面。","facelets":"LURUUUFUFURBRRRRRRLFRFFFFFFDDDDDDDDDBLULLLLLLUBUBBBBBB"}]} -->
 
 看角块的三张贴纸是否与周围三个中心同色，先不要求顶面贴纸朝上。
 
@@ -139,9 +141,9 @@
 
 这一步不要单独转 `U`，否则会把已对齐的顶棱一起移走。四颗顶角都在正确的角槽后，进入最后一步。
 
-<!-- tutorial-widget:cube-stage {"title":"顶层角块归位","items":[{"title":"四颗顶角位置正确","content":"每颗角都属于所在的角槽，顶面贴纸还可能朝向侧面。","facelets":"LURUUUFUFURBRRRRRRLFRFFFFFFDDDDDDDDDBLULLLLLLUBUBBBBBB"}]} -->
-
 ## 第八步：翻正顶层角块
+
+<!-- tutorial-widget:cube-stage {"title":"复原完成","items":[{"title":"本阶段目标","content":"六个面分别与各自的中心块同色。","facelets":"UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"}]} -->
 
 固定正面，把一颗顶面贴纸未朝上的顶角放到右前上方。
 
@@ -156,17 +158,3 @@
 下面演示翻正第一颗顶角：连续做两组，直到它的顶面贴纸朝上。此时前两层尚未恢复，要继续按上面的步骤处理其余顶角。
 
 <!-- tutorial-widget:algorithm-player {"title":"翻正一颗顶角","algorithm":"R' D' R D R' D' R D","setupAlgorithm":"U D' R' D R D' R' D R D' R' D R D' R' D R U' D' R' D R D' R' D R","note":"本例连续做两组四步，翻正右前上角。接下来只转 U 换下一颗角，不能转整颗魔方或提前修复底层。"} -->
-
-<!-- tutorial-widget:cube-stage {"title":"复原完成","items":[{"title":"六面复原","content":"六个面分别与各自的中心块同色。","facelets":"UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"}]} -->
-
-## 公式速查
-
-| 步骤 | 摆位 | 公式 |
-| --- | --- | --- |
-| 3. 底角插入 | 目标块在右前上，目标槽在正下方 | `R U R' U'` |
-| 4. 中棱右插 | 前上棱的朝前贴纸对齐，目标槽在右前 | `U R U' R' U' F' U F` |
-| 4. 中棱左插 | 前上棱的朝前贴纸对齐，目标槽在左前 | `U' L' U L U F U' F'` |
-| 5. 顶层十字 | 一字横放；折角在后、左 | `F R U R' U' F'` |
-| 6. 顶棱换位 | 两颗已对齐的棱在后、右；做完转 `U` 对齐 | `R U R' U R U2 R'` |
-| 7. 顶角换位 | 正确角放在右前上；不单独转 `U` | `U R U' L' U R' U' L` |
-| 8. 顶角翻转 | 固定正面，只用 `U` 换下一颗角 | `R' D' R D` |

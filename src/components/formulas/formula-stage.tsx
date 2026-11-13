@@ -1042,7 +1042,7 @@ export function FormulaStage({
           </div>
         )}
         <div className="stage-controls" aria-label={t("公式显示控制")}>
-          <button className={`ui-setting-action${playbackActive ? " active" : ""}`} onClick={play} type="button">
+          <button className={`ui-setting-action formula-play-button${playbackActive ? " active" : ""}`} onClick={play} aria-pressed={playbackActive} type="button">
             {t("播放公式")}</button>
           <button className="ui-setting-action" onClick={resetDisplayOrientation} disabled={!viewResetEnabled} type="button">
             {t("视角归位")}</button>

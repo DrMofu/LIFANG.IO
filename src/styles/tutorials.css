@@ -22,6 +22,11 @@
   gap: 12px;
 }
 
+.tutorial-orientation-settings .tutorial-orientation-preview {
+  min-height: 240px;
+  pointer-events: none;
+}
+
 .tutorial-orientation-palette-label {
   display: flex;
   align-items: center;

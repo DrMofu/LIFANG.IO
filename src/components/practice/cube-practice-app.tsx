@@ -2080,6 +2080,23 @@ export function CubePracticeApp() {
       solves: [],
     };
     clearFreeTimers();
+    lastCompletedPracticeResult = null;
+    turnCounterRef.current.reset();
+    updateSolveMs(0);
+    solveMoveCountRef.current = 0;
+    setSolveMoveCount(0);
+    solveTimelineMovesRef.current = [];
+    setCompletedSolveTimeline(null);
+    cfopTimesRef.current = EMPTY_CFOP;
+    cfopMovesRef.current = EMPTY_CFOP;
+    f2lSubTimesRef.current = EMPTY_F2L_SUBPHASES;
+    f2lSubMovesRef.current = EMPTY_F2L_SUBPHASES;
+    highestF2lSolvedSlotCountRef.current = 0;
+    setCfopTimes(EMPTY_CFOP);
+    setF2lSubTimes(EMPTY_F2L_SUBPHASES);
+    setF2lSubMoves(EMPTY_F2L_SUBPHASES);
+    solveFormulasRef.current = {};
+    setSolveFormulas({});
     practiceModeRef.current = "scramble";
     setPracticeMode("scramble");
     dailyTestRef.current = run;

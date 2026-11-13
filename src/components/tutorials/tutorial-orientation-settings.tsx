@@ -1,11 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { ColorSelectField } from "@/components/settings/color-select-field";
 import { CubeColorLegend } from "@/components/cube/cube-color-legend";
 import { useCubeAppearance } from "@/components/cube/cube-appearance-provider";
 import { useLanguage } from "@/components/i18n/language-provider";
 import { PaletteSelectField } from "@/components/settings/palette-select-field";
+import { mountSmartCube } from "@/lib/cube/smart-cube";
 import {
   COLOR_LIST,
   COLOR_OPPOSITE,
@@ -19,9 +20,25 @@ export function TutorialOrientationSettings() {
   const { t, locale } = useLanguage();
   const {
     orientation, colorPaletteId, faceColors, setOrientation, setColorPaletteId,
-    resetOrientation, resetColorPalette,
+    resetOrientation, resetColorPalette, backFaceProjectionDistance,
   } = useCubeAppearance();
+  const previewRef = useRef<HTMLDivElement>(null);
   const paletteColors = COLOR_PALETTES[colorPaletteId].colors;
+
+  useEffect(() => {
+    if (!previewRef.current) return;
+    const cube = mountSmartCube(previewRef.current, {
+      faceColors,
+      orientation,
+      interactionLocked: true,
+      wheelZoomEnabled: false,
+      pinchZoomEnabled: false,
+      showBackFaceProjection: true,
+      backFaceProjectionDistance,
+      defaultDisplayState: { cameraDistance: 8 },
+    });
+    return () => cube.dispose();
+  }, [faceColors, orientation, backFaceProjectionDistance]);
 
   function handleTopChange(top: CubeColor) {
     const front = isValidOrientation(top, orientation.front)
@@ -74,6 +91,9 @@ export function TutorialOrientationSettings() {
             />
           </div>
         </div>
+      </div>
+      <div className="settings-preview tutorial-orientation-preview" role="img" aria-label={t("settings.colorPalette")}>
+        <div className="cube-mount" ref={previewRef} />
       </div>
       <CubeColorLegend faceColors={faceColors} aria-label={t("settings.colorLegend")} />
     </div>
