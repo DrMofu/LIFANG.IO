@@ -1,32 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { buildSmoothDistributionCurve, type FormulaTimeDistribution } from "@/lib/formulas/formula-time-distribution";
+import type { FormulaTimeDistribution } from "@/lib/formulas/formula-time-distribution";
 
 type Tick = { value: number; opacity: number };
 type Frame = {
   minMs: number;
   maxMs: number;
-  maxFrequency: number;
+  medianMs: number;
   latestMs: number;
   heights: number[];
   xTicks: Tick[];
-  yTicks: Tick[];
 };
 
 function makeFrame(distribution: FormulaTimeDistribution): Frame {
-  const { minMs, maxMs, bins, maxFrequency, samples } = distribution;
-  const points = [
-    { x: bins[0].startMs, y: bins[0].frequency },
-    ...bins.map((bin) => ({ x: bin.centerMs, y: bin.frequency })),
-    { x: bins[bins.length - 1].endMs, y: bins[bins.length - 1].frequency },
-  ];
-  const curve = buildSmoothDistributionCurve(points);
+  const { minMs, maxMs, medianMs, heights, samples } = distribution;
   return {
-    minMs, maxMs, maxFrequency, latestMs: samples[samples.length - 1],
-    heights: Array.from({ length: 97 }, (_, index) => curve.yAt(minMs + (maxMs - minMs) * index / 96) / maxFrequency),
+    minMs, maxMs, medianMs, latestMs: samples[samples.length - 1], heights,
     xTicks: distribution.xTicks.map((value) => ({ value, opacity: 1 })),
-    yTicks: distribution.yTicks.map((value) => ({ value, opacity: 1 })),
   };
 }
 
@@ -38,7 +29,7 @@ function blendTicks(from: Tick[], to: Tick[], progress: number): Tick[] {
   }));
 }
 
-/** Fixed screen samples keep the path continuous even when the bin count changes. */
+/** Fixed screen samples keep the path continuous even when the density or axis range changes. */
 export function useFormulaDistributionAnimation(distribution: FormulaTimeDistribution | null) {
   const target = useMemo(() => distribution ? makeFrame(distribution) : null, [distribution]);
   const [frame, setFrame] = useState(target);
@@ -65,11 +56,10 @@ export function useFormulaDistributionAnimation(distribution: FormulaTimeDistrib
       const next: Frame = {
         minMs: mix(from.minMs, target.minMs),
         maxMs: mix(from.maxMs, target.maxMs),
-        maxFrequency: mix(from.maxFrequency, target.maxFrequency),
+        medianMs: mix(from.medianMs, target.medianMs),
         latestMs: mix(from.latestMs, target.latestMs),
         heights: target.heights.map((height, index) => mix(from.heights[index], height)),
         xTicks: blendTicks(from.xTicks, target.xTicks, progress),
-        yTicks: blendTicks(from.yTicks, target.yTicks, progress),
       };
       current.current = next;
       setFrame(next);

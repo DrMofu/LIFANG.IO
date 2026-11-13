@@ -1,3 +1,18 @@
+.trainer-focus-app .trainer-tps-history {
+  margin: 12px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid rgba(213, 226, 246, 0.62);
+  list-style: none;
+}
+
+.trainer-focus-app .trainer-tps-history .hist-row {
+  display: grid;
+}
+
+.trainer-focus-app .trainer-tps-history .hr-tps {
+  display: inline-flex;
+}
+
 .trainer-focus-app .trainer-phase-list {
   grid-template-columns: 1fr;
 }
@@ -318,7 +333,7 @@
 
   .trainer-focus-app .trainer-history-panel .trainer-tps-history {
     margin: 0;
-    max-height: 120px;
+    max-height: calc(2 * var(--history-row-size) + 13px);
     overflow-y: auto;
     touch-action: pan-y;
   }

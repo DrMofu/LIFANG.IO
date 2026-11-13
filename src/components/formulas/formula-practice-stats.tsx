@@ -1,13 +1,15 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useId, useRef, useState } from "react";
 import { buildFormulaTimeDistribution, buildSmoothDistributionCurve } from "@/lib/formulas/formula-time-distribution";
 import { useFormulaDistributionAnimation } from "@/components/formulas/use-formula-distribution-animation";
+import { calculateTps, formatTps } from "@/lib/records/tps";
 import { fmtShort } from "@/lib/utils/format";
 
 type Props = {
   times: readonly number[];
   count: number;
+  moves: number;
   bestMs?: number;
   todayPracticeCount: number;
   todayPracticeTone: string;
@@ -16,8 +18,9 @@ type Props = {
 };
 
 const WIDTH = 348;
-const LEFT = 35;
-export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, count, bestMs, todayPracticeCount, todayPracticeTone, compact = false, t }: Props) {
+const LEFT = 14;
+export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, count, moves, bestMs, todayPracticeCount, todayPracticeTone, compact = false, t }: Props) {
+  const chartId = useId().replaceAll(":", "");
   const [history, setHistory] = useState(() => ({ times, count, distribution: buildFormulaTimeDistribution(times) }));
   if (history.times !== times || history.count !== count) {
     const unchanged = history.count === count && history.times.length === times.length
@@ -30,14 +33,14 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(WIDTH);
   useEffect(() => {
-    if (!compact || !chartContainerRef.current) return;
+    if (!chartContainerRef.current) return;
     const container = chartContainerRef.current;
-    const updateWidth = () => setChartWidth(container.clientWidth);
+    const updateWidth = () => setChartWidth(Math.max(160, container.clientWidth));
     const observer = new ResizeObserver(updateWidth);
     observer.observe(container);
     updateWidth();
     return () => observer.disconnect();
-  }, [compact]);
+  }, []);
 
   const recentListRef = useRef<HTMLOListElement>(null);
   const [recentLimit, setRecentLimit] = useState(1);
@@ -56,12 +59,15 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
       const availableHeight = !side.classList.contains("practice-mobile-slide") && getComputedStyle(side).overflowY === "visible"
         ? window.visualViewport?.height ?? window.innerHeight
         : side.clientHeight;
-      let bottomInset = 0;
+      let bottomInset = parseFloat(getComputedStyle(side).paddingBottom);
       for (let element = list.parentElement; element && element !== side; element = element.parentElement) {
         const style = getComputedStyle(element);
         bottomInset += parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth);
       }
-      setRecentLimit(Math.max(1, Math.floor((availableHeight - listTop - bottomInset) / rowHeight)));
+      const available = Math.max(0, availableHeight - listTop - bottomInset);
+      const limit = Math.max(1, Math.floor(available / 42));
+      list.style.setProperty("--fm-row-height", `${Math.max(42, Math.min(44, available / limit))}px`);
+      setRecentLimit(limit);
     };
 
     const observer = new ResizeObserver(updateLimit);
@@ -79,7 +85,7 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
       window.removeEventListener("resize", updateLimit);
       window.visualViewport?.removeEventListener("resize", updateLimit);
     };
-  }, [times]);
+  }, [times, chartWidth, compact]);
 
   const recentHeader = (
     <div className="practice-card-head fm-stats-head">
@@ -101,67 +107,82 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
     );
   }
   const { samples, bins } = distribution;
-  const width = compact ? chartWidth : WIDTH;
-  const right = width - 12;
-  const top = compact ? 28 : 34;
-  const bottom = compact ? 98 : 172;
-  const chartHeight = compact ? 128 : 204;
-  const { minMs, maxMs, maxFrequency, xTicks, yTicks } = frame;
+  const width = chartWidth;
+  const right = width - 22;
+  const top = 22;
+  const bottom = compact ? 100 : 154;
+  const chartHeight = compact ? 128 : 182;
+  const { minMs, maxMs, xTicks } = frame;
   const latest = samples[samples.length - 1];
   const latestIsBest = latest === bestMs;
+  const showCurve = samples.length >= 5;
   const x = (ms: number) => LEFT + (ms - minMs) / (maxMs - minMs) * (right - LEFT);
-  const y = (frequency: number) => bottom - frequency / maxFrequency * (bottom - top);
   const curve = buildSmoothDistributionCurve(frame.heights.map((height, index) => ({
     x: LEFT + index / (frame.heights.length - 1) * (right - LEFT),
     y: bottom - height * (bottom - top),
   })));
+  const area = `${curve.path} L${right},${bottom} L${LEFT},${bottom} Z`;
   const latestX = x(frame.latestMs);
-  const latestLabel = `${t("上次")} ${fmtShort(latest)}`;
-  const labelWidth = Math.max(94, latestLabel.length * 7 + 16);
-  const labelX = Math.max(LEFT, Math.min(right - labelWidth, latestX - labelWidth / 2));
+  const latestLabel = `${fmtShort(latest)}${latestIsBest ? ` ${t("最佳")}` : ""}`;
+  const rangeLabel = `${t("中位数")} ${(distribution.medianMs / 1000).toFixed(2)}s`;
+  const labelWidth = Array.from(latestLabel).reduce((sum, character) => sum + (character.charCodeAt(0) > 255 ? 11 : 7), 0);
+  const labelX = latestX + labelWidth + 8 <= right ? latestX + 8 : Math.max(LEFT, latestX - labelWidth - 8);
+  const medianX = x(frame.medianMs);
+  // Leave room for the unit at the right and keep labels readable in narrow sidebars.
+  const tickStride = Math.max(1, Math.ceil((xTicks.length - 1) / Math.max(2, Math.floor((right - LEFT) / 56))));
   const recent = samples.slice(-recentLimit).toReversed();
   const slowestRecent = Math.max(...recent);
 
   return (
     <div ref={chartContainerRef} className="fm-stats-dashboard">
       {recentHeader}
-      <section className="fm-distribution" aria-label={t("用时分布")}>
-        <div className="fm-chart-caption"><span>{t("频率")}</span></div>
-        <svg className={`fm-distribution-chart${latestIsBest ? " is-best" : ""}`} viewBox={`0 0 ${width} ${chartHeight}`} role="img" aria-label={`${t("用时分布")} · ${latestLabel}`}>
-          <desc>{t("横轴为用时，纵轴为各用时区间的次数占比，竖线表示上次成绩。")}</desc>
-          {yTicks.map(({ value: tick, opacity }) => (
-            <g key={tick} opacity={opacity}>
-              <line className="fm-chart-grid" x1={LEFT} x2={right} y1={y(tick)} y2={y(tick)} />
-              <text className="fm-chart-label" x={LEFT - 7} y={y(tick) + 4} textAnchor="end">{tick}%</text>
-            </g>
+      <section className={`fm-distribution${latestIsBest ? " is-best" : ""}`} aria-label={t("用时分布")}>
+        <svg className="fm-distribution-chart" viewBox={`0 0 ${width} ${chartHeight}`} role="img" aria-label={`${t("用时分布")}，${latestLabel}${showCurve ? `，${rangeLabel}` : ""}`}>
+          <desc>{t(showCurve ? "横轴为用时，曲线表示成绩集中程度，竖线表示上次成绩。中位数左侧的曲线区域加深。" : "横轴为用时，圆点表示每次成绩，竖线表示上次成绩。")}</desc>
+          <defs>
+            <linearGradient id={`${chartId}-fill`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--tech-blue)" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="var(--tech-blue)" stopOpacity="0.02" />
+            </linearGradient>
+            <clipPath id={`${chartId}-range`}>
+              <rect x={LEFT} y={top} width={Math.max(0, medianX - LEFT)} height={bottom - top} />
+            </clipPath>
+          </defs>
+          {[1 / 3, 2 / 3].map((ratio) => (
+            <line key={ratio} className="fm-chart-grid" x1={LEFT} x2={right} y1={bottom - ratio * (bottom - top)} y2={bottom - ratio * (bottom - top)} />
           ))}
-          <path className="fm-chart-area" d={`${curve.path} L${right},${bottom} L${LEFT},${bottom} Z`} />
-          <path className="fm-chart-line" d={curve.path} />
+          {showCurve && <>
+            <path fill={`url(#${chartId}-fill)`} d={area} />
+            <path className="fm-chart-range" clipPath={`url(#${chartId}-range)`} d={area} />
+            <path className="fm-chart-line" d={curve.path} />
+          </>}
           {bins.map((bin) => (
-            <rect className="fm-chart-bin-target" key={bin.startMs} x={Math.max(LEFT, x(bin.startMs))} y={top} width={Math.max(0, Math.min(right, x(bin.endMs)) - Math.max(LEFT, x(bin.startMs)))} height={bottom - top}>
-              <title>{`${bin.startMs / 1000}–${bin.endMs / 1000} s: ${bin.count}/${samples.length} (${Number(bin.frequency.toFixed(1))}%)`}</title>
+            <rect className="fm-chart-bin-target" key={bin.startMs} x={x(bin.startMs)} y={top} width={x(bin.endMs) - x(bin.startMs)} height={bottom - top}>
+              <title>{`${(bin.startMs / 1000).toFixed(2)}–${(bin.endMs / 1000).toFixed(2)} s: ${bin.count}/${samples.length} (${Number((bin.count / samples.length * 100).toFixed(1))}%)`}</title>
             </rect>
           ))}
           <line className="fm-chart-axis" x1={LEFT} x2={right} y1={bottom} y2={bottom} />
-          {xTicks.map(({ value: tick, opacity }) => (
+          {samples.length < 15 && samples.map((time, index) => showCurve ? (
+            <line key={index} className="fm-chart-rug" x1={x(time)} x2={x(time)} y1={bottom + 2} y2={bottom + 6} />
+          ) : (
+            <circle key={index} className="fm-chart-sample" cx={x(time)} cy={bottom} r={3} />
+          ))}
+          {xTicks.map(({ value: tick, opacity }, index) => index % tickStride === 0 && (
             <g key={tick} opacity={tick < minMs || tick > maxMs ? 0 : opacity}>
               <line className="fm-chart-axis" x1={x(tick)} x2={x(tick)} y1={bottom} y2={bottom + 4} />
-              <text className="fm-chart-label" x={x(tick)} y={bottom + 19} textAnchor="middle">{Number((tick / 1000).toFixed(2))}</text>
+              <text className="fm-chart-label" x={x(tick)} y={bottom + 20} textAnchor="middle">{Number((tick / 1000).toFixed(2))}</text>
             </g>
           ))}
+          <text className="fm-chart-label" x={width - 1} y={bottom + 20} textAnchor="end">s</text>
+          <text className="fm-chart-result" x={labelX} y={16}>{latestLabel}</text>
           <g className="fm-chart-latest">
-            <line x1={latestX} x2={latestX} y1={top - 4} y2={bottom} />
-            <circle cx={latestX} cy={curve.yAt(latestX)} r={4.5} />
-            <rect x={labelX} y={3} width={labelWidth} height={24} rx={6} />
-            <text x={labelX + labelWidth / 2} y={19} textAnchor="middle">{latestLabel}</text>
+            <line x1={latestX} x2={latestX} y1={4} y2={bottom} />
+            <circle cx={latestX} cy={bottom} r={4.5} />
           </g>
         </svg>
-        <div className="fm-chart-caption">
-          <span style={{ marginInlineStart: "auto" }}>{t("用时 / 秒")}</span>
-        </div>
       </section>
       <section className="fm-stats-recent" aria-label={t("最近记录")}>
-        <ol ref={recentListRef}>
+        <ol ref={recentListRef} className="hist-list-no-moves">
           {recent.map((time, index) => {
             const isBest = time === bestMs;
             const number = count - index;
@@ -169,9 +190,10 @@ export const FormulaPracticeStats = memo(function FormulaPracticeStats({ times, 
               <li key={`${number}-${time}`} className={`hist-row fm-stat-row${isBest ? " best" : ""}`}>
                 <span className="hr-i">#{String(number).padStart(3, "0")}</span>
                 <span className="hr-track" aria-hidden="true">
-                  <span className="hr-bar" style={{ width: `${time / slowestRecent * 100}%` }} />
+                  <span className="hr-bar" style={{ width: `${Math.max(12, time / slowestRecent * 100)}%` }} />
                 </span>
-                <span className="hr-t">{(time / 1000).toFixed(2)}<small>s</small></span>
+                <span className="hr-tps">{formatTps(calculateTps(moves, time))} <small>TPS</small></span>
+                <span className="hr-t" aria-label={isBest ? `${t("最佳")} ${(time / 1000).toFixed(2)}s` : undefined}>{fmtShort(time)}</span>
               </li>
             );
           })}

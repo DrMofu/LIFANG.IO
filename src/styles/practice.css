@@ -607,7 +607,7 @@
   color: var(--tech-muted);
   font-size: 13px;
 }
-:is(.lf-practice-app, .lf-tech-app) .hist-list {
+.lf-practice-app .hist-list {
   --history-rows: 1;
   display: grid;
   gap: var(--history-row-gap);
@@ -1585,18 +1585,29 @@
   padding-top: 8px;
 }
 
-:is(.practice-focus-app, .lf-tech-app) .hist-list {
+.practice-focus-app .hist-list {
   --history-base-row-size: 44px;
   --history-row-size: var(--history-base-row-size);
   --history-row-gap: 0px;
-  flex: 1 1 auto;
-  height: calc(
-    var(--history-row-size) * var(--history-rows) +
-    var(--history-row-gap) * (var(--history-rows) - 1)
-  );
+  flex: 0 0 auto;
+  height: auto;
   min-height: 0;
   max-height: none;
   border-top: 0;
+  overflow: visible;
+  grid-auto-rows: var(--history-row-size);
+  grid-template-columns: max-content minmax(12px, 1fr) repeat(3, max-content);
+  column-gap: 5px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hist-list-no-moves {
+  display: grid;
+  grid-template-columns: max-content minmax(12px, 1fr) repeat(2, max-content);
+  column-gap: 5px;
+}
+
+:is(.practice-focus-app, .lf-tech-app) .hist-list-no-moves .hr-track {
+  margin-inline: 8px;
 }
 
 :is(.practice-focus-app, .lf-tech-app) .hist-row {
@@ -1607,25 +1618,12 @@
   padding: 7px 2px;
 }
 
-.lf-tech-app .hist-row {
-  grid-template-columns: 30px minmax(12px, 1fr) max-content repeat(2, minmax(0, 60px));
-}
-
-.practice-focus-app .hist-list {
-  flex: 0 0 auto;
-  height: auto;
-  overflow: visible;
-  grid-auto-rows: var(--history-row-size);
-  grid-template-columns: max-content minmax(12px, 1fr) repeat(3, max-content);
-  column-gap: 5px;
-}
-
 .practice-focus-app .hist-row {
   grid-column: 1 / -1;
   grid-template-columns: subgrid;
 }
 
-.practice-focus-app .hist-row :is(.hr-tps, .hr-t) {
+:is(.practice-focus-app, .lf-tech-app) .hist-row :is(.hr-tps, .hr-t) {
   padding-left: 7px;
 }
 
@@ -1647,15 +1645,15 @@
   font-size: 12px;
 }
 
-.practice-focus-app .hr-track {
+:is(.practice-focus-app, .lf-tech-app) .hr-track {
   background: rgba(220, 230, 245, 0.7);
 }
 
-.practice-focus-app .hr-bar {
+:is(.practice-focus-app, .lf-tech-app) .hr-bar {
   background: #2f6ff2;
 }
 
-.practice-focus-app .hr-t {
+:is(.practice-focus-app, .lf-tech-app) .hr-t {
   color: #173567;
 }
 
@@ -1702,7 +1700,7 @@
     line-height: 20px;
   }
 
-  .practice-focus-app .hist-row:last-child {
+  :is(.practice-focus-app, .lf-tech-app) .hist-row:last-child {
     border-bottom: 0;
   }
 

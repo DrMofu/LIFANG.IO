@@ -980,6 +980,7 @@ export function FormulaStage({
                 key={displayStatsKey}
                 times={practiceStats.times}
                 count={practiceStats.count}
+                moves={algoMoves.length}
                 bestMs={practiceStats.bestMs}
                 todayPracticeCount={todayPracticeCount}
                 todayPracticeTone={todayPracticeTone}

@@ -1118,32 +1118,30 @@
   margin: 0;
 }
 
-.lf-tech-app .fm-chart-caption {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--tech-muted);
-  font-size: 11px;
-}
-
 .lf-tech-app .fm-distribution,
 .lf-tech-app .fm-stats-recent {
   flex: 0 0 auto;
   min-width: 0;
 }
 
-.lf-tech-app .fm-distribution-chart {
-  --result-color: #c78012;
-  display: block;
-  width: 100%;
-  overflow: visible;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
+.lf-tech-app .fm-distribution {
+  --result-color: var(--tech-blue);
 }
 
-.lf-tech-app .fm-distribution-chart.is-best {
+.lf-tech-app .fm-distribution.is-best {
   --result-color: var(--tech-green);
+}
+
+.lf-tech-app .fm-chart-result {
+  fill: var(--tech-muted);
+  font-size: 11px;
+}
+
+.lf-tech-app .fm-distribution-chart {
+  display: block;
+  width: 100%;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .lf-tech-app .fm-chart-label {
@@ -1153,22 +1151,25 @@
 
 .lf-tech-app .fm-chart-grid {
   stroke: var(--tech-line-2);
-  stroke-dasharray: 3 3;
+  stroke-width: 0.75;
 }
 
 .lf-tech-app .fm-chart-axis {
-  stroke: #a4b4ce;
+  fill: none;
+  stroke: #b9c9e1;
+  stroke-width: 0.75;
 }
 
-.lf-tech-app .fm-chart-area {
+.lf-tech-app .fm-chart-range {
   fill: var(--tech-blue);
-  opacity: 0.1;
+  fill-opacity: 0.12;
 }
 
 .lf-tech-app .fm-chart-line {
   fill: none;
   stroke: var(--tech-blue);
   stroke-linejoin: round;
+  stroke-linecap: round;
   stroke-width: 2;
 }
 
@@ -1176,24 +1177,31 @@
   fill: transparent;
 }
 
+.lf-tech-app .fm-chart-rug {
+  stroke: var(--tech-blue);
+  stroke-opacity: 0.4;
+}
+
+.lf-tech-app .fm-chart-sample {
+  fill: var(--tech-blue);
+  fill-opacity: 0.5;
+}
+
 .lf-tech-app .fm-chart-latest {
   fill: var(--result-color);
+  pointer-events: none;
 }
 
 .lf-tech-app .fm-chart-latest line {
   stroke: var(--result-color);
-  stroke-width: 1.5;
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  stroke-opacity: 0.65;
 }
 
 .lf-tech-app .fm-chart-latest circle {
   stroke: #fff;
   stroke-width: 2;
-}
-
-.lf-tech-app .fm-chart-latest text {
-  fill: #fff;
-  font-size: 11px;
-  font-weight: 700;
 }
 
 .lf-tech-app .fm-stats-recent {
@@ -1218,31 +1226,14 @@
 }
 
 .lf-tech-app .fm-stat-row {
-  --history-row-size: 36px;
-  grid-template-columns: minmax(40px, auto) minmax(12px, 1fr) auto;
-  column-gap: 12px;
-  padding: 7px 8px;
+  --history-row-size: var(--fm-row-height, 44px);
+  min-height: var(--history-row-size);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
 }
 
-.lf-tech-app .fm-stat-row .hr-t {
+.lf-tech-app .fm-stat-row .hr-tps {
   display: inline-flex;
-  align-items: baseline;
-  gap: 2px;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.lf-tech-app .fm-stat-row .hr-t small {
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.lf-tech-app .fm-stat-row.best {
-  background: var(--tech-green-soft);
-}
-
-.lf-tech-app .fm-stat-row.best :is(.hr-i, .hr-t) {
-  color: var(--tech-green);
 }
 
 .lf-tech-app .formula-keypad-section {
@@ -1745,7 +1736,5 @@
   .lf-tech-app .practice-mobile-slide .formula-practice-actions { margin-top: auto; }
   .lf-tech-app .practice-mobile-slide .formula-practice-actions .practice-btn { min-height: 44px; }
   .lf-tech-app .practice-mobile-slide .fm-stats-dashboard { gap: 8px; }
-  .lf-tech-app .practice-mobile-slide .fm-distribution { display: grid; gap: 2px; }
-  .lf-tech-app .practice-mobile-slide .fm-chart-caption { font-size: 10px; line-height: 14px; }
   .lf-tech-app .practice-mobile-slide .fm-stats-recent { padding-top: 8px; }
 }

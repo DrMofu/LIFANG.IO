@@ -25,15 +25,7 @@ export function buildSmoothDistributionCurve(points: readonly CurvePoint[]) {
     return { start, end, c1: { x: start.x + third, y: start.y + tangents[index] * third }, c2: { x: end.x - third, y: end.y - tangents[index + 1] * third } };
   });
   const path = `M${points[0].x},${points[0].y} ` + segments.map(({ c1, c2, end }) => `C${c1.x},${c1.y} ${c2.x},${c2.y} ${end.x},${end.y}`).join(" ");
-  return {
-    path,
-    yAt(x: number) {
-      const segment = segments.find(({ end }) => end.x >= x) ?? segments[segments.length - 1];
-      const { start, end, c1, c2 } = segment;
-      const t = Math.max(0, Math.min(1, (x - start.x) / (end.x - start.x)));
-      return (1 - t) ** 3 * start.y + 3 * (1 - t) ** 2 * t * c1.y + 3 * (1 - t) * t ** 2 * c2.y + t ** 3 * end.y;
-    },
-  };
+  return { path };
 }
 
 function niceStep(value: number) {
@@ -46,7 +38,6 @@ export type FormulaDistributionRange = {
   minMs: number;
   maxMs: number;
   tickStepMs: number;
-  binWidthMs: number;
   shrinkStreak: number;
 };
 
@@ -58,14 +49,15 @@ function fitRange(min: number, max: number, tickStepMs: number) {
 }
 
 /** Retain the previous grid until data exceeds it or five new results justify shrinking. */
-export function getFormulaDistributionRange(samples: readonly number[], previous?: FormulaDistributionRange, newResult = true): FormulaDistributionRange {
+export function getFormulaDistributionRange(samples: readonly number[], previous?: FormulaDistributionRange, newResult = true, paddingMs = 0): FormulaDistributionRange {
   const min = Math.min(...samples);
   const max = Math.max(...samples);
   const span = Math.max(500, max - min);
+  const padding = Math.max(span * 0.1, paddingMs);
   const center = (min + max) / 2;
-  const paddedMin = Math.max(0, center - span * 0.6);
-  const paddedMax = center + span * 0.6;
-  const tickStepMs = Math.max(100, niceStep((paddedMax - paddedMin) / 6));
+  const paddedMin = Math.max(0, center - span / 2 - padding);
+  const paddedMax = center + span / 2 + padding;
+  const tickStepMs = Math.max(100, niceStep((paddedMax - paddedMin) / 5));
   const desired = fitRange(paddedMin, paddedMax, tickStepMs);
   let range = { ...desired, tickStepMs };
   let shrinkStreak = 0;
@@ -79,7 +71,7 @@ export function getFormulaDistributionRange(samples: readonly number[], previous
       const lower = min < previous.minMs ? paddedMin : previous.minMs;
       const upper = max > previous.maxMs ? paddedMax : previous.maxMs;
       const step = (upper - lower) / previous.tickStepMs <= 8
-        ? previous.tickStepMs : Math.max(100, niceStep((upper - lower) / 6));
+        ? previous.tickStepMs : Math.max(100, niceStep((upper - lower) / 5));
       range = { ...fitRange(lower, upper, step), tickStepMs: step };
     } else if (shrinkStreak < 5) {
       range = previous;
@@ -88,41 +80,51 @@ export function getFormulaDistributionRange(samples: readonly number[], previous
     }
   }
 
-  const width = range.maxMs - range.minMs;
-  const previousBins = previous ? width / previous.binWidthMs : 0;
-  const binWidthMs = previous && previousBins >= 4 && previousBins <= 32
-    ? previous.binWidthMs : Math.max(50, niceStep(width / 12));
-  return { ...range, binWidthMs, shrinkStreak };
+  return { ...range, shrinkStreak };
 }
 
-/** Equal-width bins anchored to zero, independently of axis ticks. */
+function quantile(sorted: readonly number[], fraction: number) {
+  const index = (sorted.length - 1) * fraction;
+  const lower = Math.floor(index);
+  return sorted[lower] + (sorted[Math.ceil(index)] - sorted[lower]) * (index - lower);
+}
+
+/** Reflected Gaussian KDE keeps all probability on the nonnegative time axis. */
 export function buildFormulaTimeDistribution(times: readonly number[], previous?: FormulaDistributionRange, newResult = true) {
   const samples = times.filter((time) => Number.isFinite(time) && time > 0).slice(-FORMULA_STATS_LIMIT);
   if (samples.length === 0) return null;
 
-  const range = getFormulaDistributionRange(samples, previous, newResult);
-  const { minMs, maxMs, binWidthMs, tickStepMs } = range;
-  const binStartMs = Math.floor(minMs / binWidthMs) * binWidthMs;
-  const binCount = Math.ceil((maxMs - binStartMs) / binWidthMs);
+  const sorted = samples.toSorted((a, b) => a - b);
+  const q1Ms = quantile(sorted, 0.25);
+  const q3Ms = quantile(sorted, 0.75);
+  const median = quantile(sorted, 0.5);
+  const mean = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+  const deviation = Math.sqrt(samples.reduce((sum, value) => sum + (value - mean) ** 2, 0) / Math.max(1, samples.length - 1));
+  // When the IQR collapses, repeated results should remain a compact peak even with outliers.
+  const scale = q3Ms > q1Ms ? Math.min(deviation, (q3Ms - q1Ms) / 1.34) : median * 0.05;
+  const bandwidthMs = Math.max(35, 0.9 * scale * samples.length ** -0.2 * (samples.length < 15 ? 1.25 : 1));
+  const range = getFormulaDistributionRange(samples, previous, newResult, bandwidthMs * 3);
+  const { minMs, maxMs, tickStepMs } = range;
+  const densityAt = (ms: number) => samples.reduce((sum, time) => sum
+    + Math.exp(-0.5 * ((ms - time) / bandwidthMs) ** 2)
+    + Math.exp(-0.5 * ((ms + time) / bandwidthMs) ** 2), 0) / (samples.length * bandwidthMs * Math.sqrt(2 * Math.PI));
+  const densities = Array.from({ length: 257 }, (_, index) => densityAt(minMs + (maxMs - minMs) * index / 256));
+  const peak = Math.max(...densities, ...samples.map(densityAt));
+  const heights = densities.map((density) => density / (peak * 1.12));
+  const binWidthMs = tickStepMs / 2;
+  const binCount = Math.ceil((maxMs - minMs) / binWidthMs);
   const counts = Array<number>(binCount).fill(0);
   for (const time of samples) {
-    // Include the right endpoint in the last bin.
-    counts[Math.min(binCount - 1, Math.floor((time - binStartMs) / binWidthMs))] += 1;
+    counts[Math.min(binCount - 1, Math.floor((time - minMs) / binWidthMs))] += 1;
   }
   const bins = counts.map((count, index) => ({
-    startMs: binStartMs + index * binWidthMs,
-    endMs: binStartMs + (index + 1) * binWidthMs,
-    centerMs: binStartMs + (index + 0.5) * binWidthMs,
+    startMs: minMs + index * binWidthMs,
+    endMs: minMs + (index + 1) * binWidthMs,
     count,
-    frequency: count / samples.length * 100,
   }));
-  const yStep = niceStep(Math.max(...bins.map((bin) => bin.frequency)) / 3);
-  const maxFrequency = Math.min(100, Math.ceil(Math.max(...bins.map((bin) => bin.frequency)) / yStep) * yStep);
-  const yTicks = Array.from({ length: Math.floor(maxFrequency / yStep) + 1 }, (_, index) => index * yStep);
-  if (yTicks.at(-1) !== maxFrequency) yTicks.push(maxFrequency);
   const xTicks = Array.from({ length: Math.round((maxMs - minMs) / tickStepMs) + 1 }, (_, index) => minMs + index * tickStepMs);
 
-  return { ...range, samples, bins, maxFrequency, yTicks, xTicks };
+  return { ...range, samples, bins, heights, medianMs: median, bandwidthMs, xTicks };
 }
 
 export type FormulaTimeDistribution = NonNullable<ReturnType<typeof buildFormulaTimeDistribution>>;

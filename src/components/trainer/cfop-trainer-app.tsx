@@ -982,22 +982,29 @@ function CfopTrainerClient() {
     resetRun();
   };
 
-  const historyList = (
-!isRecognitionSpecialty && sessionResults.length > 0 && (
-                <ol className="trainer-tps-history" aria-label={t("最近记录")}>
-                  {sessionResults.slice(-5).toReversed().map((entry, index) => (
-                    <li key={sessionResults.length - index}>
-                      <span>#{sessionResults.length - index}</span>
-                      <b>{entry.dnf ? "DNF" : fmtShort(entry.solveMs)}</b>
-                      <span className="hr-tps">{formatTps(entry.dnf ? null : calculateTps(entry.moves, entry.solveMs))} <small>TPS</small></span>
-                    </li>
-                  ))}
-                </ol>
-              )
-  );
+  const recentHistory = sessionResults.slice(-5).toReversed();
+  const slowestHistoryMs = Math.max(0, ...recentHistory.filter((entry) => !entry.dnf).map((entry) => entry.solveMs));
+  const historyList = !isRecognitionSpecialty && recentHistory.length > 0 ? (
+    <ol className="hist-list hist-list-no-moves trainer-tps-history" aria-label={t("最近记录")}>
+      {recentHistory.map((entry, index) => (
+        <li key={sessionResults.length - index} className="hist-row">
+          <span className="hr-i">#{String(sessionResults.length - index).padStart(3, "0")}</span>
+          <span className="hr-track" aria-hidden="true">
+            {!entry.dnf && slowestHistoryMs > 0 && (
+              <span className="hr-bar" style={{ width: `${Math.max(12, entry.solveMs / slowestHistoryMs * 100)}%` }} />
+            )}
+          </span>
+          <span className="hr-tps">{formatTps(entry.dnf ? null : calculateTps(entry.moves, entry.solveMs))} <small>TPS</small></span>
+          <span className="hr-t">{entry.dnf ? "DNF" : fmtShort(entry.solveMs)}</span>
+        </li>
+      ))}
+    </ol>
+  ) : null;
+
   const catalogPanel = (
-<TrainerCatalogPanel selectedPhase={selectedPhase} selectPhase={selectPhase} settingsLocked={settingsLocked} />
+    <TrainerCatalogPanel selectedPhase={selectedPhase} selectPhase={selectPhase} settingsLocked={settingsLocked} />
   );
+
   const changeRecognitionIncludeSlices = (next: boolean) => {
     setRecognitionIncludeSlices(next);
     saveStoredTrainerBoolean(TRAINER_RECOGNITION_SLICES_KEY, next);
